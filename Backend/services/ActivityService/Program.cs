@@ -1,6 +1,9 @@
-using ActivityService.Services.Data;
-using ActivityService.Services.Models;
 using Microsoft.EntityFrameworkCore;
+using MassTransit;
+using Grpc.Reflection;
+using ActivityService.Services.Data;
+using ActivityService.Services.Events;
+using ActivityService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,23 +11,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddGrpc(options => 
 {
     options.EnableDetailedErrors = builder.Environment.IsDevelopment();
-});
-
-builder.Services.AddMassTransit(x =>
-{
-    x.SetKebabCaseEndpointNameFormatter();
-
-    x.UsingRabbitMq((context, cfg) =>
-    {
-        cfg.Host("rabbitmq", "/", h =>
-        {
-            h.Username("guest");
-            h.Password("guest");
-        });
-
-        // Publish events (без consumer)
-        cfg.Publish<ActivityCreatedEvent>();
-    });
 });
 
 // EF Core + Postgres
@@ -38,18 +24,14 @@ builder.Services.AddMassTransit(x =>
 {
     x.UsingRabbitMq((context, cfg) =>
     {
-        cfg.Host(builder.Configuration.GetConnectionString("RabbitMQ") 
-            ?? "rabbitmq://guest:guest@rabbitmq/activity_events");
+        cfg.Host("rabbitmq://guest:guest@rabbitmq:5672");
         
         // Publisher для событий
         cfg.Publish<ActivityCreatedEvent>();
     });
 });
 
-app.Services.GetRequiredService<IMassTransitHost>();
-
 var app = builder.Build();
-
 // Middleware
 if (app.Environment.IsDevelopment())
 {

@@ -43,7 +43,7 @@ services:
 
   activityservice:
     build:
-      context: ./services/ActivityService
+      context: ./Backend/services/ActivityService
       dockerfile: dockerfile
     container_name: activityservice
     restart: unless-stopped
@@ -69,7 +69,9 @@ services:
 
   gateway:
     build:
-      context: ./gateway
+      context: ./Backend/gateway
+      args:
+        BUILD_CONFIGURATION: Release
     container_name: gateway
     restart: unless-stopped
     depends_on:

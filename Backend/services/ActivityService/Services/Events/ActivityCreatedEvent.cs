@@ -1,6 +1,5 @@
-﻿namespace ActivityService;
+﻿using Microsoft.EntityFrameworkCore;
 
-public class ActivityCreatedEvent
-{
-    public record ActivityCreatedEvent(long ActivityId, int ComputerId, string ActivityType);
-}
+namespace ActivityService.Services.Events;
+
+public record ActivityCreatedEvent(long ActivityId, int ComputerId, string ActivityType);

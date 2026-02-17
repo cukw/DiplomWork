@@ -1,46 +1,39 @@
-# .dockerignore: bin/, obj/, *.log, .git/, node_modules/
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
-ARG TARGETARCH
-
 WORKDIR /src
+
+# 1. Restore (.csproj только)
 COPY ["ActivityService.csproj", "."]
-RUN dotnet restore "ActivityService.csproj" \
-    --runtime linux-x64 --runtime linux-arm64 \
-    --disable-parallel
+RUN dotnet restore "ActivityService.csproj"
 
+# 2. Copy sources
 COPY . .
+
+# 3. ✅ Publish БЕЗ --no-restore!!!
+WORKDIR "/src"
 RUN dotnet publish "ActivityService.csproj" \
-    -c $BUILD_CONFIGURATION \
-    -o /app/publish \
-    /p:UseAppHost=false \
-    --no-restore \
-    /p:PublishReadyToRun=true \
-    /p:PublishTrimmed=true \
-    /p:PublishSingleFile=true \
-    /p:SelfContained=false
+    -c Release \
+    -o /app/publish
+    # ← УДАЛИ --no-restore!
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
-ARG TARGETARCH
-
+# Runtime — .NET 10.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine
 WORKDIR /app
 EXPOSE 5001 5002
 
-# ENV для prod
-ENV ASPNETCORE_URLS=http://+:5001;http://+:5002
+ENV ASPNETCORE_URLS="http://+:5001;http://+:5002"
 ENV DOTNET_EnableDiagnostics=0
-ENV DOTNET_GCName=coreclr
-ENV DOTNET_gcServer=0
 
 COPY --from=build /app/publish .
 
-# User non-root
-RUN addgroup --system --gid 1000 aspnet && \
-    adduser --system --uid 1000 --gid 1000 --shell /bin/sh aspnet && \
+# BusyBox
+RUN addgroup -g 1000 -S aspnet && \
+    adduser -u 1000 -S -G aspnet aspnet && \
     chown -R aspnet:aspnet /app
+
 USER aspnet
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:5002/health || exit 1
 
-ENTRYPOINT ["./ActivityService"]
+ENTRYPOINT ["dotnet", "ActivityService.dll"]

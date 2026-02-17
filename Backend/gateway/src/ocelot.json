@@ -3,11 +3,29 @@
     {
       "DownstreamPathTemplate": "/{everything}",
       "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [{ "Host": "activityservice", "Port": 5001 }],
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "activityservice",
+          "Port": 5001
+        }
+      ],
       "UpstreamPathTemplate": "/activity/{everything}",
-      "UpstreamHttpMethod": [ "Get", "Post", "Put", "Delete" ],
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    },
+    {
+      "DownstreamPathTemplate": "/health",
       "DownstreamScheme": "http",
-      "DownstreamHttpVersion": "1.1"
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "activityservice",
+          "Port": 5001
+        }
+      ],
+      "UpstreamPathTemplate": "/health",
+      "UpstreamHttpMethod": [ "GET" ]
     }
-  ]
+  ],
+  "GlobalConfiguration": {
+    "BaseUrl": "http://localhost:5000"
+  }
 }

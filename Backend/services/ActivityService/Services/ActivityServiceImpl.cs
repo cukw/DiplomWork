@@ -1,11 +1,14 @@
 ﻿using Grpc.Core;
 using ActivityService.Services.Data;
 using ActivityService.Services.Models;
+using ActivityService.Services.Events;
 using ActivityService;
+using MassTransit;  // Для IPublishEndpoint
+using Microsoft.EntityFrameworkCore;
 
 namespace ActivityService.Services
 {
-    public class ActivityServiceImpl : ActivityService.ActivityService.ActivityServiceBase
+    public class ActivityServiceImpl : ActivityService.ActivityServiceBase
     {
         private readonly AppDbContext _db;
         private readonly ILogger<ActivityServiceImpl> _logger;
