@@ -1,0 +1,16 @@
+# db/AuthService/Dockerfile (копируй в каждый db/*/Dockerfile)
+FROM postgres:16-alpine AS postgres
+
+# ✅ Кэшируем init скрипты
+COPY sql/*.sql /docker-entrypoint-initdb.d/
+COPY healthcheck.sh /usr/local/bin/
+
+# Оптимизация PostgreSQL под мониторинг (много INSERT)
+RUN echo "shared_preload_libraries = 'timescaledb'" >> /usr/share/postgresql/postgresql.conf
+RUN echo "max_connections = 200" >> /usr/share/postgresql/postgresql.conf
+RUN echo "shared_buffers = 256MB" >> /usr/share/postgresql/postgresql.conf
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD pg_isready -U postgres -d ${POSTGRES_DB} || exit 1
+
+LABEL org.opencontainers.image.source="https://github.com/yourrepo"

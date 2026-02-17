@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+option csharp_namespace = "ActivityService";
+
+package activity;
+
+service ActivityService {
+  rpc GetActivities(GetActivitiesRequest) returns (GetActivitiesReply);
+  rpc CreateActivity(CreateActivityRequest) returns (ActivityReply);
+  rpc GetActivityById(GetActivityByIdRequest) returns (ActivityReply);
+  rpc GetAnomalies(GetAnomaliesRequest) returns (GetAnomaliesReply);
+  rpc DeleteActivity(DeleteActivityRequest) returns (DeleteActivityReply);
+}
+
+message GetActivitiesRequest {
+  optional int32 computer_id = 1;
+  optional string activity_type = 2;
+  optional string from_timestamp = 3;  // ISO8601
+  optional int32 limit = 4;
+  optional bool only_blocked = 5;
+}
+
+message GetActivitiesReply {
+  repeated ActivityReply activities = 1;
+  int32 total_count = 2;
+}
+
+message CreateActivityRequest {
+  ActivityReply activity = 1;
+}
+
+message GetActivityByIdRequest {
+  int64 id = 1;
+}
+
+message GetAnomaliesRequest {
+  optional int64 activity_id = 1;
+  optional int32 limit = 2;
+}
+
+message GetAnomaliesReply {
+  repeated AnomalyReply anomalies = 1;
+}
+
+message DeleteActivityRequest {
+  int64 id = 1;
+}
+
+message DeleteActivityReply {
+  bool success = 1;
+  string message = 2;
+}
+
+message ActivityReply {
+  int64 id = 1;
+  int32 computer_id = 2;
+  string timestamp = 3;  // RFC3339
+  string activity_type = 4;
+  string details = 5;    // JSON string (для JSONB)
+  optional int32 duration_ms = 6;
+  string url = 7;
+  string process_name = 8;
+  bool is_blocked = 9;
+  float risk_score = 10;
+  bool synced = 11;
+}
+
+message AnomalyReply {
+  int32 id = 1;
+  int64 activity_id = 2;
+  string type = 3;
+  string description = 4;
+  string detected_at = 5;  // RFC3339
+}

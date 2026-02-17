@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "dgSpecHash": "RyFyxihYOtM=",
+  "success": true,
+  "projectFilePath": "/Users/cukw/FinalWork/Backend/gateway/src/src.csproj",
+  "expectedPackageFiles": [
+    "/Users/cukw/.nuget/packages/fluentvalidation/12.1.1/fluentvalidation.12.1.1.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/grpc.core.api/2.76.0/grpc.core.api.2.76.0.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/grpc.net.client/2.76.0/grpc.net.client.2.76.0.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/grpc.net.common/2.76.0/grpc.net.common.2.76.0.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/ipaddressrange/6.3.0/ipaddressrange.6.3.0.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/microsoft.aspnetcore.jsonpatch/9.0.11/microsoft.aspnetcore.jsonpatch.9.0.11.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/microsoft.aspnetcore.middlewareanalysis/9.0.11/microsoft.aspnetcore.middlewareanalysis.9.0.11.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/microsoft.aspnetcore.mvc.newtonsoftjson/9.0.11/microsoft.aspnetcore.mvc.newtonsoftjson.9.0.11.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/microsoft.aspnetcore.openapi/10.0.2/microsoft.aspnetcore.openapi.10.0.2.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/microsoft.extensions.diagnosticadapter/3.1.32/microsoft.extensions.diagnosticadapter.3.1.32.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/microsoft.openapi/2.0.0/microsoft.openapi.2.0.0.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/newtonsoft.json/13.0.3/newtonsoft.json.13.0.3.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/newtonsoft.json.bson/1.0.2/newtonsoft.json.bson.1.0.2.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/ocelot/24.1.0/ocelot.24.1.0.nupkg.sha512"
+  ],
+  "logs": []
+}

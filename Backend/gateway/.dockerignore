@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/Properties/LaunchProfiles.json
+**/*.user
+**/*.suo
+**/*.sln.DocPackage.cache
+.DS_Store

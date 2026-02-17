@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: activities
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pass
+    ports:
+      - "5432:5432"
+    volumes:
+      # Инициализация схемы активностей
+      - ./services/ActivityService/db/initActivity.sql:/docker-entrypoint-initdb.d/10-initActivity.sql:ro
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d activities || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # Web UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  activityservice:
+    build:
+      context: ./services/ActivityService
+      dockerfile: dockerfile
+    container_name: activityservice
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      # строка подключения для EF / Npgsql
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=activities;Username=postgres;Password=pass;TrustServerCertificate=true"
+      # настройки RabbitMQ (на будущее)
+      RabbitMQ__Host: "rabbitmq"
+      RabbitMQ__User: "guest"
+      RabbitMQ__Password: "guest"
+      RabbitMQ__Queue: "activity_events"
+      ASPNETCORE_URLS: "http://+:5001;http://+:5002"
+    ports:
+      - "5001:5001"   # gRPC
+      - "5002:5002"   # health / http
+    networks:
+      - backend
+
+  gateway:
+    build:
+      context: ./gateway
+    container_name: gateway
+    restart: unless-stopped
+    depends_on:
+      - activityservice
+    environment:
+      ASPNETCORE_URLS: "http://+:8080"
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  postgres_data:

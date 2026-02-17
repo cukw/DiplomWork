@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/gateway/">
+    <Project Path="gateway/src/src.csproj" />
+  </Folder>
+  <Folder Name="/services/">
+    <Project Path="services/ActivityService/ActivityService.csproj" />
+    <Project Path="services/AgentManagementService/AgentManagementService.csproj" />
+    <Project Path="services/AuthService/AuthService.csproj" />
+    <Project Path="services/MetricsService/MetricsService.csproj" />
+    <Project Path="services/NotificationService/NotificationService.csproj" />
+    <Project Path="services/ReportService/ReportService.csproj" />
+    <Project Path="services/UserService/UserService.csproj" />
+  </Folder>
+</Solution>
