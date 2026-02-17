@@ -3,15 +3,11 @@
     {
       "DownstreamPathTemplate": "/{everything}",
       "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        { "Host": "activityservice", "Port": 5001 }
-      ],
+      "DownstreamHostAndPorts": [{ "Host": "activityservice", "Port": 5001 }],
       "UpstreamPathTemplate": "/activity/{everything}",
-      "UpstreamHttpMethod": [ "Get", "Post", "Put", "Delete" ]
+      "UpstreamHttpMethod": [ "Get", "Post", "Put", "Delete" ],
+      "DownstreamScheme": "http",
+      "DownstreamHttpVersion": "1.1"
     }
-    //Добавьте позже для других: /agent → agentmanagementservice:5003 и т.д.
-  ],
-  "GlobalConfiguration": {
-    "BaseUrl": "http://localhost:8080"
-  }
+  ]
 }

@@ -9,11 +9,16 @@ namespace ActivityService.Services
     {
         private readonly AppDbContext _db;
         private readonly ILogger<ActivityServiceImpl> _logger;
+        private readonly IPublishEndpoint _publishEndpoint;  // DI для RabbitMQ
 
-        public ActivityServiceImpl(AppDbContext db, ILogger<ActivityServiceImpl> logger)
+        public ActivityServiceImpl(
+            AppDbContext db, 
+            ILogger<ActivityServiceImpl> logger,
+            IPublishEndpoint publishEndpoint)  // Добавьте в ctor
         {
             _db = db;
             _logger = logger;
+            _publishEndpoint = publishEndpoint;
         }
 
         public override async Task<GetActivitiesReply> GetActivities(GetActivitiesRequest request, ServerCallContext context)
@@ -69,6 +74,11 @@ namespace ActivityService.Services
 
             _db.Activities.Add(activity);
             await _db.SaveChangesAsync(context.CancellationToken);
+
+            // ✅ Publish после сохранения
+            await _publishEndpoint.Publish(new ActivityCreatedEvent(
+                activity.Id, activity.ComputerId, activity.ActivityType),
+                context.CancellationToken);
 
             _logger.LogInformation("Created activity {Id}", activity.Id);
             return MapToReply(activity);
