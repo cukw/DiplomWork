@@ -48,7 +48,7 @@ public class UserDbContext : DbContext
             // One-to-one relationship with User
             entity.HasOne(e => e.User)
                 .WithOne(u => u.Computer)
-                .HasForeignKey<User>(u => u.UserId);
+                .HasForeignKey<Computer>(c => c.UserId);
         });
     }
 }
