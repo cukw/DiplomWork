@@ -1,10 +1,10 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
 # 1. Restore (.csproj только)
 COPY ["ActivityService.csproj", "."]
-RUN dotnet restore "ActivityService.csproj"
+RUN dotnet restore "ActivityService.csproj" --disable-parallel
 
 # 2. Copy sources
 COPY . .
@@ -18,8 +18,8 @@ RUN dotnet publish "ActivityService.csproj" \
     --self-contained false \
     /p:PublishTrimmed=false
 
-# Runtime — .NET 8.0 Alpine
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
+# Runtime — .NET 10.0 Alpine
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
 WORKDIR /app
 
 # Устанавливаем curl для healthcheck

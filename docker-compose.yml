@@ -66,6 +66,84 @@ services:
     networks:
       - backend
 
+  authservice:
+    build:
+      context: ./Backend/services/AuthService
+      dockerfile: dockerfile
+    container_name: authservice
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: "http://+:5003"
+    ports:
+      - "5003:5003"
+    networks:
+      - backend
+
+  userservice:
+    build:
+      context: ./Backend/services/UserService
+      dockerfile: dockerfile
+    container_name: userservice
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: "http://+:5004"
+    ports:
+      - "5004:5004"
+    networks:
+      - backend
+
+  metricservice:
+    build:
+      context: ./Backend/services/MetricsService
+      dockerfile: dockerfile
+    container_name: metricservice
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: "http://+:5005"
+    ports:
+      - "5005:5005"
+    networks:
+      - backend
+
+  notificationservice:
+    build:
+      context: ./Backend/services/NotificationService
+      dockerfile: dockerfile
+    container_name: notificationservice
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: "http://+:5006"
+    ports:
+      - "5006:5006"
+    networks:
+      - backend
+
+  reportservice:
+    build:
+      context: ./Backend/services/ReportService
+      dockerfile: dockerfile
+    container_name: reportservice
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: "http://+:5007"
+    ports:
+      - "5007:5007"
+    networks:
+      - backend
+
+  agentmanagementservice:
+    build:
+      context: ./Backend/services/AgentManagementService
+      dockerfile: dockerfile
+    container_name: agentmanagementservice
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: "http://+:5008"
+    ports:
+      - "5008:5008"
+    networks:
+      - backend
+
   gateway:
     build:
       context: ./Backend/gateway
@@ -75,6 +153,12 @@ services:
     restart: unless-stopped
     depends_on:
       - activityservice
+      - authservice
+      - userservice
+      - metricservice
+      - notificationservice
+      - reportservice
+      - agentmanagementservice
     environment:
       ASPNETCORE_URLS: "http://+:8080"
     ports:

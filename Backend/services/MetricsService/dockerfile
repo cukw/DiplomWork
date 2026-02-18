@@ -1,16 +1,35 @@
-# db/AuthService/Dockerfile (копируй в каждый db/*/Dockerfile)
-FROM postgres:16-alpine AS postgres
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
 
-# ✅ Кэшируем init скрипты
-COPY sql/*.sql /docker-entrypoint-initdb.d/
-COPY healthcheck.sh /usr/local/bin/
+# Копируем только файлы restore (кэш слоёв!)
+COPY ["MetricsService.csproj", "."]
+RUN dotnet restore "MetricsService.csproj" --disable-parallel
 
-# Оптимизация PostgreSQL под мониторинг (много INSERT)
-RUN echo "shared_preload_libraries = 'timescaledb'" >> /usr/share/postgresql/postgresql.conf
-RUN echo "max_connections = 200" >> /usr/share/postgresql/postgresql.conf
-RUN echo "shared_buffers = 256MB" >> /usr/share/postgresql/postgresql.conf
+# Копируем исходники
+COPY . .
+WORKDIR "/src"
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD pg_isready -U postgres -d ${POSTGRES_DB} || exit 1
+# Publish
+RUN dotnet publish "MetricsService.csproj" \
+    -c $BUILD_CONFIGURATION \
+    -o /app/publish \
+    --no-restore \
+    --self-contained false \
+    /p:PublishTrimmed=false
 
-LABEL org.opencontainers.image.source="https://github.com/yourrepo"
+# Runtime (минимальный)
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
+WORKDIR /app
+EXPOSE 5005
+ENV ASPNETCORE_URLS=http://+:5005
+ENV DOTNET_EnableDiagnostics=0
+
+# Копируем только publish
+COPY --from=build /app/publish .
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:5005 || exit 1
+
+ENTRYPOINT ["dotnet", "MetricsService.dll"]
