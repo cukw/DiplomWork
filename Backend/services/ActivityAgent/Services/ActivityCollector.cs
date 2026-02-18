@@ -80,7 +80,7 @@ public class ActivityCollector : IActivityCollector
         }
     }
 
-    private async Task<List<ActivityReply>> CollectProcessActivitiesAsync()
+    private Task<List<ActivityReply>> CollectProcessActivitiesAsync()
     {
         var activities = new List<ActivityReply>();
         
@@ -133,10 +133,10 @@ public class ActivityCollector : IActivityCollector
             _logger.LogError(ex, "Error collecting process activities");
         }
         
-        return activities;
+        return Task.FromResult(activities);
     }
 
-    private async Task<List<ActivityReply>> CollectNetworkActivitiesAsync()
+    private Task<List<ActivityReply>> CollectNetworkActivitiesAsync()
     {
         var activities = new List<ActivityReply>();
         
@@ -180,10 +180,10 @@ public class ActivityCollector : IActivityCollector
             _logger.LogError(ex, "Error collecting network activities");
         }
         
-        return activities;
+        return Task.FromResult(activities);
     }
 
-    private async Task<List<ActivityReply>> CollectFileActivitiesAsync()
+    private Task<List<ActivityReply>> CollectFileActivitiesAsync()
     {
         var activities = new List<ActivityReply>();
         
@@ -231,6 +231,6 @@ public class ActivityCollector : IActivityCollector
             _logger.LogError(ex, "Error collecting file activities");
         }
         
-        return activities;
+        return Task.FromResult(activities);
     }
 }

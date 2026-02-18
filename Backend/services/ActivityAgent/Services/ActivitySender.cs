@@ -29,7 +29,7 @@ public class ActivitySender : IActivitySender
     {
         try
         {
-            var client = new ActivityService.ActivityServiceClient(_channel);
+            var client = new ActivityService.ActivityGrpcServiceClient(_channel);
             
             var request = new CreateActivityRequest
             {

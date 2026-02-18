@@ -4,7 +4,7 @@ option csharp_namespace = "ActivityService";
 
 package activity;
 
-service ActivityService {
+service ActivityGrpcService {
   rpc GetActivities(GetActivitiesRequest) returns (GetActivitiesReply);
   rpc CreateActivity(CreateActivityRequest) returns (ActivityReply);
   rpc GetActivityById(GetActivityByIdRequest) returns (ActivityReply);

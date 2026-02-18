@@ -9,7 +9,7 @@ using Google.Protobuf.Collections;
 
 namespace ActivityService.Services
 {
-    public class ActivityServiceImpl : ActivityService.ActivityServiceBase
+    public class ActivityServiceImpl : ActivityService.ActivityGrpcServiceBase
     {
         private readonly AppDbContext _db;
         private readonly ILogger<ActivityServiceImpl> _logger;
