@@ -1,5 +1,7 @@
 using Grpc.Net.Client;
 using ActivityService;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
 namespace ActivityAgent.Services;
 

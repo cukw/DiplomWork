@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.Management;
 using System.Text.Json;
 using ActivityService;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
 namespace ActivityAgent.Services;
 
