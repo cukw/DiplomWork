@@ -258,11 +258,30 @@ services:
     depends_on:
       postgres-notification:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres-notification;Database=notifications;Username=postgres;Password=pass;TrustServerCertificate=true"
       ASPNETCORE_URLS: "http://+:5006"
     ports:
       - "5006:5006"
+    networks:
+      - backend
+
+  activityagent:
+    build:
+      context: ./Backend/services/ActivityAgent
+      dockerfile: dockerfile
+    container_name: activityagent
+    restart: unless-stopped
+    depends_on:
+      activityservice:
+        condition: service_started
+    environment:
+      ActivityService__Url: "http://activityservice:5001"
+      Agent__ComputerId: "1"
+      Agent__CollectionInterval: "5000"
+      Agent__Enabled: "true"
     networks:
       - backend
 

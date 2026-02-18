@@ -115,6 +115,15 @@ namespace ActivityService.Services
             {
                 _db.Anomalies.AddRange(anomalies);
                 await _db.SaveChangesAsync(context.CancellationToken);
+                
+                // Publish anomaly detected events
+                foreach (var anomaly in anomalies)
+                {
+                    await _publishEndpoint.Publish(new AnomalyDetectedEvent(
+                        activity.Id, activity.ComputerId, activity.ActivityType,
+                        anomaly.Type, anomaly.Description ?? ""),
+                        context.CancellationToken);
+                }
             }
 
             // ✅ Publish после сохранения
@@ -237,6 +246,15 @@ namespace ActivityService.Services
             {
                 _db.Anomalies.AddRange(anomalies);
                 await _db.SaveChangesAsync(context.CancellationToken);
+                
+                // Publish anomaly detected events
+                foreach (var anomaly in anomalies)
+                {
+                    await _publishEndpoint.Publish(new AnomalyDetectedEvent(
+                        activity.Id, activity.ComputerId, activity.ActivityType,
+                        anomaly.Type, anomaly.Description ?? ""),
+                        context.CancellationToken);
+                }
             }
 
             _logger.LogInformation("Updated activity {Id}, detected {AnomalyCount} anomalies",

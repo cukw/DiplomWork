@@ -1,0 +1,185 @@
+syntax = "proto3";
+
+option csharp_namespace = "ReportService";
+
+package report;
+
+service ReportService {
+  rpc GenerateDailyReport (GenerateDailyReportRequest) returns (GenerateDailyReportResponse);
+  rpc GetDailyReport (GetDailyReportRequest) returns (GetDailyReportResponse);
+  rpc GetDailyReportsByDateRange (GetDailyReportsByDateRangeRequest) returns (GetDailyReportsByDateRangeResponse);
+  rpc GetDailyReportsByComputer (GetDailyReportsByComputerRequest) returns (GetDailyReportsByComputerResponse);
+  
+  rpc GenerateUserStats (GenerateUserStatsRequest) returns (GenerateUserStatsResponse);
+  rpc GetUserStats (GetUserStatsRequest) returns (GetUserStatsResponse);
+  rpc GetUserStatsByDateRange (GetUserStatsByDateRangeRequest) returns (GetUserStatsByDateRangeResponse);
+  
+  rpc GetSummaryReport (GetSummaryReportRequest) returns (GetSummaryReportResponse);
+  rpc ExportReport (ExportReportRequest) returns (ExportReportResponse);
+}
+
+message GenerateDailyReportRequest {
+  string report_date = 1;
+  int64 computer_id = 2;
+  int64 user_id = 3;
+}
+
+message GenerateDailyReportResponse {
+  bool success = 1;
+  string message = 2;
+  DailyReport report = 3;
+}
+
+message GetDailyReportRequest {
+  int64 report_id = 1;
+}
+
+message GetDailyReportResponse {
+  bool success = 1;
+  string message = 2;
+  DailyReport report = 3;
+}
+
+message GetDailyReportsByDateRangeRequest {
+  string start_date = 1;
+  string end_date = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message GetDailyReportsByDateRangeResponse {
+  bool success = 1;
+  string message = 2;
+  repeated DailyReport reports = 3;
+  int32 total_count = 4;
+}
+
+message GetDailyReportsByComputerRequest {
+  int64 computer_id = 1;
+  string start_date = 2;
+  string end_date = 3;
+  int32 page = 4;
+  int32 page_size = 5;
+}
+
+message GetDailyReportsByComputerResponse {
+  bool success = 1;
+  string message = 2;
+  repeated DailyReport reports = 3;
+  int32 total_count = 4;
+}
+
+message GenerateUserStatsRequest {
+  int64 user_id = 1;
+  string period_start = 2;
+  string period_end = 3;
+  int64 total_time_ms = 4;
+  repeated string risky_sites = 5;
+  int32 violations = 6;
+}
+
+message GenerateUserStatsResponse {
+  bool success = 1;
+  string message = 2;
+  UserStats stats = 3;
+}
+
+message GetUserStatsRequest {
+  int64 stats_id = 1;
+}
+
+message GetUserStatsResponse {
+  bool success = 1;
+  string message = 2;
+  UserStats stats = 3;
+}
+
+message GetUserStatsByDateRangeRequest {
+  int64 user_id = 1;
+  string start_date = 2;
+  string end_date = 3;
+  int32 page = 4;
+  int32 page_size = 5;
+}
+
+message GetUserStatsByDateRangeResponse {
+  bool success = 1;
+  string message = 2;
+  repeated UserStats stats = 3;
+  int32 total_count = 4;
+}
+
+message GetSummaryReportRequest {
+  string start_date = 1;
+  string end_date = 2;
+  int64 user_id = 3;
+  int64 computer_id = 4;
+}
+
+message GetSummaryReportResponse {
+  bool success = 1;
+  string message = 2;
+  SummaryReport summary = 3;
+}
+
+message ExportReportRequest {
+  string report_type = 1; // daily, user_stats, summary
+  string format = 2; // pdf, csv, excel
+  string start_date = 3;
+  string end_date = 4;
+  int64 user_id = 5;
+  int64 computer_id = 6;
+}
+
+message ExportReportResponse {
+  bool success = 1;
+  string message = 2;
+  string download_url = 3;
+  string file_name = 4;
+}
+
+message DailyReport {
+  int64 id = 1;
+  string report_date = 2;
+  int64 computer_id = 3;
+  int64 user_id = 4;
+  int64 total_activities = 5;
+  int64 blocked_actions = 6;
+  double avg_risk_score = 7;
+  string created_at = 8;
+}
+
+message UserStats {
+  int64 id = 1;
+  int64 user_id = 2;
+  string period_start = 3;
+  string period_end = 4;
+  int64 total_time_ms = 5;
+  string risky_sites = 6;
+  int32 violations = 7;
+  string created_at = 8;
+}
+
+message SummaryReport {
+  int32 total_users = 1;
+  int32 total_computers = 2;
+  int64 total_activities = 3;
+  int64 total_blocked_actions = 4;
+  double avg_risk_score = 5;
+  repeated TopUser top_users = 6;
+  repeated TopComputer top_computers = 7;
+}
+
+message TopUser {
+  int64 user_id = 1;
+  string user_name = 2;
+  int64 activities = 3;
+  double risk_score = 4;
+}
+
+message TopComputer {
+  int64 computer_id = 1;
+  string hostname = 2;
+  int64 activities = 3;
+  double risk_score = 4;
+}

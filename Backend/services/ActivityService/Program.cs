@@ -7,8 +7,11 @@ using ActivityService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add controllers
+builder.Services.AddControllers();
+
 // gRPC
-builder.Services.AddGrpc(options => 
+builder.Services.AddGrpc(options =>
 {
     options.EnableDetailedErrors = builder.Environment.IsDevelopment();
 });
@@ -35,6 +38,7 @@ builder.Services.AddMassTransit(x =>
         
         // Publisher для событий
         cfg.Publish<ActivityCreatedEvent>();
+        cfg.Publish<AnomalyDetectedEvent>();
     });
 });
 
@@ -46,6 +50,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapGrpcService<ActivityServiceImpl>();
+app.MapControllers();
 app.MapGet("/health", () => "ActivityService OK").WithName("Health");
 
 app.Run();
