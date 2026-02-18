@@ -462,7 +462,7 @@ public class AgentManagementServiceImpl : AgentManagementService.AgentManagement
         }
     }
 
-    private static Agent MapAgentToProto(AgentManagementService.Models.Agent agent)
+    private static Agent MapAgentToProto(Agent agent)
     {
         return new Agent
         {
@@ -476,7 +476,7 @@ public class AgentManagementServiceImpl : AgentManagementService.AgentManagement
         };
     }
 
-    private static SyncBatch MapSyncBatchToProto(AgentManagementService.Models.SyncBatch syncBatch)
+    private static SyncBatch MapSyncBatchToProto(SyncBatch syncBatch)
     {
         return new SyncBatch
         {
