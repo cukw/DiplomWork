@@ -5,6 +5,7 @@ using ActivityService.Services.Events;
 using ActivityService;
 using MassTransit;  // Для IPublishEndpoint
 using Microsoft.EntityFrameworkCore;
+using Google.Protobuf.Collections;
 
 namespace ActivityService.Services
 {
