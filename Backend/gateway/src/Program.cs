@@ -1,5 +1,7 @@
 using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,9 +15,20 @@ builder.Configuration
     .AddJsonFile("ocelot.json", optional: false, reloadOnChange: true)
     .AddEnvironmentVariables();
 
+builder.Services.AddAuthentication("Bearer")
+    .AddJwtBearer("Bearer", options =>
+    {
+        options.Authority = "http://authservice:5003";
+        options.RequireHttpsMetadata = false;
+        options.Audience = "api";
+    });
+
+builder.Services.AddAuthorization();
 builder.Services.AddOcelot(builder.Configuration);
 
 var app = builder.Build();
+app.UseAuthentication(); 
+app.UseAuthorization(); 
 
 // Добавляем middleware для обработки ошибок
 app.UseExceptionHandler(exceptionHandlerApp =>
