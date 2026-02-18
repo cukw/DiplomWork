@@ -462,7 +462,7 @@ public class MetricsServiceImpl : MetricsService.MetricsServiceBase
         }
     }
 
-    private static Metric MapMetricToProto(MetricsService.Models.Metric metric)
+    private static Metric MapMetricToProto(Metric metric)
     {
         return new Metric
         {
@@ -475,7 +475,7 @@ public class MetricsServiceImpl : MetricsService.MetricsServiceBase
         };
     }
 
-    private static WhitelistEntry MapWhitelistEntryToProto(MetricsService.Models.WhitelistEntry entry)
+    private static WhitelistEntry MapWhitelistEntryToProto(WhitelistEntry entry)
     {
         return new WhitelistEntry
         {
@@ -487,7 +487,7 @@ public class MetricsServiceImpl : MetricsService.MetricsServiceBase
         };
     }
 
-    private static BlacklistEntry MapBlacklistEntryToProto(MetricsService.Models.BlacklistEntry entry)
+    private static BlacklistEntry MapBlacklistEntryToProto(BlacklistEntry entry)
     {
         return new BlacklistEntry
         {
