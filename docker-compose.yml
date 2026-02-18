@@ -55,11 +55,10 @@ services:
     environment:
       # строка подключения для EF / Npgsql
       ConnectionStrings__DefaultConnection: "Host=postgres;Database=activities;Username=postgres;Password=pass;TrustServerCertificate=true"
-      # настройки RabbitMQ (на будущее)
+      # RabbitMQ конфигурация (соответствует hardcoded значениям в Program.cs)
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__User: "guest"
       RabbitMQ__Password: "guest"
-      RabbitMQ__Queue: "activity_events"
       ASPNETCORE_URLS: "http://+:5001;http://+:5002"
     ports:
       - "5001:5001"   # gRPC

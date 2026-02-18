@@ -20,11 +20,18 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddGrpcReflection();  // Для grpcurl/tools (dev only)
 
+// Register anomaly detection service
+builder.Services.AddScoped<IAnomalyDetectionService, AnomalyDetectionService>();
+
 builder.Services.AddMassTransit(x =>
 {
     x.UsingRabbitMq((context, cfg) =>
     {
-        cfg.Host("rabbitmq://guest:guest@rabbitmq:5672");
+        var host = builder.Configuration["RabbitMQ:Host"] ?? "rabbitmq";
+        var user = builder.Configuration["RabbitMQ:User"] ?? "guest";
+        var password = builder.Configuration["RabbitMQ:Password"] ?? "guest";
+        
+        cfg.Host($"rabbitmq://{user}:{password}@{host}:5672");
         
         // Publisher для событий
         cfg.Publish<ActivityCreatedEvent>();

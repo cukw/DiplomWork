@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
@@ -9,24 +9,32 @@ RUN dotnet restore "ActivityService.csproj"
 # 2. Copy sources
 COPY . .
 
-# 3. ✅ Publish БЕЗ --no-restore!!!
+# 3. Publish с --no-restore для оптимизации
 WORKDIR "/src"
 RUN dotnet publish "ActivityService.csproj" \
-    -c Release \
-    -o /app/publish
-    # ← УДАЛИ --no-restore!
+    -c $BUILD_CONFIGURATION \
+    -o /app/publish \
+    --no-restore \
+    --self-contained false \
+    /p:PublishTrimmed=false
 
-# Runtime — .NET 10.0
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine
+# Runtime — .NET 8.0 Alpine
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
 WORKDIR /app
+
+# Устанавливаем curl для healthcheck
+RUN apk add --no-cache curl
+
 EXPOSE 5001 5002
 
 ENV ASPNETCORE_URLS="http://+:5001;http://+:5002"
 ENV DOTNET_EnableDiagnostics=0
+ENV DOTNET_GCHeapHardLimit=2147483648
+ENV DOTNET_GCHeapCount=2
 
 COPY --from=build /app/publish .
 
-# BusyBox
+# Создаем пользователя с ограниченными правами
 RUN addgroup -g 1000 -S aspnet && \
     adduser -u 1000 -S -G aspnet aspnet && \
     chown -R aspnet:aspnet /app
@@ -34,6 +42,6 @@ RUN addgroup -g 1000 -S aspnet && \
 USER aspnet
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:5002/health || exit 1
+    CMD curl -f http://localhost:5002/health || exit 1
 
 ENTRYPOINT ["dotnet", "ActivityService.dll"]

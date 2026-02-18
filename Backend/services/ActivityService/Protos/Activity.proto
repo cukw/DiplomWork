@@ -10,6 +10,8 @@ service ActivityService {
   rpc GetActivityById(GetActivityByIdRequest) returns (ActivityReply);
   rpc GetAnomalies(GetAnomaliesRequest) returns (GetAnomaliesReply);
   rpc DeleteActivity(DeleteActivityRequest) returns (DeleteActivityReply);
+  rpc UpdateActivity(UpdateActivityRequest) returns (ActivityReply);
+  rpc GetActivityStatistics(GetActivityStatisticsRequest) returns (GetActivityStatisticsReply);
 }
 
 message GetActivitiesRequest {
@@ -49,6 +51,25 @@ message DeleteActivityRequest {
 message DeleteActivityReply {
   bool success = 1;
   string message = 2;
+}
+
+message UpdateActivityRequest {
+  int64 id = 1;
+  ActivityReply activity = 2;
+}
+
+message GetActivityStatisticsRequest {
+  optional int32 computer_id = 1;
+  optional string from_timestamp = 2;  // ISO8601
+  optional string to_timestamp = 3;    // ISO8601
+}
+
+message GetActivityStatisticsReply {
+  int32 total_activities = 1;
+  int32 blocked_activities = 2;
+  int32 anomaly_count = 3;
+  map<string, int32> activity_type_counts = 4;
+  float average_risk_score = 5;
 }
 
 message ActivityReply {
