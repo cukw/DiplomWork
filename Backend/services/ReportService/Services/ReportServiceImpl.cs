@@ -1,9 +1,9 @@
 using Grpc.Core;
 using ReportService.Data;
 using ReportService.Models;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
-
+using ProtoDailyReport = global::ReportService.DailyReport;
+using ProtoUserStats = global::ReportService.UserStats;
 namespace ReportService.Services;
 
 public class ReportServiceImpl : ReportService.ReportServiceBase
@@ -34,10 +34,10 @@ public class ReportServiceImpl : ReportService.ReportServiceBase
                 };
             }
 
-            // Check if report already exists
             var existingReport = await _db.DailyReports
-                .FirstOrDefaultAsync(r => r.ReportDate == DateOnly.FromDateTime(reportDate) && r.ComputerId == request.ComputerId);
-
+                .FirstOrDefaultAsync(r => r.ReportDate.Date == reportDate.Date &&
+                                          r.ComputerId == request.ComputerId);
+            
             if (existingReport != null)
             {
                 return new GenerateDailyReportResponse
@@ -47,16 +47,14 @@ public class ReportServiceImpl : ReportService.ReportServiceBase
                 };
             }
 
-            // In a real implementation, you would aggregate data from the ActivityService
-            // For now, we'll create a placeholder report
-            var report = new DailyReport
+            var report = new Models.DailyReport
             {
-                ReportDate = reportDate,
+                ReportDate = reportDate.Date,
                 ComputerId = (int)request.ComputerId,
                 UserId = request.UserId > 0 ? (int?)request.UserId : null,
-                TotalActivities = 0, // Would be calculated from actual activity data
-                BlockedActions = 0,  // Would be calculated from actual activity data
-                AvgRiskScore = 0.0m   // Would be calculated from actual activity data
+                TotalActivities = 0L,
+                BlockedActions = 0L,
+                AvgRiskScore = null
             };
 
             _db.DailyReports.Add(report);
@@ -131,12 +129,12 @@ public class ReportServiceImpl : ReportService.ReportServiceBase
                 };
             }
 
-            var page = request.Page > 0 ? request.Page : 1;
-            var pageSize = request.PageSize > 0 ? request.PageSize : 10;
+            var page = Math.Max(1, request.Page);
+            var pageSize = Math.Min(100, Math.Max(1, request.PageSize)); // Ограничение
             
             var query = _db.DailyReports
-                .Where(r => r.ReportDate >= DateOnly.FromDateTime(startDate) && 
-                           r.ReportDate <= DateOnly.FromDateTime(endDate))
+                .Where(r => r.ReportDate.Date >= startDate.Date &&
+                           r.ReportDate.Date <= endDate.Date)
                 .OrderByDescending(r => r.ReportDate);
             
             var totalCount = await query.CountAsync();
@@ -172,19 +170,19 @@ public class ReportServiceImpl : ReportService.ReportServiceBase
 
         try
         {
-            var page = request.Page > 0 ? request.Page : 1;
-            var pageSize = request.PageSize > 0 ? request.PageSize : 10;
+            var page = Math.Max(1, request.Page);
+            var pageSize = Math.Min(100, Math.Max(1, request.PageSize));
             
             var query = _db.DailyReports.Where(r => r.ComputerId == request.ComputerId);
             
             if (!string.IsNullOrEmpty(request.StartDate) && DateTime.TryParse(request.StartDate, out var startDate))
             {
-                query = query.Where(r => r.ReportDate >= DateOnly.FromDateTime(startDate));
+                query = query.Where(r => r.ReportDate.Date >= startDate.Date);
             }
             
             if (!string.IsNullOrEmpty(request.EndDate) && DateTime.TryParse(request.EndDate, out var endDate))
             {
-                query = query.Where(r => r.ReportDate <= DateOnly.FromDateTime(endDate));
+                query = query.Where(r => r.ReportDate.Date <= endDate.Date);
             }
             
             query = query.OrderByDescending(r => r.ReportDate);
@@ -195,7 +193,7 @@ public class ReportServiceImpl : ReportService.ReportServiceBase
                 .Take(pageSize)
                 .ToListAsync();
 
-            var reportProtos = reports.Select(MapDailyReportToProto).ToList();
+            var reportProtos = reports.Select(r => MapDailyReportToProto(r)).ToList();
 
             return new GetDailyReportsByComputerResponse
             {
@@ -232,12 +230,12 @@ public class ReportServiceImpl : ReportService.ReportServiceBase
                 };
             }
 
-            var userStats = new UserStats
+            var userStats = new Models.UserStats
             {
                 UserId = (int)request.UserId,
                 PeriodStart = periodStart,
                 PeriodEnd = periodEnd,
-                TotalTimeMs = request.TotalTimeMs,
+                TotalTimeMs = request.TotalTimeMs > 0 ? request.TotalTimeMs : null,
                 RiskySitesList = request.RiskySites.ToList(),
                 Violations = request.Violations
             };
@@ -304,19 +302,19 @@ public class ReportServiceImpl : ReportService.ReportServiceBase
 
         try
         {
-            var page = request.Page > 0 ? request.Page : 1;
-            var pageSize = request.PageSize > 0 ? request.PageSize : 10;
+            var page = Math.Max(1, request.Page);
+            var pageSize = Math.Min(100, Math.Max(1, request.PageSize));
             
             var query = _db.UserStats.Where(u => u.UserId == request.UserId);
             
             if (!string.IsNullOrEmpty(request.StartDate) && DateTime.TryParse(request.StartDate, out var startDate))
             {
-                query = query.Where(u => u.PeriodStart >= startDate);
+                query = query.Where(u => u.PeriodStart.Date >= startDate.Date);
             }
             
             if (!string.IsNullOrEmpty(request.EndDate) && DateTime.TryParse(request.EndDate, out var endDate))
             {
-                query = query.Where(u => u.PeriodEnd <= endDate);
+                query = query.Where(u => u.PeriodEnd.Date <= endDate.Date);
             }
             
             query = query.OrderByDescending(u => u.PeriodStart);
@@ -327,7 +325,7 @@ public class ReportServiceImpl : ReportService.ReportServiceBase
                 .Take(pageSize)
                 .ToListAsync();
 
-            var statsProtos = stats.Select(MapUserStatsToProto).ToList();
+            var statsProtos = stats.Select(s => MapUserStatsToProto(s)).ToList();
 
             return new GetUserStatsByDateRangeResponse
             {
@@ -358,33 +356,39 @@ public class ReportServiceImpl : ReportService.ReportServiceBase
             
             if (!string.IsNullOrEmpty(request.StartDate) && DateTime.TryParse(request.StartDate, out var startDate))
             {
-                query = query.Where(r => r.ReportDate >= DateOnly.FromDateTime(startDate));
+                query = query.Where(r => r.ReportDate.Date >= startDate.Date);
             }
             
             if (!string.IsNullOrEmpty(request.EndDate) && DateTime.TryParse(request.EndDate, out var endDate))
             {
-                query = query.Where(r => r.ReportDate <= DateOnly.FromDateTime(endDate));
+                query = query.Where(r => r.ReportDate.Date <= endDate.Date);
             }
             
             if (request.UserId > 0)
             {
-                query = query.Where(r => r.UserId == request.UserId);
+                query = query.Where(r => r.UserId.HasValue && r.UserId.Value == (int)request.UserId);
             }
             
             if (request.ComputerId > 0)
             {
-                query = query.Where(r => r.ComputerId == request.ComputerId);
+                query = query.Where(r => r.ComputerId == (int)request.ComputerId);
             }
 
             var reports = await query.ToListAsync();
             
             var summary = new SummaryReport
             {
-                TotalUsers = reports.Where(r => r.UserId.HasValue).Select(r => r.UserId!.Value).Distinct().Count(),
+                TotalUsers = reports.Where(r => r.UserId.HasValue)
+                                   .Select(r => r.UserId!.Value)
+                                   .Distinct()
+                                   .Count(),
                 TotalComputers = reports.Select(r => r.ComputerId).Distinct().Count(),
                 TotalActivities = reports.Sum(r => r.TotalActivities),
                 TotalBlockedActions = reports.Sum(r => r.BlockedActions),
-                AvgRiskScore = reports.Where(r => r.AvgRiskScore.HasValue).Average(r => (double)r.AvgRiskScore!.Value)
+                AvgRiskScore = reports.Where(r => r.AvgRiskScore.HasValue)
+                                     .Select(r => (double)r.AvgRiskScore!.Value)
+                                     .DefaultIfEmpty(0.0)
+                                     .Average()
             };
 
             return new GetSummaryReportResponse
@@ -411,9 +415,9 @@ public class ReportServiceImpl : ReportService.ReportServiceBase
 
         try
         {
-            // In a real implementation, you would generate the actual file
-            // and store it somewhere accessible (e.g., blob storage)
-            var fileName = $"report_{request.ReportType}_{DateTime.UtcNow:yyyyMMddHHmmss}.{request.Format}";
+            var safeType = System.Text.RegularExpressions.Regex.Replace(request.ReportType, "[^a-zA-Z0-9_-]", "");
+            var safeFormat = System.Text.RegularExpressions.Regex.Replace(request.Format, "[^a-zA-Z0-9]", "");
+            var fileName = $"report_{safeType}_{DateTime.UtcNow:yyyyMMddHHmmss}.{safeFormat}";
             var downloadUrl = $"/api/downloads/{fileName}";
 
             return new ExportReportResponse
@@ -435,30 +439,30 @@ public class ReportServiceImpl : ReportService.ReportServiceBase
         }
     }
 
-    private static DailyReport MapDailyReportToProto(ReportService.Models.DailyReport report)
+    private static ProtoDailyReport MapDailyReportToProto(Models.DailyReport report)
     {
-        return new DailyReport
+        return new ProtoDailyReport
         {
             Id = report.Id,
             ReportDate = report.ReportDate.ToString("yyyy-MM-dd"),
             ComputerId = report.ComputerId,
-            UserId = report.UserId ?? 0,
+            UserId = report.UserId ?? 0L,
             TotalActivities = report.TotalActivities,
             BlockedActions = report.BlockedActions,
-            AvgRiskScore = (double)(report.AvgRiskScore ?? 0),
+            AvgRiskScore = report.AvgRiskScore.HasValue ? (double)report.AvgRiskScore.Value : 0.0,
             CreatedAt = report.CreatedAt.ToString("o")
         };
     }
 
-    private static UserStats MapUserStatsToProto(ReportService.Models.UserStats stats)
+    private static ProtoUserStats MapUserStatsToProto(Models.UserStats stats)
     {
-        return new UserStats
+        return new ProtoUserStats
         {
             Id = stats.Id,
             UserId = stats.UserId,
             PeriodStart = stats.PeriodStart.ToString("o"),
             PeriodEnd = stats.PeriodEnd.ToString("o"),
-            TotalTimeMs = stats.TotalTimeMs ?? 0,
+            TotalTimeMs = stats.TotalTimeMs ?? 0L,
             RiskySites = stats.RiskySites ?? "[]",
             Violations = stats.Violations,
             CreatedAt = stats.CreatedAt.ToString("o")

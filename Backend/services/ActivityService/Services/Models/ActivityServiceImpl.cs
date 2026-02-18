@@ -2,14 +2,13 @@
 using ActivityService.Services.Data;
 using ActivityService.Services.Models;
 using ActivityService.Services.Events;
-using ActivityService;
 using MassTransit;  // Для IPublishEndpoint
 using Microsoft.EntityFrameworkCore;
 using Google.Protobuf.Collections;
 
 namespace ActivityService.Services
 {
-    public class ActivityServiceImpl : ActivityService.ActivityGrpcServiceBase
+    public class ActivityServiceImpl : ActivityService.ActivityGrpcService.ActivityGrpcServiceBase
     {
         private readonly AppDbContext _db;
         private readonly ILogger<ActivityServiceImpl> _logger;

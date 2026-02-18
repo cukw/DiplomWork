@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MetricsService.Models;
 using Npgsql;
+using MetricModel = MetricsService.Models.Metric;
 
 namespace MetricsService.Data;
 
@@ -10,16 +11,16 @@ public class MetricsDbContext : DbContext
     {
     }
 
-    public DbSet<Metric> Metrics { get; set; }
-    public DbSet<WhitelistEntry> WhitelistEntries { get; set; }
-    public DbSet<BlacklistEntry> BlacklistEntries { get; set; }
+    public DbSet<Models.Metric> Metrics { get; set; }
+    public DbSet<Models.WhitelistEntry> WhitelistEntries { get; set; }
+    public DbSet<Models.BlacklistEntry> BlacklistEntries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         // Configure Metric entity
-        modelBuilder.Entity<Metric>(entity =>
+        modelBuilder.Entity<Models.Metric>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Type).IsRequired().HasMaxLength(50);
@@ -33,7 +34,7 @@ public class MetricsDbContext : DbContext
         });
 
         // Configure WhitelistEntry entity
-        modelBuilder.Entity<WhitelistEntry>(entity =>
+        modelBuilder.Entity<Models.WhitelistEntry>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Pattern).IsRequired().HasMaxLength(500);
@@ -48,7 +49,7 @@ public class MetricsDbContext : DbContext
         });
 
         // Configure BlacklistEntry entity
-        modelBuilder.Entity<BlacklistEntry>(entity =>
+        modelBuilder.Entity<Models.BlacklistEntry>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Pattern).IsRequired().HasMaxLength(500);

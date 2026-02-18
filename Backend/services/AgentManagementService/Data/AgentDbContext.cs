@@ -10,15 +10,15 @@ public class AgentDbContext : DbContext
     {
     }
 
-    public DbSet<Agent> Agents { get; set; }
-    public DbSet<SyncBatch> SyncBatches { get; set; }
+    public DbSet<Models.Agent> Agents { get; set; }
+    public DbSet<Models.SyncBatch> SyncBatches { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         // Configure Agent entity
-        modelBuilder.Entity<Agent>(entity =>
+        modelBuilder.Entity<Models.Agent>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Version).IsRequired().HasMaxLength(20);
@@ -28,7 +28,7 @@ public class AgentDbContext : DbContext
         });
 
         // Configure SyncBatch entity
-        modelBuilder.Entity<SyncBatch>(entity =>
+        modelBuilder.Entity<Models.SyncBatch>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.BatchId).IsRequired().HasMaxLength(100);

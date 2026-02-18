@@ -32,7 +32,7 @@ public class NotificationServiceImpl : NotificationService.NotificationServiceBa
                 Title = request.Title,
                 Message = request.Message,
                 Channel = string.IsNullOrEmpty(request.Channel) ? "email" : request.Channel,
-                SentAt = DateTime.UtcNow,
+                SentAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                 IsRead = false
             };
 
@@ -419,22 +419,22 @@ public class NotificationServiceImpl : NotificationService.NotificationServiceBa
         }
     }
 
-    private static Notification MapNotificationToProto(NotificationService.Models.Notification notification)
+    private static Notification MapNotificationToProto(Notification notification)
     {
         return new Notification
         {
             Id = notification.Id,
-            UserId = notification.UserId ?? 0,
+            UserId = notification.UserId,
             Type = notification.Type ?? "",
             Title = notification.Title ?? "",
             Message = notification.Message ?? "",
             IsRead = notification.IsRead,
-            SentAt = notification.SentAt?.ToString("o") ?? "",
+            SentAt = notification.SentAt?.ToString() ?? "",
             Channel = notification.Channel
         };
     }
 
-    private static NotificationTemplate MapNotificationTemplateToProto(NotificationService.Models.NotificationTemplate template)
+    private static NotificationTemplate MapNotificationTemplateToProto(NotificationTemplate template)
     {
         return new NotificationTemplate
         {

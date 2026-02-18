@@ -42,7 +42,7 @@ public class AnomalyDetectedEventHandler : IConsumer<AnomalyDetectedEvent>
                 Title = $"Anomaly Detected: {@event.AnomalyType}",
                 Message = $"Anomaly '{@event.AnomalyType}' detected for activity '{@event.ActivityType}' on computer {@event.ComputerId}. {@event.Description}",
                 Channel = channel,
-                SentAt = DateTime.UtcNow,
+                SentAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                 IsRead = false
             };
 

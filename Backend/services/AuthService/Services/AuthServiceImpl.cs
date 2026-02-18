@@ -3,6 +3,7 @@ using AuthService.Data;
 using AuthService.Models;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace AuthService.Services;
 

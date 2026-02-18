@@ -36,7 +36,7 @@ import {
   Edit,
   Security,
   Notifications,
-  Settings,
+  Settings as SettingsIcon,
   Storage,
   NetworkCheck,
   Refresh
@@ -246,7 +246,7 @@ const Settings = () => {
       )}
 
       <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 3 }}>
-        <Tab label="General" icon={<Settings />} />
+        <Tab label="General" icon={<SettingsIcon />} />
         <Tab label="Security" icon={<Security />} />
         <Tab label="Notifications" icon={<Notifications />} />
         <Tab label="Monitoring" icon={<NetworkCheck />} />

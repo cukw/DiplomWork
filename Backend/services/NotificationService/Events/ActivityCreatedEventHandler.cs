@@ -43,7 +43,7 @@ public class ActivityCreatedEventHandler : IConsumer<ActivityCreatedEvent>
                     Title = $"Security Alert: {@event.ActivityType}",
                     Message = $"Suspicious activity '{@event.ActivityType}' detected on computer {@event.ComputerId}. Activity ID: {@event.ActivityId}",
                     Channel = "email",
-                    SentAt = DateTime.UtcNow,
+                    SentAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                     IsRead = false
                 };
 

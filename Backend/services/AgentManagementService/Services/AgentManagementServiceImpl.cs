@@ -3,6 +3,8 @@ using AgentManagementService.Data;
 using AgentManagementService.Models;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
+using ProtoAgent = global::AgentManagementService.Agent;
+using ProtoSyncBatch = global::AgentManagementService.SyncBatch;
 
 namespace AgentManagementService.Services;
 
@@ -38,7 +40,7 @@ public class AgentManagementServiceImpl : AgentManagementService.AgentManagement
                 };
             }
 
-            var agent = new Agent
+            var agent = new Models.Agent
             {
                 ComputerId = (int)request.ComputerId,
                 Version = request.Version,
@@ -74,7 +76,7 @@ public class AgentManagementServiceImpl : AgentManagementService.AgentManagement
 
         try
         {
-            var agent = await _db.Agents.FindAsync(request.AgentId);
+            Models.Agent? agent = await _db.Agents.FindAsync(request.AgentId);
 
             if (agent == null)
             {
@@ -167,7 +169,7 @@ public class AgentManagementServiceImpl : AgentManagementService.AgentManagement
                 .Where(a => a.ComputerId == request.ComputerId)
                 .ToListAsync();
 
-            var agentProtos = agents.Select(MapAgentToProto).ToList();
+            var agentProtos = agents.Select(a => MapAgentToProto(a)).ToList();
 
             return new GetAgentsByComputerResponse
             {
@@ -208,7 +210,7 @@ public class AgentManagementServiceImpl : AgentManagementService.AgentManagement
                 .Take(pageSize)
                 .ToListAsync();
 
-            var agentProtos = agents.Select(MapAgentToProto).ToList();
+            var agentProtos = agents.Select(a => MapAgentToProto(a)).ToList();
 
             return new GetAllAgentsResponse
             {
@@ -272,7 +274,7 @@ public class AgentManagementServiceImpl : AgentManagementService.AgentManagement
 
         try
         {
-            var syncBatch = new SyncBatch
+            var syncBatch = new Models.SyncBatch
             {
                 AgentId = (int)request.AgentId,
                 BatchId = request.BatchId,
@@ -307,7 +309,7 @@ public class AgentManagementServiceImpl : AgentManagementService.AgentManagement
 
         try
         {
-            var syncBatch = await _db.SyncBatches.FindAsync(request.BatchId);
+            Models.SyncBatch? syncBatch = await _db.SyncBatches.FindAsync(request.BatchId);
 
             if (syncBatch == null)
             {
@@ -402,7 +404,7 @@ public class AgentManagementServiceImpl : AgentManagementService.AgentManagement
                 .Take(pageSize)
                 .ToListAsync();
 
-            var batchProtos = syncBatches.Select(MapSyncBatchToProto).ToList();
+            var batchProtos = syncBatches.Select(sb => MapSyncBatchToProto(sb)).ToList();
 
             return new GetSyncBatchesByAgentResponse
             {
@@ -441,7 +443,7 @@ public class AgentManagementServiceImpl : AgentManagementService.AgentManagement
                 .Take(pageSize)
                 .ToListAsync();
 
-            var batchProtos = syncBatches.Select(MapSyncBatchToProto).ToList();
+            var batchProtos = syncBatches.Select(sb => MapSyncBatchToProto(sb)).ToList();
 
             return new GetPendingSyncBatchesResponse
             {
@@ -462,29 +464,29 @@ public class AgentManagementServiceImpl : AgentManagementService.AgentManagement
         }
     }
 
-    private static Agent MapAgentToProto(Agent agent)
+    private ProtoAgent MapAgentToProto(Models.Agent agent)
     {
-        return new Agent
+        return new ProtoAgent
         {
             Id = agent.Id,
             ComputerId = agent.ComputerId,
             Version = agent.Version,
             Status = agent.Status,
-            LastHeartbeat = agent.LastHeartbeat?.ToString("o") ?? "",
+            LastHeartbeat = agent.LastHeartbeat?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? "",
             ConfigVersion = agent.ConfigVersion ?? "",
-            OfflineSince = agent.OfflineSince?.ToString("o") ?? ""
+            OfflineSince = agent.OfflineSince?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? ""
         };
     }
 
-    private static SyncBatch MapSyncBatchToProto(SyncBatch syncBatch)
+    private static ProtoSyncBatch MapSyncBatchToProto(Models.SyncBatch syncBatch)
     {
-        return new SyncBatch
+        return new ProtoSyncBatch
         {
             Id = syncBatch.Id,
             AgentId = syncBatch.AgentId,
             BatchId = syncBatch.BatchId,
             Status = syncBatch.Status,
-            SyncedAt = syncBatch.SyncedAt?.ToString("o") ?? "",
+            SyncedAt = syncBatch.SyncedAt?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? "",
             RecordsCount = syncBatch.RecordsCount
         };
     }

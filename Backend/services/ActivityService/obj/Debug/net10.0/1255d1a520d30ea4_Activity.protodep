@@ -1,0 +1,2 @@
+obj/Debug/net10.0/Protos/Activity.cs \
+obj/Debug/net10.0/Protos/ActivityGrpc.cs: Protos/Activity.proto

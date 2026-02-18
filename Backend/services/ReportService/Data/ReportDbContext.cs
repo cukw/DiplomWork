@@ -10,15 +10,15 @@ public class ReportDbContext : DbContext
     {
     }
 
-    public DbSet<DailyReport> DailyReports { get; set; }
-    public DbSet<UserStats> UserStats { get; set; }
+    public DbSet<Models.DailyReport> DailyReports { get; set; }
+    public DbSet<Models.UserStats> UserStats { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         // Configure DailyReport entity
-        modelBuilder.Entity<DailyReport>(entity =>
+        modelBuilder.Entity<Models.DailyReport>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.ReportDate).HasColumnType("date");
@@ -31,7 +31,7 @@ public class ReportDbContext : DbContext
         });
 
         // Configure UserStats entity
-        modelBuilder.Entity<UserStats>(entity =>
+        modelBuilder.Entity<Models.UserStats>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.TotalTimeMs);

@@ -3,6 +3,9 @@ using MetricsService.Data;
 using MetricsService.Models;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
+using ProtoMetric = global::MetricsService.Metric;
+using ProtoWhitelistEntry = global::MetricsService.WhitelistEntry;
+using ProtoBlacklistEntry = global::MetricsService.BlacklistEntry;
 
 namespace MetricsService.Services;
 
@@ -25,7 +28,7 @@ public class MetricsServiceImpl : MetricsService.MetricsServiceBase
 
         try
         {
-            var metric = new Metric
+            var metric = new Models.Metric
             {
                 UserId = (int)request.UserId,
                 Type = request.Type,
@@ -154,7 +157,7 @@ public class MetricsServiceImpl : MetricsService.MetricsServiceBase
                 .Where(m => m.UserId == request.UserId)
                 .ToListAsync();
 
-            var metricProtos = metrics.Select(MapMetricToProto).ToList();
+            var metricProtos = metrics.Select(m => MapMetricToProto(m)).ToList();
 
             return new GetMetricsByUserResponse
             {
@@ -194,7 +197,7 @@ public class MetricsServiceImpl : MetricsService.MetricsServiceBase
                 .Take(pageSize)
                 .ToListAsync();
 
-            var metricProtos = metrics.Select(MapMetricToProto).ToList();
+            var metricProtos = metrics.Select(m => MapMetricToProto(m)).ToList();
 
             return new GetAllMetricsResponse
             {
@@ -266,7 +269,7 @@ public class MetricsServiceImpl : MetricsService.MetricsServiceBase
 
         try
         {
-            var entry = new WhitelistEntry
+            var entry = new Models.WhitelistEntry
             {
                 MetricId = (int)request.MetricId,
                 Pattern = request.Pattern,
@@ -341,7 +344,7 @@ public class MetricsServiceImpl : MetricsService.MetricsServiceBase
                 .Where(e => e.MetricId == request.MetricId)
                 .ToListAsync();
 
-            var entryProtos = entries.Select(MapWhitelistEntryToProto).ToList();
+            var entryProtos = entries.Select(e => MapWhitelistEntryToProto(e)).ToList();
 
             return new GetWhitelistEntriesResponse
             {
@@ -367,7 +370,7 @@ public class MetricsServiceImpl : MetricsService.MetricsServiceBase
 
         try
         {
-            var entry = new BlacklistEntry
+            var entry = new Models.BlacklistEntry
             {
                 MetricId = (int)request.MetricId,
                 Pattern = request.Pattern,
@@ -442,7 +445,7 @@ public class MetricsServiceImpl : MetricsService.MetricsServiceBase
                 .Where(e => e.MetricId == request.MetricId)
                 .ToListAsync();
 
-            var entryProtos = entries.Select(MapBlacklistEntryToProto).ToList();
+            var entryProtos = entries.Select(e => MapBlacklistEntryToProto(e)).ToList();
 
             return new GetBlacklistEntriesResponse
             {
@@ -462,40 +465,40 @@ public class MetricsServiceImpl : MetricsService.MetricsServiceBase
         }
     }
 
-    private static Metric MapMetricToProto(Metric metric)
+    private static ProtoMetric MapMetricToProto(Models.Metric metric)
     {
-        return new Metric
+        return new ProtoMetric
         {
             Id = metric.Id,
             UserId = metric.UserId ?? 0,
             Type = metric.Type,
             Config = metric.Config,
             IsActive = metric.IsActive,
-            UpdatedAt = metric.UpdatedAt.ToString("o")
+            UpdatedAt = metric.UpdatedAt.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
         };
     }
 
-    private static WhitelistEntry MapWhitelistEntryToProto(WhitelistEntry entry)
+    private static ProtoWhitelistEntry MapWhitelistEntryToProto(Models.WhitelistEntry entry)
     {
-        return new WhitelistEntry
+        return new ProtoWhitelistEntry
         {
             Id = entry.Id,
             MetricId = entry.MetricId,
             Pattern = entry.Pattern,
             Action = entry.Action,
-            CreatedAt = entry.CreatedAt.ToString("o")
+            CreatedAt = entry.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
         };
     }
 
-    private static BlacklistEntry MapBlacklistEntryToProto(BlacklistEntry entry)
+    private static ProtoBlacklistEntry MapBlacklistEntryToProto(Models.BlacklistEntry entry)
     {
-        return new BlacklistEntry
+        return new ProtoBlacklistEntry
         {
             Id = entry.Id,
             MetricId = entry.MetricId,
             Pattern = entry.Pattern,
             Action = entry.Action,
-            CreatedAt = entry.CreatedAt.ToString("o")
+            CreatedAt = entry.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
         };
     }
 }

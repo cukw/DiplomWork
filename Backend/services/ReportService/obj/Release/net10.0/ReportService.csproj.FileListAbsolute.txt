@@ -1,0 +1,8 @@
+/Users/cukw/FinalWork/Backend/services/ReportService/obj/Release/net10.0/ReportService.csproj.AssemblyReference.cache
+/Users/cukw/FinalWork/Backend/services/ReportService/obj/Release/net10.0/rpswa.dswa.cache.json
+/Users/cukw/FinalWork/Backend/services/ReportService/obj/Release/net10.0/ReportService.GeneratedMSBuildEditorConfig.editorconfig
+/Users/cukw/FinalWork/Backend/services/ReportService/obj/Release/net10.0/ReportService.AssemblyInfoInputs.cache
+/Users/cukw/FinalWork/Backend/services/ReportService/obj/Release/net10.0/ReportService.AssemblyInfo.cs
+/Users/cukw/FinalWork/Backend/services/ReportService/obj/Release/net10.0/ReportService.csproj.CoreCompileInputs.cache
+/Users/cukw/FinalWork/Backend/services/ReportService/obj/Release/net10.0/ReportService.MvcApplicationPartsAssemblyInfo.cache
+/Users/cukw/FinalWork/Backend/services/ReportService/obj/Release/net10.0/ReportService.sourcelink.json

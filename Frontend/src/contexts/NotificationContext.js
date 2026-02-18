@@ -24,6 +24,7 @@ export const NotificationProvider = ({ children }) => {
     try {
       setNotificationState(prev => ({ ...prev, loading: true, error: null }));
       
+      const token = localStorage.getItem('token');
       const response = await axios.get('/api/notifications', {
         headers: {
           Authorization: `Bearer ${token}`
