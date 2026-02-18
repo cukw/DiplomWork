@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import { authAPI } from '../services/api';
 
 // Create context for authentication
 const AuthContext = createContext();
@@ -31,10 +31,10 @@ export const AuthProvider = ({ children }) => {
     try {
       setAuthState(prev => ({ ...prev, loading: true, error: null }));
       
-      const response = await axios.post('/api/auth/login', { username, password });
+      const response = await authAPI.login(username, password);
       
-      if (response.data.success) {
-        const { token, user } = response.data;
+      if (response.token) {
+        const { token, user } = response;
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
         
@@ -53,25 +53,35 @@ export const AuthProvider = ({ children }) => {
           user: null,
           token: null,
           loading: false,
-          error: response.data.message || 'Login failed'
+          error: response.message || 'Login failed'
         });
         
-        return { success: false, error: response.data.message };
+        return { success: false, error: response.message };
       }
     } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || 'An error occurred during login';
       setAuthState({
         isAuthenticated: false,
         user: null,
         token: null,
         loading: false,
-        error: error.message || 'An error occurred during login'
+        error: errorMessage
       });
       
-      return { success: false, error: error.message };
+      throw new Error(errorMessage);
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      // Вызываем API для логаута на сервере
+      await authAPI.logout();
+    } catch (error) {
+      console.error('Logout API error:', error);
+      // Продолжаем с локальным логаутом даже если API не сработал
+    }
+    
+    // Удаляем локальные данные
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     
@@ -84,7 +94,14 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
-  const value = { authState, login, logout };
+  const value = {
+    ...authState,
+    login,
+    logout,
+    user: authState.user,
+    loading: authState.loading,
+    isAuthenticated: authState.isAuthenticated
+  };
 
   return (
     <AuthContext.Provider value={value}>

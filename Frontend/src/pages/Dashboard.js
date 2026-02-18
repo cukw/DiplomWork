@@ -26,7 +26,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
-import axios from 'axios';
+import { dashboardAPI } from '../services/api';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -52,60 +52,52 @@ const Dashboard = () => {
     try {
       setLoading(true);
       
-      // Fetch real data from API
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
+      // Используем новый API сервис
+      const [statsData, activitiesData, anomaliesData] = await Promise.allSettled([
+        dashboardAPI.getStats(),
+        dashboardAPI.getRecentActivities(),
+        dashboardAPI.getRecentAnomalies()
+      ]);
       
-      // Fetch activity statistics
-      const statsResponse = await fetch('/api/dashboard/stats', { headers });
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json();
-        setStats(statsData);
+      // Обрабатываем результаты
+      if (statsData.status === 'fulfilled') {
+        setStats(statsData.value);
       } else {
+        console.error('Failed to fetch stats:', statsData.reason);
         // Fallback to mock data if API fails
-        const mockStats = {
+        setStats({
           totalUsers: 150,
           activeUsers: 89,
           totalComputers: 200,
           activeComputers: 156,
           totalActivities: 15420,
           anomaliesCount: 12
-        };
-        setStats(mockStats);
+        });
       }
       
-      // Fetch recent activities
-      const activitiesResponse = await fetch('/api/dashboard/activities', { headers });
-      if (activitiesResponse.ok) {
-        const activitiesData = await activitiesResponse.json();
-        setRecentActivities(activitiesData);
+      if (activitiesData.status === 'fulfilled') {
+        setRecentActivities(activitiesData.value);
       } else {
+        console.error('Failed to fetch activities:', activitiesData.reason);
         // Fallback to mock data
-        const mockActivities = [
+        setRecentActivities([
           { id: 1, user: 'John Doe', computer: 'PC-001', activity: 'File Access', timestamp: '2024-01-15 10:30:00', status: 'normal' },
           { id: 2, user: 'Jane Smith', computer: 'PC-002', activity: 'Application Launch', timestamp: '2024-01-15 10:25:00', status: 'normal' },
           { id: 3, user: 'Bob Johnson', computer: 'PC-003', activity: 'USB Connection', timestamp: '2024-01-15 10:20:00', status: 'warning' },
           { id: 4, user: 'Alice Brown', computer: 'PC-004', activity: 'Network Access', timestamp: '2024-01-15 10:15:00', status: 'normal' },
           { id: 5, user: 'Charlie Wilson', computer: 'PC-005', activity: 'File Deletion', timestamp: '2024-01-15 10:10:00', status: 'anomaly' }
-        ];
-        setRecentActivities(mockActivities);
+        ]);
       }
       
-      // Fetch recent anomalies
-      const anomaliesResponse = await fetch('/api/dashboard/anomalies', { headers });
-      if (anomaliesResponse.ok) {
-        const anomaliesData = await anomaliesResponse.json();
-        setAnomalies(anomaliesData);
+      if (anomaliesData.status === 'fulfilled') {
+        setAnomalies(anomaliesData.value);
       } else {
+        console.error('Failed to fetch anomalies:', anomaliesData.reason);
         // Fallback to mock data
-        const mockAnomalies = [
+        setAnomalies([
           { id: 1, user: 'Bob Johnson', computer: 'PC-003', type: 'Unauthorized USB', severity: 'High', timestamp: '2024-01-15 10:20:00' },
           { id: 2, user: 'Charlie Wilson', computer: 'PC-005', type: 'Suspicious File Deletion', severity: 'Medium', timestamp: '2024-01-15 10:10:00' }
-        ];
-        setAnomalies(mockAnomalies);
+        ]);
       }
     } catch (err) {
       setError('Failed to load dashboard data');
