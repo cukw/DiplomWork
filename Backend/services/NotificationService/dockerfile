@@ -14,7 +14,6 @@ WORKDIR "/src"
 RUN dotnet publish "NotificationService.csproj" \
     -c $BUILD_CONFIGURATION \
     -o /app/publish \
-    --no-restore \
     --self-contained false \
     /p:PublishTrimmed=false
 
