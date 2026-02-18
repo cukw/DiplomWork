@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  postgres:
+  postgres-activity:
     image: postgres:16-alpine
-    container_name: postgres
+    container_name: postgres-activity
     restart: unless-stopped
     environment:
       POSTGRES_DB: activities
@@ -14,11 +14,143 @@ services:
     volumes:
       # Инициализация схемы активностей
       - ./services/ActivityService/db/initActivity.sql:/docker-entrypoint-initdb.d/10-initActivity.sql:ro
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_activity_data:/var/lib/postgresql/data
     networks:
       - backend
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d activities || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-auth:
+    image: postgres:16-alpine
+    container_name: postgres-auth
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pass
+    ports:
+      - "5433:5432"
+    volumes:
+      # Инициализация схемы авторизации
+      - ./services/AuthService/db/initAuthService.sql:/docker-entrypoint-initdb.d/10-initAuthService.sql:ro
+      - postgres_auth_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d auth || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-user:
+    image: postgres:16-alpine
+    container_name: postgres-user
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: users
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pass
+    ports:
+      - "5434:5432"
+    volumes:
+      # Инициализация схемы пользователей
+      - ./services/UserService/db/initUserService.sql:/docker-entrypoint-initdb.d/10-initUserService.sql:ro
+      - postgres_user_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d users || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-metrics:
+    image: postgres:16-alpine
+    container_name: postgres-metrics
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: metrics
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pass
+    ports:
+      - "5435:5432"
+    volumes:
+      # Инициализация схемы метрик
+      - ./services/MetricsService/db/intiMetricsService.sql:/docker-entrypoint-initdb.d/10-initMetricsService.sql:ro
+      - postgres_metrics_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d metrics || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-notification:
+    image: postgres:16-alpine
+    container_name: postgres-notification
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: notifications
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pass
+    ports:
+      - "5436:5432"
+    volumes:
+      # Инициализация схемы уведомлений
+      - ./services/NotificationService/db/initNotificationService.sql:/docker-entrypoint-initdb.d/10-initNotificationService.sql:ro
+      - postgres_notification_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notifications || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-report:
+    image: postgres:16-alpine
+    container_name: postgres-report
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: reports
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pass
+    ports:
+      - "5437:5432"
+    volumes:
+      # Инициализация схемы отчетов
+      - ./services/ReportService/db/initReportService.sql:/docker-entrypoint-initdb.d/10-initReportService.sql:ro
+      - postgres_report_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d reports || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-agent:
+    image: postgres:16-alpine
+    container_name: postgres-agent
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: agents
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pass
+    ports:
+      - "5438:5432"
+    volumes:
+      # Инициализация схемы агентов
+      - ./services/AgentManagementService/db/InitAgent.sql:/docker-entrypoint-initdb.d/10-initAgent.sql:ro
+      - postgres_agent_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agents || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -48,13 +180,13 @@ services:
     container_name: activityservice
     restart: unless-stopped
     depends_on:
-      postgres:
+      postgres-activity:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
     environment:
       # строка подключения для EF / Npgsql
-      ConnectionStrings__DefaultConnection: "Host=postgres;Database=activities;Username=postgres;Password=pass;TrustServerCertificate=true"
+      ConnectionStrings__DefaultConnection: "Host=postgres-activity;Database=activities;Username=postgres;Password=pass;TrustServerCertificate=true"
       # RabbitMQ конфигурация (соответствует hardcoded значениям в Program.cs)
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__User: "guest"
@@ -72,7 +204,11 @@ services:
       dockerfile: dockerfile
     container_name: authservice
     restart: unless-stopped
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
     environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres-auth;Database=auth;Username=postgres;Password=pass;TrustServerCertificate=true"
       ASPNETCORE_URLS: "http://+:5003"
     ports:
       - "5003:5003"
@@ -85,7 +221,11 @@ services:
       dockerfile: dockerfile
     container_name: userservice
     restart: unless-stopped
+    depends_on:
+      postgres-user:
+        condition: service_healthy
     environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres-user;Database=users;Username=postgres;Password=pass;TrustServerCertificate=true"
       ASPNETCORE_URLS: "http://+:5004"
     ports:
       - "5004:5004"
@@ -98,7 +238,11 @@ services:
       dockerfile: dockerfile
     container_name: metricservice
     restart: unless-stopped
+    depends_on:
+      postgres-metrics:
+        condition: service_healthy
     environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres-metrics;Database=metrics;Username=postgres;Password=pass;TrustServerCertificate=true"
       ASPNETCORE_URLS: "http://+:5005"
     ports:
       - "5005:5005"
@@ -111,7 +255,11 @@ services:
       dockerfile: dockerfile
     container_name: notificationservice
     restart: unless-stopped
+    depends_on:
+      postgres-notification:
+        condition: service_healthy
     environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres-notification;Database=notifications;Username=postgres;Password=pass;TrustServerCertificate=true"
       ASPNETCORE_URLS: "http://+:5006"
     ports:
       - "5006:5006"
@@ -124,7 +272,11 @@ services:
       dockerfile: dockerfile
     container_name: reportservice
     restart: unless-stopped
+    depends_on:
+      postgres-report:
+        condition: service_healthy
     environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres-report;Database=reports;Username=postgres;Password=pass;TrustServerCertificate=true"
       ASPNETCORE_URLS: "http://+:5007"
     ports:
       - "5007:5007"
@@ -137,7 +289,11 @@ services:
       dockerfile: dockerfile
     container_name: agentmanagementservice
     restart: unless-stopped
+    depends_on:
+      postgres-agent:
+        condition: service_healthy
     environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres-agent;Database=agents;Username=postgres;Password=pass;TrustServerCertificate=true"
       ASPNETCORE_URLS: "http://+:5008"
     ports:
       - "5008:5008"
@@ -171,4 +327,10 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
+  postgres_activity_data:
+  postgres_auth_data:
+  postgres_user_data:
+  postgres_metrics_data:
+  postgres_notification_data:
+  postgres_report_data:
+  postgres_agent_data:
