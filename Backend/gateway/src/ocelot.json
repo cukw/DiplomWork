@@ -1,26 +1,7 @@
 {
   "Routes": [
     {
-      "DownstreamPathTemplate": "/{everything}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "activityservice",
-          "Port": 5001
-        }
-      ],
-      "UpstreamPathTemplate": "/activity/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
-      "RateLimitOptions": {
-        "ClientWhitelist": [],
-        "EnableRateLimiting": true,
-        "Period": "1s",
-        "PeriodTimespan": 1,
-        "Limit": 100
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/{everything}",
+      "DownstreamPathTemplate": "/api/auth/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -28,15 +9,20 @@
           "Port": 5003
         }
       ],
-      "UpstreamPathTemplate": "/auth/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
-      "RateLimitOptions": {
-        "ClientWhitelist": [],
-        "EnableRateLimiting": true,
-        "Period": "1s",
-        "PeriodTimespan": 1,
-        "Limit": 100
-      }
+      "UpstreamPathTemplate": "/api/auth/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "HEAD" ]
+    },
+    {
+      "DownstreamPathTemplate": "/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "activityservice",
+          "Port": 5002
+        }
+      ],
+      "UpstreamPathTemplate": "/api/activity/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
     },
     {
       "DownstreamPathTemplate": "/{everything}",
@@ -47,15 +33,8 @@
           "Port": 5004
         }
       ],
-      "UpstreamPathTemplate": "/user/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
-      "RateLimitOptions": {
-        "ClientWhitelist": [],
-        "EnableRateLimiting": true,
-        "Period": "1s",
-        "PeriodTimespan": 1,
-        "Limit": 100
-      }
+      "UpstreamPathTemplate": "/api/user/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
     },
     {
       "DownstreamPathTemplate": "/{everything}",
@@ -66,15 +45,8 @@
           "Port": 5005
         }
       ],
-      "UpstreamPathTemplate": "/metrics/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
-      "RateLimitOptions": {
-        "ClientWhitelist": [],
-        "EnableRateLimiting": true,
-        "Period": "1s",
-        "PeriodTimespan": 1,
-        "Limit": 100
-      }
+      "UpstreamPathTemplate": "/api/metrics/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
     },
     {
       "DownstreamPathTemplate": "/{everything}",
@@ -85,15 +57,8 @@
           "Port": 5006
         }
       ],
-      "UpstreamPathTemplate": "/notification/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
-      "RateLimitOptions": {
-        "ClientWhitelist": [],
-        "EnableRateLimiting": true,
-        "Period": "1s",
-        "PeriodTimespan": 1,
-        "Limit": 100
-      }
+      "UpstreamPathTemplate": "/api/notification/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
     },
     {
       "DownstreamPathTemplate": "/{everything}",
@@ -104,15 +69,8 @@
           "Port": 5007
         }
       ],
-      "UpstreamPathTemplate": "/report/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
-      "RateLimitOptions": {
-        "ClientWhitelist": [],
-        "EnableRateLimiting": true,
-        "Period": "1s",
-        "PeriodTimespan": 1,
-        "Limit": 100
-      }
+      "UpstreamPathTemplate": "/api/report/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
     },
     {
       "DownstreamPathTemplate": "/{everything}",
@@ -123,15 +81,8 @@
           "Port": 5008
         }
       ],
-      "UpstreamPathTemplate": "/agent/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
-      "RateLimitOptions": {
-        "ClientWhitelist": [],
-        "EnableRateLimiting": true,
-        "Period": "1s",
-        "PeriodTimespan": 1,
-        "Limit": 100
-      }
+      "UpstreamPathTemplate": "/api/agent/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
     },
     {
       "DownstreamPathTemplate": "/dashboard/stats",
@@ -139,47 +90,35 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "activityservice",
-          "Port": 5001
+          "Port": 5002
         }
       ],
       "UpstreamPathTemplate": "/api/dashboard/stats",
-      "UpstreamHttpMethod": [ "GET" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
+      "UpstreamHttpMethod": [ "GET" ]
     },
     {
-      "DownstreamPathTemplate": "/activities",
+      "DownstreamPathTemplate": "/dashboard/activities",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
           "Host": "activityservice",
-          "Port": 5001
+          "Port": 5002
         }
       ],
       "UpstreamPathTemplate": "/api/dashboard/activities",
-      "UpstreamHttpMethod": [ "GET" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
+      "UpstreamHttpMethod": [ "GET" ]
     },
     {
-      "DownstreamPathTemplate": "/anomalies",
+      "DownstreamPathTemplate": "/dashboard/anomalies",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
           "Host": "activityservice",
-          "Port": 5001
+          "Port": 5002
         }
       ],
       "UpstreamPathTemplate": "/api/dashboard/anomalies",
-      "UpstreamHttpMethod": [ "GET" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
+      "UpstreamHttpMethod": [ "GET" ]
     },
     {
       "DownstreamPathTemplate": "/reports/daily",
@@ -187,15 +126,11 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "activityservice",
-          "Port": 5001
+          "Port": 5002
         }
       ],
       "UpstreamPathTemplate": "/api/reports/daily",
-      "UpstreamHttpMethod": [ "GET" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
+      "UpstreamHttpMethod": [ "GET", "HEAD" ]
     },
     {
       "DownstreamPathTemplate": "/reports/weekly",
@@ -203,15 +138,11 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "activityservice",
-          "Port": 5001
+          "Port": 5002
         }
       ],
       "UpstreamPathTemplate": "/api/reports/weekly",
-      "UpstreamHttpMethod": [ "GET" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
+      "UpstreamHttpMethod": [ "GET", "HEAD" ]
     },
     {
       "DownstreamPathTemplate": "/reports/monthly",
@@ -219,15 +150,11 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "activityservice",
-          "Port": 5001
+          "Port": 5002
         }
       ],
       "UpstreamPathTemplate": "/api/reports/monthly",
-      "UpstreamHttpMethod": [ "GET" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
+      "UpstreamHttpMethod": [ "GET", "HEAD" ]
     },
     {
       "DownstreamPathTemplate": "/reports/custom",
@@ -235,15 +162,11 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "activityservice",
-          "Port": 5001
+          "Port": 5002
         }
       ],
       "UpstreamPathTemplate": "/api/reports/custom",
-      "UpstreamHttpMethod": [ "GET" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
+      "UpstreamHttpMethod": [ "GET", "HEAD" ]
     },
     {
       "DownstreamPathTemplate": "/search/activities",
@@ -251,15 +174,11 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "activityservice",
-          "Port": 5001
+          "Port": 5002
         }
       ],
       "UpstreamPathTemplate": "/api/search/activities",
-      "UpstreamHttpMethod": [ "GET" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
+      "UpstreamHttpMethod": [ "GET", "HEAD" ]
     },
     {
       "DownstreamPathTemplate": "/search/anomalies",
@@ -267,15 +186,11 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "activityservice",
-          "Port": 5001
+          "Port": 5002
         }
       ],
       "UpstreamPathTemplate": "/api/search/anomalies",
-      "UpstreamHttpMethod": [ "GET" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
+      "UpstreamHttpMethod": [ "GET", "HEAD" ]
     },
     {
       "DownstreamPathTemplate": "/search/filters",
@@ -283,15 +198,11 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "activityservice",
-          "Port": 5001
+          "Port": 5002
         }
       ],
       "UpstreamPathTemplate": "/api/search/filters",
-      "UpstreamHttpMethod": [ "GET" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
+      "UpstreamHttpMethod": [ "GET", "HEAD" ]
     },
     {
       "DownstreamPathTemplate": "/health",
@@ -302,8 +213,8 @@
           "Port": 5002
         }
       ],
-      "UpstreamPathTemplate": "/health/activity",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UpstreamPathTemplate": "/api/health/activity",
+      "UpstreamHttpMethod": [ "GET", "HEAD" ]
     },
     {
       "DownstreamPathTemplate": "/health",
@@ -314,7 +225,7 @@
           "Port": 5003
         }
       ],
-      "UpstreamPathTemplate": "/health/auth",
+      "UpstreamPathTemplate": "/api/health/auth",
       "UpstreamHttpMethod": [ "GET" ]
     },
     {
@@ -326,7 +237,7 @@
           "Port": 5004
         }
       ],
-      "UpstreamPathTemplate": "/health/user",
+      "UpstreamPathTemplate": "/api/health/user",
       "UpstreamHttpMethod": [ "GET" ]
     },
     {
@@ -338,7 +249,7 @@
           "Port": 5005
         }
       ],
-      "UpstreamPathTemplate": "/health/metrics",
+      "UpstreamPathTemplate": "/api/health/metrics",
       "UpstreamHttpMethod": [ "GET" ]
     },
     {
@@ -350,7 +261,7 @@
           "Port": 5006
         }
       ],
-      "UpstreamPathTemplate": "/health/notification",
+      "UpstreamPathTemplate": "/api/health/notification",
       "UpstreamHttpMethod": [ "GET" ]
     },
     {
@@ -362,7 +273,7 @@
           "Port": 5007
         }
       ],
-      "UpstreamPathTemplate": "/health/report",
+      "UpstreamPathTemplate": "/api/health/report",
       "UpstreamHttpMethod": [ "GET" ]
     },
     {
@@ -374,16 +285,11 @@
           "Port": 5008
         }
       ],
-      "UpstreamPathTemplate": "/health/agent",
+      "UpstreamPathTemplate": "/api/health/agent",
       "UpstreamHttpMethod": [ "GET" ]
     }
   ],
   "GlobalConfiguration": {
-    "BaseUrl": "http://localhost:8080",
-    "RateLimitOptions": {
-      "DisableRateLimitHeaders": false,
-      "QuotaExceededMessage": "Rate limit exceeded",
-      "HttpStatusCode": 429
-    }
+    "BaseUrl": "http://localhost:8080"
   }
 }

@@ -5,15 +5,16 @@ namespace ActivityService.Services.Models
 {
     public class Anomaly
     {
-        [Key]
+        [Column("id"), Key]
         public int Id { get; set; }
         
         [Column("activity_id"), Required]
         public long ActivityId { get; set; }
         
-        [Required, MaxLength(100)]
+        [Column("type"),Required, MaxLength(100)]
         public string Type { get; set; } = "";
         
+        [Column("description")]
         public string? Description { get; set; }
         
         [Column("detected_at")]

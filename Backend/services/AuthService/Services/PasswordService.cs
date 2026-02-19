@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+using BCrypt.Net;
 
 namespace AuthService.Services;
 
@@ -20,50 +21,39 @@ public class PasswordService : IPasswordService
 
     public string HashPassword(string password)
     {
-        // Generate a 128-bit salt using a secure PRNG
-        byte[] salt = new byte[128 / 8];
-        using (var rng = RandomNumberGenerator.Create())
-        {
-            rng.GetBytes(salt);
-        }
-
-        // Derive a 256-bit subkey (use HMACSHA1 with 10,000 iterations)
-        string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-            password: password!,
-            salt: salt,
-            prf: KeyDerivationPrf.HMACSHA1,
-            iterationCount: 10000,
-            numBytesRequested: 256 / 8));
-
-        // Store both the salt and the hash
-        return $"{Convert.ToBase64String(salt)}:{hashed}";
+        // Use bcrypt for hashing to match existing database format
+        return BCrypt.Net.BCrypt.HashPassword(password);
     }
 
     public bool VerifyPassword(string password, string hash)
     {
         try
         {
-            // Extract the salt from the stored hash
-            var parts = hash.Split(':');
-            if (parts.Length != 2)
+            // Check if it's a bcrypt hash (starts with $2a$, $2b$, $2x$, $2y$)
+            if (hash.StartsWith("$2"))
             {
-                _logger.LogWarning("Invalid password hash format");
-                return false;
+                return BCrypt.Net.BCrypt.Verify(password, hash);
             }
+            
+            // Fallback to PBKDF2 for backward compatibility
+            var parts = hash.Split(':');
+            if (parts.Length == 2)
+            {
+                var salt = Convert.FromBase64String(parts[0]);
+                var storedHash = parts[1];
 
-            var salt = Convert.FromBase64String(parts[0]);
-            var storedHash = parts[1];
+                string computedHash = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+                    password: password!,
+                    salt: salt,
+                    prf: KeyDerivationPrf.HMACSHA1,
+                    iterationCount: 10000,
+                    numBytesRequested: 256 / 8));
 
-            // Compute the hash of the provided password
-            string computedHash = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-                password: password!,
-                salt: salt,
-                prf: KeyDerivationPrf.HMACSHA1,
-                iterationCount: 10000,
-                numBytesRequested: 256 / 8));
-
-            // Compare the computed hash with the stored hash
-            return computedHash == storedHash;
+                return computedHash == storedHash;
+            }
+            
+            _logger.LogWarning("Invalid password hash format");
+            return false;
         }
         catch (Exception ex)
         {

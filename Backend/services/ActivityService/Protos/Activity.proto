@@ -83,7 +83,7 @@ message ActivityReply {
   string process_name = 8;
   bool is_blocked = 9;
   float risk_score = 10;
-  bool synced = 11;
+  bool Synced = 11;
 }
 
 message AnomalyReply {

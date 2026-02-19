@@ -2,8 +2,8 @@
 CREATE TABLE daily_reports (
     id                  SERIAL PRIMARY KEY,
     report_date         DATE NOT NULL,
-    computer_id         INTEGER NOT NULL REFERENCES computers(id),
-    user_id             INTEGER REFERENCES users(id),
+    computer_id         INTEGER, -- Убрали внешнюю ссылку на computers из другой БД
+    user_id             INTEGER, -- Убрали внешнюю ссылку на users из другой БД
     total_activities    BIGINT NOT NULL DEFAULT 0,
     blocked_actions     BIGINT NOT NULL DEFAULT 0,
     avg_risk_score      NUMERIC(5,2),
@@ -13,7 +13,7 @@ CREATE TABLE daily_reports (
 -- Статистика пользователя за период
 CREATE TABLE user_stats (
     id              SERIAL PRIMARY KEY,
-    user_id         INTEGER NOT NULL REFERENCES users(id),
+    user_id         INTEGER, -- Убрали внешнюю ссылку на users из другой БД
     period_start    TIMESTAMP NOT NULL,
     period_end      TIMESTAMP NOT NULL,
     total_time_ms   BIGINT,              -- общее "активное" время

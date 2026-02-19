@@ -14,7 +14,7 @@ CREATE TABLE activities (
     -- от 0.0 до 100.0, соответствует decimal в коде
     risk_score      NUMERIC(5,2),
     -- флаг, что запись уже синхронизирована с центральным хранилищем / аналитикой
-    synced          BOOLEAN DEFAULT FALSE
+    Synced          BOOLEAN DEFAULT FALSE
 );
 
 CREATE INDEX idx_activities_computer_id ON activities(computer_id);
@@ -36,7 +36,7 @@ CREATE INDEX idx_anomalies_activity_id ON anomalies(activity_id);
 CREATE INDEX idx_anomalies_type ON anomalies(type);
 CREATE INDEX idx_anomalies_detected_at ON anomalies(detected_at);
 
--- Тест данные (предполагаем, что компьютер с ID=1 существует в UserService)
+-- Тест данные 
 INSERT INTO activities (computer_id, activity_type, details, risk_score) VALUES
     (1, 'process_open', '{"app": "chrome.exe"}', 10.5),
     (1, 'site_visit', '{"url": "https://example.com"}', 5.0),

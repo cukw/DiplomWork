@@ -1,7 +1,7 @@
 -- Общая сущность метрики / набора правил
 CREATE TABLE metrics (
     id          SERIAL PRIMARY KEY,
-    user_id     INTEGER REFERENCES users(id),
+    user_id     INTEGER, -- Убрали внешнюю ссылку на users из другой БД
     -- тип метрики: 'process', 'site', 'file', 'generic', etc
     type        VARCHAR(50) NOT NULL,
     -- произвольная конфигурация (JSON): пороги, режимы, дополнительные настройки

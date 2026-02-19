@@ -1,6 +1,6 @@
 CREATE TABLE notifications (
     id          SERIAL PRIMARY KEY,
-    user_id     INTEGER REFERENCES users(id),
+    user_id     INTEGER, -- Убрали внешнюю ссылку на users из другой БД
     type        VARCHAR(50),             -- 'anomaly', 'report_ready', ...
     title       VARCHAR(255),
     message     TEXT,

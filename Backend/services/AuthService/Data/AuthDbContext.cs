@@ -20,22 +20,30 @@ public class AuthDbContext : DbContext
         // Configure Role entity
         modelBuilder.Entity<Role>(entity =>
         {
+            entity.ToTable("roles"); // Указываем имя таблицы в нижнем регистре
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Id).HasColumnName("id"); // Указываем имя колонки
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(50).HasColumnName("name"); // Указываем имя колонки
+            entity.Property(e => e.Description).HasColumnName("description"); // Указываем имя колонки
             entity.HasIndex(e => e.Name).IsUnique();
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP").HasColumnName("created_at"); // Указываем имя колонки
         });
 
         // Configure AuthUser entity
         modelBuilder.Entity<AuthUser>(entity =>
         {
+            entity.ToTable("auth_users"); // Указываем имя таблицы в нижнем регистре
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Id).HasColumnName("id"); // Указываем имя колонки
+            entity.Property(e => e.Username).IsRequired().HasMaxLength(100).HasColumnName("username"); // Указываем имя колонки
             entity.HasIndex(e => e.Username).IsUnique();
-            entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(255);
-            entity.Property(e => e.Email).HasMaxLength(255);
+            entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(255).HasColumnName("password_hash"); // Указываем имя колонки
+            entity.Property(e => e.Email).HasMaxLength(255).HasColumnName("email"); // Указываем имя колонки
             entity.HasIndex(e => e.Email).IsUnique();
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.RoleId).HasColumnName("role_id"); // Указываем имя колонки
+            entity.Property(e => e.LastLogin).HasColumnName("last_login"); // Указываем имя колонки
+            entity.Property(e => e.IsActive).HasColumnName("is_active"); // Указываем имя колонки
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP").HasColumnName("created_at"); // Указываем имя колонки
             
             entity.HasOne(e => e.Role)
                 .WithMany(r => r.AuthUsers)
@@ -45,10 +53,14 @@ public class AuthDbContext : DbContext
         // Configure Session entity
         modelBuilder.Entity<Session>(entity =>
         {
+            entity.ToTable("sessions"); // Указываем имя таблицы в нижнем регистре
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Id).HasColumnName("id"); // Указываем имя колонки
+            entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(255).HasColumnName("token_hash"); // Указываем имя колонки
             entity.HasIndex(e => e.TokenHash).IsUnique();
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UserId).HasColumnName("user_id"); // Указываем имя колонки
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at"); // Указываем имя колонки
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP").HasColumnName("created_at"); // Указываем имя колонки
             
             entity.HasOne(e => e.User)
                 .WithMany(u => u.Sessions)

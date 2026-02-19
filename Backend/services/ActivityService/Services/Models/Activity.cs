@@ -36,6 +36,7 @@ namespace ActivityService.Services.Models
         [Column("risk_score")]
         public decimal? RiskScore { get; set; }
         
+        [Column("synced")]
         public bool Synced { get; set; }
         
         // Navigation property

@@ -1,6 +1,6 @@
 CREATE TABLE agents (
     id              SERIAL PRIMARY KEY,
-    computer_id     INTEGER NOT NULL REFERENCES computers(id),
+    computer_id     INTEGER, -- Убрали внешнюю ссылку на computers из другой БД
     version         VARCHAR(20) NOT NULL,
     status          VARCHAR(20) NOT NULL DEFAULT 'online', -- online / offline / updating
     last_heartbeat  TIMESTAMP,

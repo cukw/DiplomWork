@@ -6,8 +6,18 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Kestrel to use HTTP/1.1
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(5003, listenOptions =>
+    {
+        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1;
+    });
+});
+
 // Add services to the container.
 builder.Services.AddGrpc();
+builder.Services.AddControllers();
 
 // Configure Entity Framework
 builder.Services.AddDbContext<AuthDbContext>(options =>
@@ -62,7 +72,8 @@ app.UseCors("AllowAll");
 
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<AuthServiceImpl>();
+app.MapControllers();
 app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "AuthService", timestamp = DateTime.UtcNow }));
 
-app.Run();
+app.Run("http://0.0.0.0:5003");

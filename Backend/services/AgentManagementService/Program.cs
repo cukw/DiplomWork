@@ -4,6 +4,15 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Kestrel to support both HTTP/1.1 and HTTP/2
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(5008, listenOptions =>
+    {
+        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+    });
+});
+
 // Add services to the container.
 builder.Services.AddGrpc();
 

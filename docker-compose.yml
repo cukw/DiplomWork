@@ -11,7 +11,7 @@ services:
       - "5432:5432"
     volumes:
       # Инициализация схемы активностей
-      - ./services/ActivityService/db/initActivity.sql:/docker-entrypoint-initdb.d/10-initActivity.sql:ro
+      - ./Backend/services/ActivityService/db/initActivity.sql:/docker-entrypoint-initdb.d/10-initActivity.sql:ro
       - postgres_activity_data:/var/lib/postgresql/data
     networks:
       - backend
@@ -34,7 +34,7 @@ services:
       - "5433:5432"
     volumes:
       # Инициализация схемы авторизации
-      - ./services/AuthService/db/initAuthService.sql:/docker-entrypoint-initdb.d/10-initAuthService.sql:ro
+      - ./Backend/services/AuthService/db/initAuthService.sql:/docker-entrypoint-initdb.d/10-initAuthService.sql:ro
       - postgres_auth_data:/var/lib/postgresql/data
     networks:
       - backend
@@ -57,7 +57,7 @@ services:
       - "5434:5432"
     volumes:
       # Инициализация схемы пользователей
-      - ./services/UserService/db/initUserService.sql:/docker-entrypoint-initdb.d/10-initUserService.sql:ro
+      - ./Backend/services/UserService/db/initUserService.sql:/docker-entrypoint-initdb.d/10-initUserService.sql:ro
       - postgres_user_data:/var/lib/postgresql/data
     networks:
       - backend
@@ -80,7 +80,7 @@ services:
       - "5435:5432"
     volumes:
       # Инициализация схемы метрик
-      - ./services/MetricsService/db/initMetricsService.sql:/docker-entrypoint-initdb.d/10-initMetricsService.sql:ro
+      - ./Backend/services/MetricsService/db/initMetricsService.sql:/docker-entrypoint-initdb.d/10-initMetricsService.sql:ro
       - postgres_metrics_data:/var/lib/postgresql/data
     networks:
       - backend
@@ -103,7 +103,7 @@ services:
       - "5436:5432"
     volumes:
       # Инициализация схемы уведомлений
-      - ./services/NotificationService/db/initNotificationService.sql:/docker-entrypoint-initdb.d/10-initNotificationService.sql:ro
+      - ./Backend/services/NotificationService/db/initNotificationService.sql:/docker-entrypoint-initdb.d/10-initNotificationService.sql:ro
       - postgres_notification_data:/var/lib/postgresql/data
     networks:
       - backend
@@ -126,7 +126,7 @@ services:
       - "5437:5432"
     volumes:
       # Инициализация схемы отчетов
-      - ./services/ReportService/db/initReportService.sql:/docker-entrypoint-initdb.d/10-initReportService.sql:ro
+      - ./Backend/services/ReportService/db/initReportService.sql:/docker-entrypoint-initdb.d/10-initReportService.sql:ro
       - postgres_report_data:/var/lib/postgresql/data
     networks:
       - backend
@@ -149,7 +149,7 @@ services:
       - "5438:5432"
     volumes:
       # Инициализация схемы агентов
-      - ./services/AgentManagementService/db/InitAgent.sql:/docker-entrypoint-initdb.d/10-initAgent.sql:ro
+      - ./Backend/services/AgentManagementService/db/InitAgent.sql:/docker-entrypoint-initdb.d/10-initAgent.sql:ro
       - postgres_agent_data:/var/lib/postgresql/data
     networks:
       - backend
