@@ -43,6 +43,14 @@ builder.Services.AddMassTransit(x =>
 });
 
 var app = builder.Build();
+
+// Apply EF Core migrations and create database
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 // Middleware
 if (app.Environment.IsDevelopment())
 {
