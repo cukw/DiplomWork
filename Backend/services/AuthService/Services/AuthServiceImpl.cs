@@ -13,17 +13,20 @@ public class AuthServiceImpl : AuthService.AuthServiceBase
     private readonly ILogger<AuthServiceImpl> _logger;
     private readonly IJwtService _jwtService;
     private readonly IPasswordService _passwordService;
+    private readonly IConfiguration _configuration;
 
     public AuthServiceImpl(
         AuthDbContext db,
         ILogger<AuthServiceImpl> logger,
         IJwtService jwtService,
-        IPasswordService passwordService)
+        IPasswordService passwordService,
+        IConfiguration configuration)
     {
         _db = db;
         _logger = logger;
         _jwtService = jwtService;
         _passwordService = passwordService;
+        _configuration = configuration;
     }
 
     public override async Task<LoginResponse> Login(LoginRequest request, ServerCallContext context)
@@ -75,24 +78,26 @@ public class AuthServiceImpl : AuthService.AuthServiceBase
             var refreshToken = _jwtService.GenerateRefreshToken();
 
             // Store refresh token
+            var refreshTokenExpirationDays = int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"] ?? "7");
             var session = new Session
             {
                 UserId = user.Id,
                 TokenHash = HashToken(refreshToken),
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
+                ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpirationDays)
             };
             _db.Sessions.Add(session);
             await _db.SaveChangesAsync();
 
             _logger.LogInformation("Login successful for user: {Username}", request.Username);
 
+            var expirationMinutes = int.Parse(_configuration["Jwt:ExpirationMinutes"] ?? "60");
             return new LoginResponse
             {
                 Success = true,
                 Message = "Login successful",
                 Token = token,
                 RefreshToken = refreshToken,
-                ExpiresIn = 3600, // 1 hour in seconds
+                ExpiresIn = expirationMinutes * 60, // Convert minutes to seconds
                 User = MapUserToProto(user)
             };
         }
@@ -281,7 +286,8 @@ public class AuthServiceImpl : AuthService.AuthServiceBase
 
             // Update session
             session.TokenHash = HashToken(newRefreshToken);
-            session.ExpiresAt = DateTime.UtcNow.AddDays(7);
+            var refreshTokenExpirationDays = int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"] ?? "7");
+            session.ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpirationDays);
             await _db.SaveChangesAsync();
 
             return new RefreshTokenResponse

@@ -1,0 +1,9 @@
+{
+  "Jwt": {
+    "Key": "ThisIsASecretKeyForJWTTokenGeneration123456789",
+    "Issuer": "ActivityMonitoringSystem",
+    "Audience": "ActivityMonitoringSystem",
+    "ExpirationMinutes": "60",
+    "RefreshTokenExpirationDays": "7"
+  }
+}
