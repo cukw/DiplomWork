@@ -45,7 +45,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "metricservice",
-          "Port": 5006
+          "Port": 5011
         }
       ],
       "UpstreamPathTemplate": "/api/metrics/{everything}",
@@ -58,7 +58,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "notificationservice",
-          "Port": 5006
+          "Port": 5012
         }
       ],
       "UpstreamPathTemplate": "/api/notification/{everything}",
@@ -71,7 +71,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "reportservice",
-          "Port": 5008
+          "Port": 5014
         }
       ],
       "UpstreamPathTemplate": "/api/report/{everything}",
@@ -84,7 +84,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "agentmanagementservice",
-          "Port": 5009
+          "Port": 5016
         }
       ],
       "UpstreamPathTemplate": "/api/agent/{everything}",
@@ -266,7 +266,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "metricservice",
-          "Port": 5006
+          "Port": 5011
         }
       ],
       "UpstreamPathTemplate": "/api/health/metrics",
@@ -279,7 +279,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "notificationservice",
-          "Port": 5006
+          "Port": 5012
         }
       ],
       "UpstreamPathTemplate": "/api/health/notification",
@@ -292,7 +292,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "reportservice",
-          "Port": 5008
+          "Port": 5014
         }
       ],
       "UpstreamPathTemplate": "/api/health/report",
@@ -305,7 +305,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "agentmanagementservice",
-          "Port": 5009
+          "Port": 5016
         }
       ],
       "UpstreamPathTemplate": "/api/health/agent",

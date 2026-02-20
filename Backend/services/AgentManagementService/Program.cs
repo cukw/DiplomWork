@@ -7,14 +7,14 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure Kestrel to support both gRPC (HTTP/2) and REST (HTTP/1.1) on different ports
 builder.WebHost.ConfigureKestrel(options =>
 {
-    // gRPC endpoint on port 5008 with HTTP/2
-    options.ListenAnyIP(5008, listenOptions =>
+    // gRPC endpoint on port 5015 with HTTP/2
+    options.ListenAnyIP(5015, listenOptions =>
     {
         listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
     });
     
-    // REST endpoint on port 5009 with HTTP/1.1
-    options.ListenAnyIP(5009, listenOptions =>
+    // REST endpoint on port 5016 with HTTP/1.1
+    options.ListenAnyIP(5016, listenOptions =>
     {
         listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1;
     });
