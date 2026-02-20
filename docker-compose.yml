@@ -196,7 +196,6 @@ services:
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__User: "guest"
       RabbitMQ__Password: "guest"
-      ASPNETCORE_URLS: "http://+:5001;http://+:5002"
     ports:
       - "5001:5001"   # gRPC
       - "5002:5002"   # health / http
