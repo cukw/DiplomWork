@@ -4,17 +4,25 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Kestrel to support both HTTP/1.1 and HTTP/2
+// Configure Kestrel to support both gRPC (HTTP/2) and REST (HTTP/1.1) on different ports
 builder.WebHost.ConfigureKestrel(options =>
 {
+    // gRPC endpoint on port 5008 with HTTP/2
     options.ListenAnyIP(5008, listenOptions =>
     {
-        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
+    });
+    
+    // REST endpoint on port 5009 with HTTP/1.1
+    options.ListenAnyIP(5009, listenOptions =>
+    {
+        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1;
     });
 });
 
 // Add services to the container.
 builder.Services.AddGrpc();
+builder.Services.AddControllers();
 
 // Configure Entity Framework
 builder.Services.AddDbContext<AgentDbContext>(options =>
@@ -38,6 +46,7 @@ app.UseCors("AllowAll");
 
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<AgentManagementServiceImpl>();
+app.MapControllers();
 app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "AgentManagementService", timestamp = DateTime.UtcNow }));
 

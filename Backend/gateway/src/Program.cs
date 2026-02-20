@@ -38,8 +38,6 @@ builder.Services.AddAuthorization();
 builder.Services.AddOcelot(builder.Configuration);
 
 var app = builder.Build();
-app.UseAuthentication(); 
-app.UseAuthorization(); 
 
 // Добавляем middleware для обработки ошибок
 app.UseExceptionHandler(exceptionHandlerApp =>
@@ -75,6 +73,9 @@ app.Use(async (context, next) =>
     }
 });
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 // Добавляем health check эндпоинт
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }));
 
@@ -86,5 +87,3 @@ app.MapGet("/gateway/info", () => Results.Ok(new {
 }));
 
 await app.UseOcelot();
-
-app.Run("http://0.0.0.0:8080");

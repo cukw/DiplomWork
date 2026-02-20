@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Management;
 using System.Text.Json;
 using ActivityService;
 using Microsoft.Extensions.Logging;

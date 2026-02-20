@@ -231,9 +231,10 @@ services:
         condition: service_healthy
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres-user;Database=users;Username=postgres;Password=pass;TrustServerCertificate=true"
-      ASPNETCORE_URLS: "http://+:5004"
+      ASPNETCORE_URLS: "http://+:5004;http://+:5005"
     ports:
-      - "5004:5004"
+      - "5004:5004"   # gRPC
+      - "5005:5005"   # REST
     networks:
       - backend
 
@@ -248,9 +249,10 @@ services:
         condition: service_healthy
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres-metrics;Database=metrics;Username=postgres;Password=pass;TrustServerCertificate=true"
-      ASPNETCORE_URLS: "http://+:5005"
+      ASPNETCORE_URLS: "http://+:5005;http://+:5006"
     ports:
-      - "5005:5005"
+      - "5005:5005"   # gRPC
+      - "5006:5006"   # REST
     networks:
       - backend
 
@@ -301,9 +303,10 @@ services:
         condition: service_healthy
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres-report;Database=reports;Username=postgres;Password=pass;TrustServerCertificate=true"
-      ASPNETCORE_URLS: "http://+:5007"
+      ASPNETCORE_URLS: "http://+:5007;http://+:5008"
     ports:
-      - "5007:5007"
+      - "5007:5007"   # gRPC
+      - "5008:5008"   # REST
     networks:
       - backend
 
@@ -318,9 +321,10 @@ services:
         condition: service_healthy
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres-agent;Database=agents;Username=postgres;Password=pass;TrustServerCertificate=true"
-      ASPNETCORE_URLS: "http://+:5008"
+      ASPNETCORE_URLS: "http://+:5008;http://+:5009"
     ports:
-      - "5008:5008"
+      - "5008:5008"   # gRPC
+      - "5009:5009"   # REST
     networks:
       - backend
 

@@ -21,7 +21,7 @@ public class ActivitySender : IActivitySender
         _logger = logger;
         _configuration = configuration;
         
-        var activityServiceUrl = _configuration.GetValue<string>("ActivityService:Url") ?? "http://localhost:5001";
+        var activityServiceUrl = _configuration.GetValue<string>("ActivityService:Url") ?? "http://activityservice:5001";
         _channel = GrpcChannel.ForAddress(activityServiceUrl);
     }
 

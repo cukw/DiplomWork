@@ -10,7 +10,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/auth/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "HEAD" ]
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "HEAD" ],
+      "Priority": 1
     },
     {
       "DownstreamPathTemplate": "/{everything}",
@@ -22,7 +23,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/activity/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "Priority": 1
     },
     {
       "DownstreamPathTemplate": "/{everything}",
@@ -30,11 +32,12 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "userservice",
-          "Port": 5004
+          "Port": 5005
         }
       ],
       "UpstreamPathTemplate": "/api/user/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "Priority": 1
     },
     {
       "DownstreamPathTemplate": "/{everything}",
@@ -42,11 +45,12 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "metricservice",
-          "Port": 5005
+          "Port": 5006
         }
       ],
       "UpstreamPathTemplate": "/api/metrics/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "Priority": 1
     },
     {
       "DownstreamPathTemplate": "/{everything}",
@@ -58,7 +62,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/notification/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "Priority": 1
     },
     {
       "DownstreamPathTemplate": "/{everything}",
@@ -66,11 +71,12 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "reportservice",
-          "Port": 5007
+          "Port": 5008
         }
       ],
       "UpstreamPathTemplate": "/api/report/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "Priority": 1
     },
     {
       "DownstreamPathTemplate": "/{everything}",
@@ -78,11 +84,12 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "agentmanagementservice",
-          "Port": 5008
+          "Port": 5009
         }
       ],
       "UpstreamPathTemplate": "/api/agent/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "Priority": 1
     },
     {
       "DownstreamPathTemplate": "/dashboard/stats",
@@ -94,7 +101,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/dashboard/stats",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UpstreamHttpMethod": [ "GET" ],
+      "Priority": 2
     },
     {
       "DownstreamPathTemplate": "/dashboard/activities",
@@ -106,7 +114,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/dashboard/activities",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UpstreamHttpMethod": [ "GET" ],
+      "Priority": 2
     },
     {
       "DownstreamPathTemplate": "/dashboard/anomalies",
@@ -118,7 +127,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/dashboard/anomalies",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UpstreamHttpMethod": [ "GET" ],
+      "Priority": 2
     },
     {
       "DownstreamPathTemplate": "/reports/daily",
@@ -130,7 +140,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/reports/daily",
-      "UpstreamHttpMethod": [ "GET", "HEAD" ]
+      "UpstreamHttpMethod": [ "GET", "HEAD" ],
+      "Priority": 2
     },
     {
       "DownstreamPathTemplate": "/reports/weekly",
@@ -142,7 +153,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/reports/weekly",
-      "UpstreamHttpMethod": [ "GET", "HEAD" ]
+      "UpstreamHttpMethod": [ "GET", "HEAD" ],
+      "Priority": 2
     },
     {
       "DownstreamPathTemplate": "/reports/monthly",
@@ -154,7 +166,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/reports/monthly",
-      "UpstreamHttpMethod": [ "GET", "HEAD" ]
+      "UpstreamHttpMethod": [ "GET", "HEAD" ],
+      "Priority": 2
     },
     {
       "DownstreamPathTemplate": "/reports/custom",
@@ -166,7 +179,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/reports/custom",
-      "UpstreamHttpMethod": [ "GET", "HEAD" ]
+      "UpstreamHttpMethod": [ "GET", "HEAD" ],
+      "Priority": 2
     },
     {
       "DownstreamPathTemplate": "/search/activities",
@@ -178,7 +192,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/search/activities",
-      "UpstreamHttpMethod": [ "GET", "HEAD" ]
+      "UpstreamHttpMethod": [ "GET", "HEAD" ],
+      "Priority": 2
     },
     {
       "DownstreamPathTemplate": "/search/anomalies",
@@ -190,7 +205,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/search/anomalies",
-      "UpstreamHttpMethod": [ "GET", "HEAD" ]
+      "UpstreamHttpMethod": [ "GET", "HEAD" ],
+      "Priority": 2
     },
     {
       "DownstreamPathTemplate": "/search/filters",
@@ -202,7 +218,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/search/filters",
-      "UpstreamHttpMethod": [ "GET", "HEAD" ]
+      "UpstreamHttpMethod": [ "GET", "HEAD" ],
+      "Priority": 2
     },
     {
       "DownstreamPathTemplate": "/health",
@@ -214,7 +231,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/health/activity",
-      "UpstreamHttpMethod": [ "GET", "HEAD" ]
+      "UpstreamHttpMethod": [ "GET", "HEAD" ],
+      "Priority": 3
     },
     {
       "DownstreamPathTemplate": "/health",
@@ -226,7 +244,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/health/auth",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UpstreamHttpMethod": [ "GET" ],
+      "Priority": 3
     },
     {
       "DownstreamPathTemplate": "/health",
@@ -234,11 +253,12 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "userservice",
-          "Port": 5004
+          "Port": 5005
         }
       ],
       "UpstreamPathTemplate": "/api/health/user",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UpstreamHttpMethod": [ "GET" ],
+      "Priority": 3
     },
     {
       "DownstreamPathTemplate": "/health",
@@ -246,11 +266,12 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "metricservice",
-          "Port": 5005
+          "Port": 5006
         }
       ],
       "UpstreamPathTemplate": "/api/health/metrics",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UpstreamHttpMethod": [ "GET" ],
+      "Priority": 3
     },
     {
       "DownstreamPathTemplate": "/health",
@@ -262,7 +283,8 @@
         }
       ],
       "UpstreamPathTemplate": "/api/health/notification",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UpstreamHttpMethod": [ "GET" ],
+      "Priority": 3
     },
     {
       "DownstreamPathTemplate": "/health",
@@ -270,11 +292,12 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "reportservice",
-          "Port": 5007
+          "Port": 5008
         }
       ],
       "UpstreamPathTemplate": "/api/health/report",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UpstreamHttpMethod": [ "GET" ],
+      "Priority": 3
     },
     {
       "DownstreamPathTemplate": "/health",
@@ -282,11 +305,12 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "agentmanagementservice",
-          "Port": 5008
+          "Port": 5009
         }
       ],
       "UpstreamPathTemplate": "/api/health/agent",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UpstreamHttpMethod": [ "GET" ],
+      "Priority": 3
     }
   ],
   "GlobalConfiguration": {

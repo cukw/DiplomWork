@@ -7,6 +7,22 @@ using ActivityService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Kestrel to support both gRPC (HTTP/2) and REST (HTTP/1.1) on different ports
+builder.WebHost.ConfigureKestrel(options =>
+{
+    // gRPC endpoint on port 5001 with HTTP/2
+    options.ListenAnyIP(5001, listenOptions =>
+    {
+        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
+    });
+    
+    // REST endpoint on port 5002 with HTTP/1.1
+    options.ListenAnyIP(5002, listenOptions =>
+    {
+        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1;
+    });
+});
+
 // Add controllers
 builder.Services.AddControllers();
 
@@ -59,6 +75,6 @@ if (app.Environment.IsDevelopment())
 
 app.MapGrpcService<ActivityServiceImpl>();
 app.MapControllers();
-app.MapGet("/health", () => "ActivityService OK").WithName("Health");
+app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "ActivityService", timestamp = DateTime.UtcNow }));
 
 app.Run();
