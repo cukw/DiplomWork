@@ -87,3 +87,4 @@ app.MapGet("/gateway/info", () => Results.Ok(new {
 }));
 
 await app.UseOcelot();
+app.Run();
