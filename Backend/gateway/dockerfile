@@ -3,8 +3,8 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
 # Копируем только файлы restore (кэш слоёв!)
-COPY ["src.csproj", "./"]
-RUN dotnet restore "./src.csproj" --disable-parallel
+COPY ["src/src.csproj", "./src/"]
+RUN dotnet restore "./src/src.csproj" --disable-parallel
 
 # Копируем исходники и конфигурационные файлы
 COPY . .
@@ -14,7 +14,7 @@ WORKDIR "/src"
 RUN mkdir -p /app/publish && cp ocelot.json /app/publish/
 
 # Publish
-RUN dotnet publish "src.csproj" \
+RUN dotnet publish "./src/src.csproj" \
     -c $BUILD_CONFIGURATION \
     -o /app/publish \
     /p:UseAppHost=false \
