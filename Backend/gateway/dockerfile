@@ -11,7 +11,7 @@ COPY . .
 WORKDIR "/src"
 
 # Копируем ocelot.json в правильную директорию
-RUN mkdir -p /app/publish && cp ocelot.json /app/publish/
+RUN mkdir -p /app/publish && cp src/ocelot.json /app/publish/
 
 # Publish
 RUN dotnet publish "./src/src.csproj" \
