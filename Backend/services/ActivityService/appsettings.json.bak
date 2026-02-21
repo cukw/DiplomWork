@@ -9,6 +9,18 @@
     }
   },
   "AllowedHosts": "*",
+  "Kestrel": {
+    "Endpoints": {
+      "Grpc": {
+        "Url": "http://0.0.0.0:5001",
+        "Protocols": "Http2"
+      },
+      "Health": {
+        "Url": "http://0.0.0.0:5002",
+        "Protocols": "Http1AndHttp2"
+      }
+    }
+  },
   "RabbitMQ": {
     "Host": "rabbitmq",
     "VirtualHost": "/",
