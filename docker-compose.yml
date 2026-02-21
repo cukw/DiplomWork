@@ -344,6 +344,10 @@ services:
       - agentmanagementservice
     environment:
       ASPNETCORE_URLS: "http://+:8080"
+      Jwt__Key: "ThisIsASecretKeyForJWTTokenGeneration123456789"
+      Jwt__Issuer: "ActivityMonitoringSystem"
+      Jwt__Audience: "ActivityMonitoringSystem"
+      ASPNETCORE_ENVIRONMENT: "Development"
     ports:
       - "8080:8080"
     networks:

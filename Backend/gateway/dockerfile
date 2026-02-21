@@ -3,14 +3,17 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
 # Копируем только файлы restore (кэш слоёв!)
-COPY ["src/src.csproj", "gateway/src/"]
-RUN dotnet restore "./gateway/src/src.csproj" --disable-parallel
+COPY ["src.csproj", "./"]
+RUN dotnet restore "./src.csproj" --disable-parallel
 
-# Копируем исходники
-COPY src/ ./gateway/src/
-WORKDIR "/src/gateway/src"
+# Копируем исходники и конфигурационные файлы
+COPY . .
+WORKDIR "/src"
 
-# ✅ ИСПРАВЛЕННЫЙ publish (без проблемных флагов)
+# Копируем ocelot.json в правильную директорию
+RUN mkdir -p /app/publish && cp ocelot.json /app/publish/
+
+# Publish
 RUN dotnet publish "src.csproj" \
     -c $BUILD_CONFIGURATION \
     -o /app/publish \
@@ -21,15 +24,13 @@ RUN dotnet publish "src.csproj" \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 WORKDIR /app
 EXPOSE 8080
-ENV ASPNETCORE_URLS=http://+:8080
 ENV DOTNET_EnableDiagnostics=0
 
 # Копируем только publish
 COPY --from=build /app/publish .
 
-# Healthcheck (исправлен)
+# Healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: dotnet src.dll вместо ./src
 ENTRYPOINT ["dotnet", "src.dll"]
