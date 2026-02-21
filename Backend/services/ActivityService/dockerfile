@@ -26,7 +26,6 @@ RUN apk add --no-cache curl
 
 EXPOSE 5001 5002
 
-ENV ASPNETCORE_URLS="http://+:5001;http://+:5002"
 ENV DOTNET_EnableDiagnostics=0
 ENV DOTNET_GCHeapHardLimit=2147483648
 ENV DOTNET_GCHeapCount=2

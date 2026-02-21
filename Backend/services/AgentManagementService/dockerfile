@@ -20,8 +20,7 @@ RUN dotnet publish "AgentManagementService.csproj" \
 # Runtime (минимальный)
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 WORKDIR /app
-EXPOSE 5008
-ENV ASPNETCORE_URLS=http://+:5008
+EXPOSE 5015 5016
 ENV DOTNET_EnableDiagnostics=0
 
 # Копируем только publish

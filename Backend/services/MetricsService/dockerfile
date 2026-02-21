@@ -20,8 +20,7 @@ RUN dotnet publish "MetricsService.csproj" \
 # Runtime (минимальный)
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 WORKDIR /app
-EXPOSE 5005
-ENV ASPNETCORE_URLS=http://+:5005
+EXPOSE 5010 5011
 ENV DOTNET_EnableDiagnostics=0
 
 # Копируем только publish

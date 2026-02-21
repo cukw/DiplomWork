@@ -20,8 +20,7 @@ RUN dotnet publish "UserService.csproj" \
 # Runtime (минимальный)
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 WORKDIR /app
-EXPOSE 5004
-ENV ASPNETCORE_URLS=http://+:5004
+EXPOSE 5004 5005
 ENV DOTNET_EnableDiagnostics=0
 
 # Копируем только publish
