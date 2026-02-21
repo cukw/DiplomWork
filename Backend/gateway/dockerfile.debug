@@ -1,0 +1,71 @@
+# Diagnostic Dockerfile for troubleshooting the gateway container issue
+# This version includes additional logging and debugging features
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+
+# Копируем только файлы restore (кэш слоёв!)
+COPY ["src/src.csproj", "./src/"]
+RUN dotnet restore "./src/src.csproj" --disable-parallel
+
+# Копируем исходники и конфигурационные файлы
+COPY . .
+WORKDIR "/src"
+
+# Копируем ocelot.json в правильную директорию
+RUN mkdir -p /app/publish && cp src/ocelot.json /app/publish/
+
+# Publish with additional debugging information
+RUN dotnet publish "./src/src.csproj" \
+    -c $BUILD_CONFIGURATION \
+    -o /app/publish \
+    /p:UseAppHost=false \
+    --no-restore \
+    --verbosity normal
+
+# Runtime (with debugging capabilities)
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
+WORKDIR /app
+
+# Install additional tools for debugging
+RUN apk add --no-cache \
+    curl \
+    bash \
+    strace \
+    lsof
+
+EXPOSE 8080
+
+# Enable diagnostics for debugging
+ENV DOTNET_EnableDiagnostics=1
+ENV DOTNET_DbgEnableMiniDump=1
+ENV DOTNET_ReadyToRun=0
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENV ASPNETCORE_URLS=http://+:8080
+
+# Копируем только publish
+COPY --from=build /app/publish .
+
+# Create a debug script to help diagnose issues
+RUN echo '#!/bin/bash' > /app/debug.sh && \
+    echo 'echo "=== Container Information ==="' >> /app/debug.sh && \
+    echo 'uname -a' >> /app/debug.sh && \
+    echo 'echo "=== .NET Version ==="' >> /app/debug.sh && \
+    echo 'dotnet --version' >> /app/debug.sh && \
+    echo 'echo "=== Directory Contents ==="' >> /app/debug.sh && \
+    echo 'ls -la /app' >> /app/debug.sh && \
+    echo 'echo "=== Checking for src.dll ==="' >> /app/debug.sh && \
+    echo 'file /app/src.dll' >> /app/debug.sh && \
+    echo 'echo "=== Environment Variables ==="' >> /app/debug.sh && \
+    echo 'env | sort' >> /app/debug.sh && \
+    echo 'echo "=== Attempting to run the application ==="' >> /app/debug.sh && \
+    echo 'exec dotnet src.dll' >> /app/debug.sh && \
+    chmod +x /app/debug.sh
+
+# Healthcheck using curl instead of wget
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Default command runs the debug script
+CMD ["/app/debug.sh"]
