@@ -6,10 +6,15 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Kestrel to use HTTP/1.1
+// gRPC (HTTP/2) на порту 5003, REST (HTTP/1.1) на порту 5007
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(5003, listenOptions =>
+    {
+        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
+    });
+
+    options.ListenAnyIP(5007, listenOptions =>
     {
         listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1;
     });
@@ -76,4 +81,4 @@ app.MapControllers();
 app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "AuthService", timestamp = DateTime.UtcNow }));
 
-app.Run("http://0.0.0.0:5003");
+app.Run();

@@ -50,7 +50,8 @@ public class JwtService : IJwtService
         var token = tokenHandler.CreateToken(tokenDescriptor);
         var tokenString = tokenHandler.WriteToken(token);
         
-        _logger.LogInformation("Generated JWT token for user {UserId}", user.Id);
+        _logger.LogInformation("Generated JWT token for user {UserId}. Token length: {Length}, Token preview: {Preview}",
+            user.Id, tokenString.Length, tokenString.Substring(0, Math.Min(50, tokenString.Length)));
         
         return tokenString;
     }

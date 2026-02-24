@@ -319,7 +319,7 @@ public class ReportsController : ControllerBase
                 .ToListAsync();
 
             // Group activities based on the groupBy parameter
-            object groupedActivities = groupBy.ToLower() switch
+            object groupedActivities = (groupBy ?? "day").ToLowerInvariant() switch
             {
                 "hour" => activities
                     .GroupBy(a => new { a.Timestamp.Date, a.Timestamp.Hour })

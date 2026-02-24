@@ -24,60 +24,61 @@ namespace ActivityService {
     static ActivityReflection() {
       byte[] descriptorData = global::System.Convert.FromBase64String(
           string.Concat(
-            "ChVQcm90b3MvQWN0aXZpdHkucHJvdG8SCGFjdGl2aXR5IugBChRHZXRBY3Rp",
+            "ChVQcm90b3MvQWN0aXZpdHkucHJvdG8SCGFjdGl2aXR5IpQCChRHZXRBY3Rp",
             "dml0aWVzUmVxdWVzdBIYCgtjb21wdXRlcl9pZBgBIAEoBUgAiAEBEhoKDWFj",
             "dGl2aXR5X3R5cGUYAiABKAlIAYgBARIbCg5mcm9tX3RpbWVzdGFtcBgDIAEo",
             "CUgCiAEBEhIKBWxpbWl0GAQgASgFSAOIAQESGQoMb25seV9ibG9ja2VkGAUg",
-            "ASgISASIAQFCDgoMX2NvbXB1dGVyX2lkQhAKDl9hY3Rpdml0eV90eXBlQhEK",
-            "D19mcm9tX3RpbWVzdGFtcEIICgZfbGltaXRCDwoNX29ubHlfYmxvY2tlZCJW",
-            "ChJHZXRBY3Rpdml0aWVzUmVwbHkSKwoKYWN0aXZpdGllcxgBIAMoCzIXLmFj",
-            "dGl2aXR5LkFjdGl2aXR5UmVwbHkSEwoLdG90YWxfY291bnQYAiABKAUiQgoV",
-            "Q3JlYXRlQWN0aXZpdHlSZXF1ZXN0EikKCGFjdGl2aXR5GAEgASgLMhcuYWN0",
-            "aXZpdHkuQWN0aXZpdHlSZXBseSIkChZHZXRBY3Rpdml0eUJ5SWRSZXF1ZXN0",
-            "EgoKAmlkGAEgASgDIl0KE0dldEFub21hbGllc1JlcXVlc3QSGAoLYWN0aXZp",
-            "dHlfaWQYASABKANIAIgBARISCgVsaW1pdBgCIAEoBUgBiAEBQg4KDF9hY3Rp",
-            "dml0eV9pZEIICgZfbGltaXQiPgoRR2V0QW5vbWFsaWVzUmVwbHkSKQoJYW5v",
-            "bWFsaWVzGAEgAygLMhYuYWN0aXZpdHkuQW5vbWFseVJlcGx5IiMKFURlbGV0",
-            "ZUFjdGl2aXR5UmVxdWVzdBIKCgJpZBgBIAEoAyI3ChNEZWxldGVBY3Rpdml0",
-            "eVJlcGx5Eg8KB3N1Y2Nlc3MYASABKAgSDwoHbWVzc2FnZRgCIAEoCSJOChVV",
-            "cGRhdGVBY3Rpdml0eVJlcXVlc3QSCgoCaWQYASABKAMSKQoIYWN0aXZpdHkY",
-            "AiABKAsyFy5hY3Rpdml0eS5BY3Rpdml0eVJlcGx5IqQBChxHZXRBY3Rpdml0",
-            "eVN0YXRpc3RpY3NSZXF1ZXN0EhgKC2NvbXB1dGVyX2lkGAEgASgFSACIAQES",
-            "GwoOZnJvbV90aW1lc3RhbXAYAiABKAlIAYgBARIZCgx0b190aW1lc3RhbXAY",
-            "AyABKAlIAogBAUIOCgxfY29tcHV0ZXJfaWRCEQoPX2Zyb21fdGltZXN0YW1w",
-            "Qg8KDV90b190aW1lc3RhbXAinAIKGkdldEFjdGl2aXR5U3RhdGlzdGljc1Jl",
-            "cGx5EhgKEHRvdGFsX2FjdGl2aXRpZXMYASABKAUSGgoSYmxvY2tlZF9hY3Rp",
-            "dml0aWVzGAIgASgFEhUKDWFub21hbHlfY291bnQYAyABKAUSWgoUYWN0aXZp",
-            "dHlfdHlwZV9jb3VudHMYBCADKAsyPC5hY3Rpdml0eS5HZXRBY3Rpdml0eVN0",
-            "YXRpc3RpY3NSZXBseS5BY3Rpdml0eVR5cGVDb3VudHNFbnRyeRIaChJhdmVy",
-            "YWdlX3Jpc2tfc2NvcmUYBSABKAIaOQoXQWN0aXZpdHlUeXBlQ291bnRzRW50",
-            "cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgFOgI4ASLwAQoNQWN0aXZp",
-            "dHlSZXBseRIKCgJpZBgBIAEoAxITCgtjb21wdXRlcl9pZBgCIAEoBRIRCgl0",
-            "aW1lc3RhbXAYAyABKAkSFQoNYWN0aXZpdHlfdHlwZRgEIAEoCRIPCgdkZXRh",
-            "aWxzGAUgASgJEhgKC2R1cmF0aW9uX21zGAYgASgFSACIAQESCwoDdXJsGAcg",
-            "ASgJEhQKDHByb2Nlc3NfbmFtZRgIIAEoCRISCgppc19ibG9ja2VkGAkgASgI",
-            "EhIKCnJpc2tfc2NvcmUYCiABKAISDgoGc3luY2VkGAsgASgIQg4KDF9kdXJh",
-            "dGlvbl9tcyJnCgxBbm9tYWx5UmVwbHkSCgoCaWQYASABKAUSEwoLYWN0aXZp",
-            "dHlfaWQYAiABKAMSDAoEdHlwZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEo",
-            "CRITCgtkZXRlY3RlZF9hdBgFIAEoCTLPBAoTQWN0aXZpdHlHcnBjU2Vydmlj",
-            "ZRJNCg1HZXRBY3Rpdml0aWVzEh4uYWN0aXZpdHkuR2V0QWN0aXZpdGllc1Jl",
-            "cXVlc3QaHC5hY3Rpdml0eS5HZXRBY3Rpdml0aWVzUmVwbHkSSgoOQ3JlYXRl",
-            "QWN0aXZpdHkSHy5hY3Rpdml0eS5DcmVhdGVBY3Rpdml0eVJlcXVlc3QaFy5h",
-            "Y3Rpdml0eS5BY3Rpdml0eVJlcGx5EkwKD0dldEFjdGl2aXR5QnlJZBIgLmFj",
-            "dGl2aXR5LkdldEFjdGl2aXR5QnlJZFJlcXVlc3QaFy5hY3Rpdml0eS5BY3Rp",
-            "dml0eVJlcGx5EkoKDEdldEFub21hbGllcxIdLmFjdGl2aXR5LkdldEFub21h",
-            "bGllc1JlcXVlc3QaGy5hY3Rpdml0eS5HZXRBbm9tYWxpZXNSZXBseRJQCg5E",
-            "ZWxldGVBY3Rpdml0eRIfLmFjdGl2aXR5LkRlbGV0ZUFjdGl2aXR5UmVxdWVz",
-            "dBodLmFjdGl2aXR5LkRlbGV0ZUFjdGl2aXR5UmVwbHkSSgoOVXBkYXRlQWN0",
-            "aXZpdHkSHy5hY3Rpdml0eS5VcGRhdGVBY3Rpdml0eVJlcXVlc3QaFy5hY3Rp",
-            "dml0eS5BY3Rpdml0eVJlcGx5EmUKFUdldEFjdGl2aXR5U3RhdGlzdGljcxIm",
-            "LmFjdGl2aXR5LkdldEFjdGl2aXR5U3RhdGlzdGljc1JlcXVlc3QaJC5hY3Rp",
-            "dml0eS5HZXRBY3Rpdml0eVN0YXRpc3RpY3NSZXBseUISqgIPQWN0aXZpdHlT",
-            "ZXJ2aWNlYgZwcm90bzM="));
+            "ASgISASIAQESGQoMdG9fdGltZXN0YW1wGAYgASgJSAWIAQFCDgoMX2NvbXB1",
+            "dGVyX2lkQhAKDl9hY3Rpdml0eV90eXBlQhEKD19mcm9tX3RpbWVzdGFtcEII",
+            "CgZfbGltaXRCDwoNX29ubHlfYmxvY2tlZEIPCg1fdG9fdGltZXN0YW1wIlYK",
+            "EkdldEFjdGl2aXRpZXNSZXBseRIrCgphY3Rpdml0aWVzGAEgAygLMhcuYWN0",
+            "aXZpdHkuQWN0aXZpdHlSZXBseRITCgt0b3RhbF9jb3VudBgCIAEoBSJCChVD",
+            "cmVhdGVBY3Rpdml0eVJlcXVlc3QSKQoIYWN0aXZpdHkYASABKAsyFy5hY3Rp",
+            "dml0eS5BY3Rpdml0eVJlcGx5IiQKFkdldEFjdGl2aXR5QnlJZFJlcXVlc3QS",
+            "CgoCaWQYASABKAMiXQoTR2V0QW5vbWFsaWVzUmVxdWVzdBIYCgthY3Rpdml0",
+            "eV9pZBgBIAEoA0gAiAEBEhIKBWxpbWl0GAIgASgFSAGIAQFCDgoMX2FjdGl2",
+            "aXR5X2lkQggKBl9saW1pdCI+ChFHZXRBbm9tYWxpZXNSZXBseRIpCglhbm9t",
+            "YWxpZXMYASADKAsyFi5hY3Rpdml0eS5Bbm9tYWx5UmVwbHkiIwoVRGVsZXRl",
+            "QWN0aXZpdHlSZXF1ZXN0EgoKAmlkGAEgASgDIjcKE0RlbGV0ZUFjdGl2aXR5",
+            "UmVwbHkSDwoHc3VjY2VzcxgBIAEoCBIPCgdtZXNzYWdlGAIgASgJIk4KFVVw",
+            "ZGF0ZUFjdGl2aXR5UmVxdWVzdBIKCgJpZBgBIAEoAxIpCghhY3Rpdml0eRgC",
+            "IAEoCzIXLmFjdGl2aXR5LkFjdGl2aXR5UmVwbHkipAEKHEdldEFjdGl2aXR5",
+            "U3RhdGlzdGljc1JlcXVlc3QSGAoLY29tcHV0ZXJfaWQYASABKAVIAIgBARIb",
+            "Cg5mcm9tX3RpbWVzdGFtcBgCIAEoCUgBiAEBEhkKDHRvX3RpbWVzdGFtcBgD",
+            "IAEoCUgCiAEBQg4KDF9jb21wdXRlcl9pZEIRCg9fZnJvbV90aW1lc3RhbXBC",
+            "DwoNX3RvX3RpbWVzdGFtcCKcAgoaR2V0QWN0aXZpdHlTdGF0aXN0aWNzUmVw",
+            "bHkSGAoQdG90YWxfYWN0aXZpdGllcxgBIAEoBRIaChJibG9ja2VkX2FjdGl2",
+            "aXRpZXMYAiABKAUSFQoNYW5vbWFseV9jb3VudBgDIAEoBRJaChRhY3Rpdml0",
+            "eV90eXBlX2NvdW50cxgEIAMoCzI8LmFjdGl2aXR5LkdldEFjdGl2aXR5U3Rh",
+            "dGlzdGljc1JlcGx5LkFjdGl2aXR5VHlwZUNvdW50c0VudHJ5EhoKEmF2ZXJh",
+            "Z2Vfcmlza19zY29yZRgFIAEoAho5ChdBY3Rpdml0eVR5cGVDb3VudHNFbnRy",
+            "eRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAU6AjgBIvABCg1BY3Rpdml0",
+            "eVJlcGx5EgoKAmlkGAEgASgDEhMKC2NvbXB1dGVyX2lkGAIgASgFEhEKCXRp",
+            "bWVzdGFtcBgDIAEoCRIVCg1hY3Rpdml0eV90eXBlGAQgASgJEg8KB2RldGFp",
+            "bHMYBSABKAkSGAoLZHVyYXRpb25fbXMYBiABKAVIAIgBARILCgN1cmwYByAB",
+            "KAkSFAoMcHJvY2Vzc19uYW1lGAggASgJEhIKCmlzX2Jsb2NrZWQYCSABKAgS",
+            "EgoKcmlza19zY29yZRgKIAEoAhIOCgZTeW5jZWQYCyABKAhCDgoMX2R1cmF0",
+            "aW9uX21zImcKDEFub21hbHlSZXBseRIKCgJpZBgBIAEoBRITCgthY3Rpdml0",
+            "eV9pZBgCIAEoAxIMCgR0eXBlGAMgASgJEhMKC2Rlc2NyaXB0aW9uGAQgASgJ",
+            "EhMKC2RldGVjdGVkX2F0GAUgASgJMs8EChNBY3Rpdml0eUdycGNTZXJ2aWNl",
+            "Ek0KDUdldEFjdGl2aXRpZXMSHi5hY3Rpdml0eS5HZXRBY3Rpdml0aWVzUmVx",
+            "dWVzdBocLmFjdGl2aXR5LkdldEFjdGl2aXRpZXNSZXBseRJKCg5DcmVhdGVB",
+            "Y3Rpdml0eRIfLmFjdGl2aXR5LkNyZWF0ZUFjdGl2aXR5UmVxdWVzdBoXLmFj",
+            "dGl2aXR5LkFjdGl2aXR5UmVwbHkSTAoPR2V0QWN0aXZpdHlCeUlkEiAuYWN0",
+            "aXZpdHkuR2V0QWN0aXZpdHlCeUlkUmVxdWVzdBoXLmFjdGl2aXR5LkFjdGl2",
+            "aXR5UmVwbHkSSgoMR2V0QW5vbWFsaWVzEh0uYWN0aXZpdHkuR2V0QW5vbWFs",
+            "aWVzUmVxdWVzdBobLmFjdGl2aXR5LkdldEFub21hbGllc1JlcGx5ElAKDkRl",
+            "bGV0ZUFjdGl2aXR5Eh8uYWN0aXZpdHkuRGVsZXRlQWN0aXZpdHlSZXF1ZXN0",
+            "Gh0uYWN0aXZpdHkuRGVsZXRlQWN0aXZpdHlSZXBseRJKCg5VcGRhdGVBY3Rp",
+            "dml0eRIfLmFjdGl2aXR5LlVwZGF0ZUFjdGl2aXR5UmVxdWVzdBoXLmFjdGl2",
+            "aXR5LkFjdGl2aXR5UmVwbHkSZQoVR2V0QWN0aXZpdHlTdGF0aXN0aWNzEiYu",
+            "YWN0aXZpdHkuR2V0QWN0aXZpdHlTdGF0aXN0aWNzUmVxdWVzdBokLmFjdGl2",
+            "aXR5LkdldEFjdGl2aXR5U3RhdGlzdGljc1JlcGx5QhKqAg9BY3Rpdml0eVNl",
+            "cnZpY2ViBnByb3RvMw=="));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
-            new pbr::GeneratedClrTypeInfo(typeof(global::ActivityService.GetActivitiesRequest), global::ActivityService.GetActivitiesRequest.Parser, new[]{ "ComputerId", "ActivityType", "FromTimestamp", "Limit", "OnlyBlocked" }, new[]{ "ComputerId", "ActivityType", "FromTimestamp", "Limit", "OnlyBlocked" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::ActivityService.GetActivitiesRequest), global::ActivityService.GetActivitiesRequest.Parser, new[]{ "ComputerId", "ActivityType", "FromTimestamp", "Limit", "OnlyBlocked", "ToTimestamp" }, new[]{ "ComputerId", "ActivityType", "FromTimestamp", "Limit", "OnlyBlocked", "ToTimestamp" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::ActivityService.GetActivitiesReply), global::ActivityService.GetActivitiesReply.Parser, new[]{ "Activities", "TotalCount" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::ActivityService.CreateActivityRequest), global::ActivityService.CreateActivityRequest.Parser, new[]{ "Activity" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::ActivityService.GetActivityByIdRequest), global::ActivityService.GetActivityByIdRequest.Parser, new[]{ "Id" }, null, null, null, null),
@@ -138,6 +139,7 @@ namespace ActivityService {
       fromTimestamp_ = other.fromTimestamp_;
       limit_ = other.limit_;
       onlyBlocked_ = other.onlyBlocked_;
+      toTimestamp_ = other.toTimestamp_;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -283,6 +285,35 @@ namespace ActivityService {
       _hasBits0 &= ~4;
     }
 
+    /// <summary>Field number for the "to_timestamp" field.</summary>
+    public const int ToTimestampFieldNumber = 6;
+    private readonly static string ToTimestampDefaultValue = "";
+
+    private string toTimestamp_;
+    /// <summary>
+    /// ISO8601
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public string ToTimestamp {
+      get { return toTimestamp_ ?? ToTimestampDefaultValue; }
+      set {
+        toTimestamp_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      }
+    }
+    /// <summary>Gets whether the "to_timestamp" field is set</summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool HasToTimestamp {
+      get { return toTimestamp_ != null; }
+    }
+    /// <summary>Clears the value of the "to_timestamp" field</summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void ClearToTimestamp() {
+      toTimestamp_ = null;
+    }
+
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override bool Equals(object other) {
@@ -303,6 +334,7 @@ namespace ActivityService {
       if (FromTimestamp != other.FromTimestamp) return false;
       if (Limit != other.Limit) return false;
       if (OnlyBlocked != other.OnlyBlocked) return false;
+      if (ToTimestamp != other.ToTimestamp) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -315,6 +347,7 @@ namespace ActivityService {
       if (HasFromTimestamp) hash ^= FromTimestamp.GetHashCode();
       if (HasLimit) hash ^= Limit.GetHashCode();
       if (HasOnlyBlocked) hash ^= OnlyBlocked.GetHashCode();
+      if (HasToTimestamp) hash ^= ToTimestamp.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -353,6 +386,10 @@ namespace ActivityService {
         output.WriteRawTag(40);
         output.WriteBool(OnlyBlocked);
       }
+      if (HasToTimestamp) {
+        output.WriteRawTag(50);
+        output.WriteString(ToTimestamp);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -383,6 +420,10 @@ namespace ActivityService {
         output.WriteRawTag(40);
         output.WriteBool(OnlyBlocked);
       }
+      if (HasToTimestamp) {
+        output.WriteRawTag(50);
+        output.WriteString(ToTimestamp);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -407,6 +448,9 @@ namespace ActivityService {
       }
       if (HasOnlyBlocked) {
         size += 1 + 1;
+      }
+      if (HasToTimestamp) {
+        size += 1 + pb::CodedOutputStream.ComputeStringSize(ToTimestamp);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -434,6 +478,9 @@ namespace ActivityService {
       }
       if (other.HasOnlyBlocked) {
         OnlyBlocked = other.OnlyBlocked;
+      }
+      if (other.HasToTimestamp) {
+        ToTimestamp = other.ToTimestamp;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
@@ -470,6 +517,10 @@ namespace ActivityService {
             OnlyBlocked = input.ReadBool();
             break;
           }
+          case 50: {
+            ToTimestamp = input.ReadString();
+            break;
+          }
         }
       }
     #endif
@@ -503,6 +554,10 @@ namespace ActivityService {
           }
           case 40: {
             OnlyBlocked = input.ReadBool();
+            break;
+          }
+          case 50: {
+            ToTimestamp = input.ReadString();
             break;
           }
         }
@@ -3048,7 +3103,7 @@ namespace ActivityService {
       }
     }
 
-    /// <summary>Field number for the "synced" field.</summary>
+    /// <summary>Field number for the "Synced" field.</summary>
     public const int SyncedFieldNumber = 11;
     private bool synced_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]

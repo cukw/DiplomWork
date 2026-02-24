@@ -10,7 +10,6 @@ import {
   TextField,
   Switch,
   FormControlLabel,
-  Divider,
   Alert,
   Dialog,
   DialogTitle,
@@ -22,12 +21,22 @@ import {
   ListItemSecondaryAction,
   IconButton,
   Chip,
+  Divider,
+  LinearProgress,
+  Stack,
   Tabs,
   Tab,
   Select,
   MenuItem,
   FormControl,
-  InputLabel
+  InputLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tooltip
 } from '@mui/material';
 import {
   Save,
@@ -43,10 +52,41 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
-import axios from 'axios';
+import { agentAPI, systemAPI, alertRulesAPI } from '../services/api';
+
+const DEFAULT_ALERT_RULE_FORM = {
+  name: '',
+  enabled: true,
+  severity: 'medium',
+  metric: 'anomaly_count',
+  operator: 'gte',
+  threshold: 5,
+  windowMinutes: 15,
+  activityType: '',
+  userId: '',
+  computerId: '',
+  notifyInApp: true,
+  notifyEmail: false,
+  cooldownMinutes: 10,
+};
+
+const ALERT_RULE_LABELS = {
+  anomaly_count: 'Anomaly Count',
+  blocked_activities: 'Blocked Activities',
+  average_risk_score: 'Average Risk Score',
+  total_activities: 'Total Activities',
+};
+
+const OPERATOR_LABELS = {
+  gt: '>',
+  gte: '>=',
+  lt: '<',
+  lte: '<=',
+  eq: '=',
+};
 
 const Settings = () => {
-  const { user } = useAuth();
+  useAuth();
   const { addNotification } = useNotifications();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -54,6 +94,19 @@ const Settings = () => {
   const [tabValue, setTabValue] = useState(0);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [systemHealth, setSystemHealth] = useState(null);
+  const [monitoringAgents, setMonitoringAgents] = useState([]);
+  const [monitoringDataLoading, setMonitoringDataLoading] = useState(false);
+  const [monitoringDataError, setMonitoringDataError] = useState(null);
+  const [monitoringLastUpdated, setMonitoringLastUpdated] = useState(null);
+  const [alertRules, setAlertRules] = useState([]);
+  const [alertRuleMetadata, setAlertRuleMetadata] = useState(null);
+  const [alertRulesLoading, setAlertRulesLoading] = useState(false);
+  const [alertRulesError, setAlertRulesError] = useState(null);
+  const [alertRuleDialogOpen, setAlertRuleDialogOpen] = useState(false);
+  const [editingAlertRuleId, setEditingAlertRuleId] = useState(null);
+  const [alertRuleSaving, setAlertRuleSaving] = useState(false);
+  const [alertRuleForm, setAlertRuleForm] = useState(DEFAULT_ALERT_RULE_FORM);
 
   // General Settings
   const [generalSettings, setGeneralSettings] = useState({
@@ -113,6 +166,29 @@ const Settings = () => {
     fetchSettings();
   }, []);
 
+  useEffect(() => {
+    if (tabValue !== 3) return undefined;
+
+    fetchMonitoringData();
+
+    if (!monitoringSettings.realTimeMonitoring) return undefined;
+
+    const intervalSeconds = Math.max(5, Number(monitoringSettings.monitoringInterval) || 5);
+    const timerId = window.setInterval(() => {
+      if (document.hidden) return;
+      fetchMonitoringData({ silent: true });
+    }, intervalSeconds * 1000);
+
+    return () => window.clearInterval(timerId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabValue, monitoringSettings.realTimeMonitoring, monitoringSettings.monitoringInterval]);
+
+  useEffect(() => {
+    if (tabValue !== 2) return;
+    fetchAlertRules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabValue]);
+
   const fetchSettings = async () => {
     try {
       setLoading(true);
@@ -139,11 +215,14 @@ const Settings = () => {
       console.log(`Saving ${category} settings`);
       
       setSuccess(`${category} settings saved successfully`);
-      addNotification({
-        type: 'success',
-        message: `${category} settings have been updated`,
-        timestamp: new Date().toISOString()
-      });
+      if (typeof addNotification === 'function') {
+        addNotification({
+          type: 'success',
+          title: `${category} settings saved`,
+          message: `${category} settings have been updated`,
+          timestamp: new Date().toISOString()
+        });
+      }
       
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -202,14 +281,25 @@ const Settings = () => {
     setConfirmDialogOpen(true);
   };
 
-  const handleConfirmAction = () => {
-    if (confirmAction?.type === 'delete_whitelist') {
-      setWhitelistEntries(whitelistEntries.filter(entry => entry.id !== confirmAction.id));
-    } else if (confirmAction?.type === 'delete_blacklist') {
-      setBlacklistEntries(blacklistEntries.filter(entry => entry.id !== confirmAction.id));
+  const handleConfirmAction = async () => {
+    try {
+      if (confirmAction?.type === 'delete_whitelist') {
+        setWhitelistEntries(whitelistEntries.filter(entry => entry.id !== confirmAction.id));
+      } else if (confirmAction?.type === 'delete_blacklist') {
+        setBlacklistEntries(blacklistEntries.filter(entry => entry.id !== confirmAction.id));
+      } else if (confirmAction?.type === 'delete_alert_rule') {
+        await alertRulesAPI.deleteRule(confirmAction.id);
+        setAlertRules((prev) => prev.filter((rule) => rule.id !== confirmAction.id));
+      } else if (confirmAction?.type === 'restart_system') {
+        setSuccess('Restart request queued (demo action)');
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Action failed');
+    } finally {
+      setConfirmDialogOpen(false);
+      setConfirmAction(null);
     }
-    setConfirmDialogOpen(false);
-    setConfirmAction(null);
   };
 
   const handleSystemRestart = () => {
@@ -219,6 +309,180 @@ const Settings = () => {
     });
     setConfirmDialogOpen(true);
   };
+
+  const normalizeAlertRulePayload = (formState) => ({
+    name: String(formState.name || '').trim(),
+    enabled: Boolean(formState.enabled),
+    severity: String(formState.severity || 'medium').toLowerCase(),
+    metric: String(formState.metric || 'anomaly_count').toLowerCase(),
+    operator: String(formState.operator || 'gte').toLowerCase(),
+    threshold: Number(formState.threshold) || 0,
+    windowMinutes: Math.max(1, Number(formState.windowMinutes) || 1),
+    activityType: String(formState.activityType || '').trim() || null,
+    userId: formState.userId === '' || formState.userId === null ? null : Number(formState.userId),
+    computerId: formState.computerId === '' || formState.computerId === null ? null : Number(formState.computerId),
+    notifyInApp: Boolean(formState.notifyInApp),
+    notifyEmail: Boolean(formState.notifyEmail),
+    cooldownMinutes: Math.max(0, Number(formState.cooldownMinutes) || 0),
+  });
+
+  const openCreateAlertRuleDialog = () => {
+    setEditingAlertRuleId(null);
+    setAlertRuleForm({ ...DEFAULT_ALERT_RULE_FORM });
+    setAlertRuleDialogOpen(true);
+  };
+
+  const openEditAlertRuleDialog = (rule) => {
+    setEditingAlertRuleId(rule.id);
+    setAlertRuleForm({
+      name: rule.name || '',
+      enabled: Boolean(rule.enabled),
+      severity: rule.severity || 'medium',
+      metric: rule.metric || 'anomaly_count',
+      operator: rule.operator || 'gte',
+      threshold: rule.threshold ?? 0,
+      windowMinutes: rule.windowMinutes ?? 15,
+      activityType: rule.activityType || '',
+      userId: rule.userId ?? '',
+      computerId: rule.computerId ?? '',
+      notifyInApp: rule.notifyInApp ?? true,
+      notifyEmail: rule.notifyEmail ?? false,
+      cooldownMinutes: rule.cooldownMinutes ?? 10,
+    });
+    setAlertRuleDialogOpen(true);
+  };
+
+  const fetchAlertRules = async ({ silent = false } = {}) => {
+    try {
+      if (!silent) setAlertRulesLoading(true);
+      setAlertRulesError(null);
+
+      const [rulesResult, metadataResult] = await Promise.allSettled([
+        alertRulesAPI.getRules(),
+        alertRulesAPI.getMetadata(),
+      ]);
+
+      if (rulesResult.status === 'fulfilled') {
+        setAlertRules(rulesResult.value?.rules || []);
+      }
+      if (metadataResult.status === 'fulfilled') {
+        setAlertRuleMetadata(metadataResult.value || null);
+      }
+
+      if (rulesResult.status !== 'fulfilled' && metadataResult.status !== 'fulfilled') {
+        throw rulesResult.reason || metadataResult.reason;
+      }
+    } catch (err) {
+      setAlertRulesError(err?.response?.data?.message || err?.message || 'Failed to load alert rules');
+    } finally {
+      setAlertRulesLoading(false);
+    }
+  };
+
+  const handleAlertRuleFieldChange = (field, value) => {
+    setAlertRuleForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveAlertRule = async () => {
+    try {
+      setAlertRuleSaving(true);
+      setAlertRulesError(null);
+      const payload = normalizeAlertRulePayload(alertRuleForm);
+
+      if (!payload.name) {
+        setAlertRulesError('Rule name is required');
+        return;
+      }
+
+      let savedRule;
+      if (editingAlertRuleId) {
+        savedRule = await alertRulesAPI.updateRule(editingAlertRuleId, payload);
+        setAlertRules((prev) => prev.map((rule) => (rule.id === savedRule.id ? savedRule : rule)));
+      } else {
+        savedRule = await alertRulesAPI.createRule(payload);
+        setAlertRules((prev) => [savedRule, ...prev]);
+      }
+
+      setAlertRuleDialogOpen(false);
+      setEditingAlertRuleId(null);
+      setAlertRuleForm({ ...DEFAULT_ALERT_RULE_FORM });
+      setSuccess(`Alert rule ${editingAlertRuleId ? 'updated' : 'created'} successfully`);
+      setTimeout(() => setSuccess(null), 3000);
+      if (typeof addNotification === 'function') {
+        addNotification({
+          type: 'success',
+          title: `Alert rule ${editingAlertRuleId ? 'updated' : 'created'}`,
+          message: savedRule.name,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      setAlertRulesError(err?.response?.data?.message || err?.message || 'Failed to save alert rule');
+    } finally {
+      setAlertRuleSaving(false);
+    }
+  };
+
+  const handleToggleAlertRule = async (rule) => {
+    try {
+      const updated = await alertRulesAPI.setEnabled(rule.id, !rule.enabled);
+      setAlertRules((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    } catch (err) {
+      setAlertRulesError(err?.response?.data?.message || err?.message || 'Failed to update rule status');
+    }
+  };
+
+  const handleDeleteAlertRule = (rule) => {
+    setConfirmAction({
+      type: 'delete_alert_rule',
+      id: rule.id,
+      message: `Delete alert rule "${rule.name}"?`,
+    });
+    setConfirmDialogOpen(true);
+  };
+
+  const fetchMonitoringData = async ({ silent = false } = {}) => {
+    try {
+      if (!silent) {
+        setMonitoringDataLoading(true);
+      }
+      setMonitoringDataError(null);
+
+      const [healthResult, agentsResult] = await Promise.allSettled([
+        systemAPI.getHealth(),
+        agentAPI.getAgents({ page: 1, pageSize: 100 }),
+      ]);
+
+      if (healthResult.status === 'fulfilled') {
+        setSystemHealth(healthResult.value);
+      }
+
+      if (agentsResult.status === 'fulfilled') {
+        setMonitoringAgents(agentsResult.value?.agents || []);
+      }
+
+      if (healthResult.status !== 'fulfilled' && agentsResult.status !== 'fulfilled') {
+        throw healthResult.reason || agentsResult.reason;
+      }
+
+      setMonitoringLastUpdated(new Date());
+    } catch (err) {
+      setMonitoringDataError(err?.response?.data?.message || err?.message || 'Failed to load monitoring data');
+    } finally {
+      setMonitoringDataLoading(false);
+    }
+  };
+
+  const healthServices = systemHealth?.services || [];
+  const healthyServicesCount = healthServices.filter((service) => service.status === 'healthy').length;
+  const agentStatusSummary = monitoringAgents.reduce((acc, agent) => {
+    const status = (agent?.status || 'unknown').toLowerCase();
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
+  const alertRuleMetrics = alertRuleMetadata?.metrics || Object.entries(ALERT_RULE_LABELS).map(([key, label]) => ({ key, label }));
+  const alertRuleOperators = alertRuleMetadata?.operators || Object.entries(OPERATOR_LABELS).map(([key, label]) => ({ key, label }));
+  const alertRuleSeverities = alertRuleMetadata?.severities || ['low', 'medium', 'high', 'critical'];
 
   return (
     <Box>
@@ -486,6 +750,132 @@ const Settings = () => {
                 />
               </Grid>
             </Grid>
+
+            <Divider sx={{ my: 3 }} />
+
+            <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2} mb={2}>
+              <Box>
+                <Typography variant="h6">Alert Rules</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Threshold-based rules for anomalies, blocked activity and risk spikes.
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  variant="outlined"
+                  startIcon={<Refresh />}
+                  onClick={() => fetchAlertRules()}
+                  disabled={alertRulesLoading}
+                >
+                  Refresh Rules
+                </Button>
+                <Button variant="contained" startIcon={<Add />} onClick={openCreateAlertRuleDialog}>
+                  Add Rule
+                </Button>
+              </Stack>
+            </Box>
+
+            {alertRulesError && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                {alertRulesError}
+              </Alert>
+            )}
+
+            {alertRulesLoading && <LinearProgress sx={{ mb: 2, borderRadius: 999 }} />}
+
+            <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Rule</TableCell>
+                    <TableCell>Condition</TableCell>
+                    <TableCell>Scope</TableCell>
+                    <TableCell>Channels</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {alertRules.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        No alert rules yet. Create one to enable automated alerting.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    alertRules.map((rule) => (
+                      <TableRow key={rule.id} hover>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={700}>
+                            {rule.name}
+                          </Typography>
+                          <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.5 }}>
+                            <Chip
+                              size="small"
+                              label={String(rule.severity || 'medium').toUpperCase()}
+                              color={
+                                String(rule.severity).toLowerCase() === 'critical' ? 'error'
+                                  : String(rule.severity).toLowerCase() === 'high' ? 'warning'
+                                    : String(rule.severity).toLowerCase() === 'low' ? 'success'
+                                      : 'default'
+                              }
+                            />
+                            <Chip size="small" variant="outlined" label={`${rule.windowMinutes || '-'}m`} />
+                            <Chip size="small" variant="outlined" label={`${rule.cooldownMinutes || 0}m cd`} />
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          {(ALERT_RULE_LABELS[rule.metric] || rule.metric)} {OPERATOR_LABELS[rule.operator] || rule.operator} {rule.threshold}
+                        </TableCell>
+                        <TableCell>
+                          <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
+                            {rule.activityType && <Chip size="small" variant="outlined" label={`Type:${rule.activityType}`} />}
+                            {rule.userId && <Chip size="small" variant="outlined" label={`User:${rule.userId}`} />}
+                            {rule.computerId && <Chip size="small" variant="outlined" label={`PC:${rule.computerId}`} />}
+                            {!rule.activityType && !rule.userId && !rule.computerId && (
+                              <Typography variant="caption" color="text.secondary">Global</Typography>
+                            )}
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
+                            {rule.notifyInApp && <Chip size="small" label="In-app" />}
+                            {rule.notifyEmail && <Chip size="small" label="Email" />}
+                            {!rule.notifyInApp && !rule.notifyEmail && <Chip size="small" variant="outlined" label="None" />}
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <FormControlLabel
+                            sx={{ m: 0 }}
+                            control={
+                              <Switch
+                                size="small"
+                                checked={Boolean(rule.enabled)}
+                                onChange={() => handleToggleAlertRule(rule)}
+                              />
+                            }
+                            label={rule.enabled ? 'Enabled' : 'Disabled'}
+                          />
+                        </TableCell>
+                        <TableCell align="right">
+                          <Tooltip title="Edit rule">
+                            <IconButton size="small" onClick={() => openEditAlertRuleDialog(rule)}>
+                              <Edit fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete rule">
+                            <IconButton size="small" color="error" onClick={() => handleDeleteAlertRule(rule)}>
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
             <Box mt={3}>
               <Button
                 variant="contained"
@@ -502,76 +892,222 @@ const Settings = () => {
 
       {/* Monitoring Settings */}
       {tabValue === 3 && (
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Monitoring Configuration
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Data Retention (days)"
-                  type="number"
-                  value={monitoringSettings.dataRetentionDays}
-                  onChange={(e) => setMonitoringSettings({ ...monitoringSettings, dataRetentionDays: e.target.value })}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Monitoring Interval (seconds)"
-                  type="number"
-                  value={monitoringSettings.monitoringInterval}
-                  onChange={(e) => setMonitoringSettings({ ...monitoringSettings, monitoringInterval: e.target.value })}
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={monitoringSettings.realTimeMonitoring}
-                      onChange={(e) => setMonitoringSettings({ ...monitoringSettings, realTimeMonitoring: e.target.checked })}
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2} flexWrap="wrap" mb={2}>
+                  <Box>
+                    <Typography variant="h6">Live System Health</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Real-time status from gateway aggregated checks (`/api/system/health`) and AgentService.
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Last updated: {monitoringLastUpdated ? monitoringLastUpdated.toLocaleTimeString() : '-'}
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant="outlined"
+                    startIcon={<Refresh />}
+                    onClick={() => fetchMonitoringData()}
+                    disabled={monitoringDataLoading}
+                  >
+                    {monitoringDataLoading ? 'Refreshing...' : 'Refresh Health'}
+                  </Button>
+                </Box>
+
+                {monitoringDataLoading && <LinearProgress sx={{ mb: 2, borderRadius: 999 }} />}
+
+                {monitoringDataError && (
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    {monitoringDataError}
+                  </Alert>
+                )}
+
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Paper sx={{ p: 2 }}>
+                      <Typography variant="body2" color="text.secondary">Overall Status</Typography>
+                      <Chip
+                        size="small"
+                        color={systemHealth?.status === 'healthy' ? 'success' : systemHealth?.status === 'degraded' ? 'warning' : 'error'}
+                        label={(systemHealth?.status || 'unknown').toUpperCase()}
+                        sx={{ mt: 1 }}
+                      />
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Paper sx={{ p: 2 }}>
+                      <Typography variant="body2" color="text.secondary">Services Healthy</Typography>
+                      <Typography variant="h5">{healthyServicesCount}/{healthServices.length}</Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Paper sx={{ p: 2 }}>
+                      <Typography variant="body2" color="text.secondary">Agents Total</Typography>
+                      <Typography variant="h5">{monitoringAgents.length}</Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Paper sx={{ p: 2 }}>
+                      <Typography variant="body2" color="text.secondary">Agents Online</Typography>
+                      <Typography variant="h5">{agentStatusSummary.online || agentStatusSummary.active || 0}</Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12} lg={7}>
+                    <Typography variant="subtitle1" gutterBottom>Service Checks</Typography>
+                    <TableContainer component={Paper} variant="outlined">
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Service</TableCell>
+                            <TableCell>Status</TableCell>
+                            <TableCell align="right">Latency</TableCell>
+                            <TableCell align="right">HTTP</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {healthServices.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={4} align="center">No health data loaded yet</TableCell>
+                            </TableRow>
+                          ) : healthServices.map((service) => (
+                            <TableRow key={service.name} hover>
+                              <TableCell>{service.name}</TableCell>
+                              <TableCell>
+                                <Chip
+                                  size="small"
+                                  color={service.status === 'healthy' ? 'success' : service.status === 'degraded' ? 'warning' : 'error'}
+                                  label={(service.status || 'unknown').toUpperCase()}
+                                />
+                              </TableCell>
+                              <TableCell align="right">{service.latencyMs ?? '-'} ms</TableCell>
+                              <TableCell align="right">{service.httpStatus ?? '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Grid>
+
+                  <Grid item xs={12} lg={5}>
+                    <Typography variant="subtitle1" gutterBottom>Agents & Heartbeats</Typography>
+                    <TableContainer component={Paper} variant="outlined">
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>ID</TableCell>
+                            <TableCell>Status</TableCell>
+                            <TableCell>Version</TableCell>
+                            <TableCell>Last Heartbeat</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {monitoringAgents.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={4} align="center">No agents found</TableCell>
+                            </TableRow>
+                          ) : monitoringAgents.slice(0, 20).map((agent) => (
+                            <TableRow key={agent.id} hover>
+                              <TableCell>{agent.id}</TableCell>
+                              <TableCell>
+                                <Chip
+                                  size="small"
+                                  color={String(agent.status || '').toLowerCase().includes('online') || String(agent.status || '').toLowerCase().includes('active') ? 'success' : 'warning'}
+                                  label={(agent.status || 'unknown').toUpperCase()}
+                                />
+                              </TableCell>
+                              <TableCell>{agent.version || '-'}</TableCell>
+                              <TableCell>
+                                {agent.lastHeartbeat ? new Date(agent.lastHeartbeat).toLocaleString() : '-'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Monitoring Configuration
+                </Typography>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Data Retention (days)"
+                      type="number"
+                      value={monitoringSettings.dataRetentionDays}
+                      onChange={(e) => setMonitoringSettings({ ...monitoringSettings, dataRetentionDays: e.target.value })}
                     />
-                  }
-                  label="Real-time Monitoring"
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={monitoringSettings.anomalyDetection}
-                      onChange={(e) => setMonitoringSettings({ ...monitoringSettings, anomalyDetection: e.target.checked })}
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Monitoring Interval (seconds)"
+                      type="number"
+                      value={monitoringSettings.monitoringInterval}
+                      onChange={(e) => setMonitoringSettings({ ...monitoringSettings, monitoringInterval: e.target.value })}
                     />
-                  }
-                  label="Anomaly Detection"
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={monitoringSettings.enableWhitelist}
-                      onChange={(e) => setMonitoringSettings({ ...monitoringSettings, enableWhitelist: e.target.checked })}
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={monitoringSettings.realTimeMonitoring}
+                          onChange={(e) => setMonitoringSettings({ ...monitoringSettings, realTimeMonitoring: e.target.checked })}
+                        />
+                      }
+                      label="Real-time Monitoring"
                     />
-                  }
-                  label="Enable Whitelist"
-                />
-              </Grid>
-            </Grid>
-            <Box mt={3}>
-              <Button
-                variant="contained"
-                startIcon={<Save />}
-                onClick={() => handleSaveSettings('Monitoring')}
-                disabled={loading}
-              >
-                Save Monitoring Settings
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={monitoringSettings.anomalyDetection}
+                          onChange={(e) => setMonitoringSettings({ ...monitoringSettings, anomalyDetection: e.target.checked })}
+                        />
+                      }
+                      label="Anomaly Detection"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={monitoringSettings.enableWhitelist}
+                          onChange={(e) => setMonitoringSettings({ ...monitoringSettings, enableWhitelist: e.target.checked })}
+                        />
+                      }
+                      label="Enable Whitelist"
+                    />
+                  </Grid>
+                </Grid>
+                <Box mt={3}>
+                  <Button
+                    variant="contained"
+                    startIcon={<Save />}
+                    onClick={() => handleSaveSettings('Monitoring')}
+                    disabled={loading}
+                  >
+                    Save Monitoring Settings
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
       )}
 
       {/* Whitelist/Blacklist Settings */}
@@ -686,6 +1222,175 @@ const Settings = () => {
           </Grid>
         </Grid>
       )}
+
+      <Dialog
+        open={alertRuleDialogOpen}
+        onClose={() => setAlertRuleDialogOpen(false)}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>{editingAlertRuleId ? 'Edit Alert Rule' : 'Create Alert Rule'}</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12} md={8}>
+              <TextField
+                fullWidth
+                label="Rule Name"
+                value={alertRuleForm.name}
+                onChange={(e) => handleAlertRuleFieldChange('name', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(alertRuleForm.enabled)}
+                    onChange={(e) => handleAlertRuleFieldChange('enabled', e.target.checked)}
+                  />
+                }
+                label="Enabled"
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Metric</InputLabel>
+                <Select
+                  label="Metric"
+                  value={alertRuleForm.metric}
+                  onChange={(e) => handleAlertRuleFieldChange('metric', e.target.value)}
+                >
+                  {alertRuleMetrics.map((metric) => (
+                    <MenuItem key={metric.key} value={metric.key}>
+                      {metric.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Operator</InputLabel>
+                <Select
+                  label="Operator"
+                  value={alertRuleForm.operator}
+                  onChange={(e) => handleAlertRuleFieldChange('operator', e.target.value)}
+                >
+                  {alertRuleOperators.map((operator) => (
+                    <MenuItem key={operator.key} value={operator.key}>
+                      {operator.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Threshold"
+                type="number"
+                value={alertRuleForm.threshold}
+                onChange={(e) => handleAlertRuleFieldChange('threshold', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Severity</InputLabel>
+                <Select
+                  label="Severity"
+                  value={alertRuleForm.severity}
+                  onChange={(e) => handleAlertRuleFieldChange('severity', e.target.value)}
+                >
+                  {alertRuleSeverities.map((severity) => (
+                    <MenuItem key={severity} value={severity}>
+                      {String(severity).charAt(0).toUpperCase() + String(severity).slice(1)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Window (minutes)"
+                type="number"
+                value={alertRuleForm.windowMinutes}
+                onChange={(e) => handleAlertRuleFieldChange('windowMinutes', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Cooldown (minutes)"
+                type="number"
+                value={alertRuleForm.cooldownMinutes}
+                onChange={(e) => handleAlertRuleFieldChange('cooldownMinutes', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Activity Type (optional)"
+                placeholder="FILE_ACCESS"
+                value={alertRuleForm.activityType}
+                onChange={(e) => handleAlertRuleFieldChange('activityType', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="User ID (optional)"
+                type="number"
+                value={alertRuleForm.userId}
+                onChange={(e) => handleAlertRuleFieldChange('userId', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Computer ID (optional)"
+                type="number"
+                value={alertRuleForm.computerId}
+                onChange={(e) => handleAlertRuleFieldChange('computerId', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(alertRuleForm.notifyInApp)}
+                    onChange={(e) => handleAlertRuleFieldChange('notifyInApp', e.target.checked)}
+                  />
+                }
+                label="In-app"
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(alertRuleForm.notifyEmail)}
+                    onChange={(e) => handleAlertRuleFieldChange('notifyEmail', e.target.checked)}
+                  />
+                }
+                label="Email"
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAlertRuleDialogOpen(false)} disabled={alertRuleSaving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveAlertRule}
+            variant="contained"
+            startIcon={<Save />}
+            disabled={alertRuleSaving}
+          >
+            {alertRuleSaving ? 'Saving...' : editingAlertRuleId ? 'Save Rule' : 'Create Rule'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Confirmation Dialog */}
       <Dialog open={confirmDialogOpen} onClose={() => setConfirmDialogOpen(false)}>

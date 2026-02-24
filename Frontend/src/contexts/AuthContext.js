@@ -72,10 +72,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = async () => {
+  const logout = async (options = {}) => {
+    const skipServerLogout = options?.skipServerLogout === true;
+
     try {
-      // Вызываем API для логаута на сервере
-      await authAPI.logout();
+      if (!skipServerLogout) {
+        // Вызываем API для логаута на сервере
+        await authAPI.logout();
+      }
     } catch (error) {
       console.error('Logout API error:', error);
       // Продолжаем с локальным логаутом даже если API не сработал

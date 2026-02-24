@@ -1,0 +1,2 @@
+obj/Debug/net10.0/Protos/Metrics.cs \
+obj/Debug/net10.0/Protos/MetricsGrpc.cs: Protos/metrics.proto

@@ -1,0 +1,165 @@
+syntax = "proto3";
+
+option csharp_namespace = "Gateway.Protos.Agent";
+
+package agent;
+
+service AgentManagementService {
+  rpc RegisterAgent (RegisterAgentRequest) returns (RegisterAgentResponse);
+  rpc UpdateAgentStatus (UpdateAgentStatusRequest) returns (UpdateAgentStatusResponse);
+  rpc GetAgent (GetAgentRequest) returns (GetAgentResponse);
+  rpc GetAgentsByComputer (GetAgentsByComputerRequest) returns (GetAgentsByComputerResponse);
+  rpc GetAllAgents (GetAllAgentsRequest) returns (GetAllAgentsResponse);
+  rpc DeleteAgent (DeleteAgentRequest) returns (DeleteAgentResponse);
+
+  rpc CreateSyncBatch (CreateSyncBatchRequest) returns (CreateSyncBatchResponse);
+  rpc UpdateSyncBatch (UpdateSyncBatchRequest) returns (UpdateSyncBatchResponse);
+  rpc GetSyncBatch (GetSyncBatchRequest) returns (GetSyncBatchResponse);
+  rpc GetSyncBatchesByAgent (GetSyncBatchesByAgentRequest) returns (GetSyncBatchesByAgentResponse);
+  rpc GetPendingSyncBatches (GetPendingSyncBatchesRequest) returns (GetPendingSyncBatchesResponse);
+}
+
+message RegisterAgentRequest {
+  int64 computer_id = 1;
+  string version = 2;
+  string config_version = 3;
+}
+
+message RegisterAgentResponse {
+  bool success = 1;
+  string message = 2;
+  Agent agent = 3;
+}
+
+message UpdateAgentStatusRequest {
+  int64 agent_id = 1;
+  string status = 2;
+  string config_version = 3;
+}
+
+message UpdateAgentStatusResponse {
+  bool success = 1;
+  string message = 2;
+  Agent agent = 3;
+}
+
+message GetAgentRequest {
+  int64 agent_id = 1;
+}
+
+message GetAgentResponse {
+  bool success = 1;
+  string message = 2;
+  Agent agent = 3;
+}
+
+message GetAgentsByComputerRequest {
+  int64 computer_id = 1;
+}
+
+message GetAgentsByComputerResponse {
+  bool success = 1;
+  string message = 2;
+  repeated Agent agents = 3;
+}
+
+message GetAllAgentsRequest {
+  string status = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message GetAllAgentsResponse {
+  bool success = 1;
+  string message = 2;
+  repeated Agent agents = 3;
+  int32 total_count = 4;
+}
+
+message DeleteAgentRequest {
+  int64 agent_id = 1;
+}
+
+message DeleteAgentResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message CreateSyncBatchRequest {
+  int64 agent_id = 1;
+  string batch_id = 2;
+  int32 records_count = 3;
+}
+
+message CreateSyncBatchResponse {
+  bool success = 1;
+  string message = 2;
+  SyncBatch batch = 3;
+}
+
+message UpdateSyncBatchRequest {
+  int64 batch_id = 1;
+  string status = 2;
+  int32 records_count = 3;
+}
+
+message UpdateSyncBatchResponse {
+  bool success = 1;
+  string message = 2;
+  SyncBatch batch = 3;
+}
+
+message GetSyncBatchRequest {
+  int64 batch_id = 1;
+}
+
+message GetSyncBatchResponse {
+  bool success = 1;
+  string message = 2;
+  SyncBatch batch = 3;
+}
+
+message GetSyncBatchesByAgentRequest {
+  int64 agent_id = 1;
+  string status = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message GetSyncBatchesByAgentResponse {
+  bool success = 1;
+  string message = 2;
+  repeated SyncBatch batches = 3;
+  int32 total_count = 4;
+}
+
+message GetPendingSyncBatchesRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message GetPendingSyncBatchesResponse {
+  bool success = 1;
+  string message = 2;
+  repeated SyncBatch batches = 3;
+  int32 total_count = 4;
+}
+
+message Agent {
+  int64 id = 1;
+  int64 computer_id = 2;
+  string version = 3;
+  string status = 4;
+  string last_heartbeat = 5;
+  string config_version = 6;
+  string offline_since = 7;
+}
+
+message SyncBatch {
+  int64 id = 1;
+  int64 agent_id = 2;
+  string batch_id = 3;
+  string status = 4;
+  string synced_at = 5;
+  int32 records_count = 6;
+}

@@ -1,0 +1,2 @@
+obj/Debug/net10.0/Protos/Agent.cs \
+obj/Debug/net10.0/Protos/AgentGrpc.cs: Protos/agent.proto

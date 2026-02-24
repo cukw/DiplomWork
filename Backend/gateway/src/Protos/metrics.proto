@@ -1,0 +1,175 @@
+syntax = "proto3";
+
+option csharp_namespace = "Gateway.Protos.Metrics";
+
+package metrics;
+
+service MetricsService {
+  rpc CreateMetric (CreateMetricRequest) returns (CreateMetricResponse);
+  rpc UpdateMetric (UpdateMetricRequest) returns (UpdateMetricResponse);
+  rpc GetMetric (GetMetricRequest) returns (GetMetricResponse);
+  rpc GetMetricsByUser (GetMetricsByUserRequest) returns (GetMetricsByUserResponse);
+  rpc GetAllMetrics (GetAllMetricsRequest) returns (GetAllMetricsResponse);
+  rpc DeleteMetric (DeleteMetricRequest) returns (DeleteMetricResponse);
+
+  rpc AddWhitelistEntry (AddWhitelistEntryRequest) returns (AddWhitelistEntryResponse);
+  rpc RemoveWhitelistEntry (RemoveWhitelistEntryRequest) returns (RemoveWhitelistEntryResponse);
+  rpc GetWhitelistEntries (GetWhitelistEntriesRequest) returns (GetWhitelistEntriesResponse);
+
+  rpc AddBlacklistEntry (AddBlacklistEntryRequest) returns (AddBlacklistEntryResponse);
+  rpc RemoveBlacklistEntry (RemoveBlacklistEntryRequest) returns (RemoveBlacklistEntryResponse);
+  rpc GetBlacklistEntries (GetBlacklistEntriesRequest) returns (GetBlacklistEntriesResponse);
+}
+
+message CreateMetricRequest {
+  int64 user_id = 1;
+  string type = 2;
+  string config = 3;
+}
+
+message CreateMetricResponse {
+  bool success = 1;
+  string message = 2;
+  Metric metric = 3;
+}
+
+message UpdateMetricRequest {
+  int64 metric_id = 1;
+  string type = 2;
+  string config = 3;
+  bool is_active = 4;
+}
+
+message UpdateMetricResponse {
+  bool success = 1;
+  string message = 2;
+  Metric metric = 3;
+}
+
+message GetMetricRequest {
+  int64 metric_id = 1;
+}
+
+message GetMetricResponse {
+  bool success = 1;
+  string message = 2;
+  Metric metric = 3;
+}
+
+message GetMetricsByUserRequest {
+  int64 user_id = 1;
+}
+
+message GetMetricsByUserResponse {
+  bool success = 1;
+  string message = 2;
+  repeated Metric metrics = 3;
+}
+
+message GetAllMetricsRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message GetAllMetricsResponse {
+  bool success = 1;
+  string message = 2;
+  repeated Metric metrics = 3;
+  int32 total_count = 4;
+}
+
+message DeleteMetricRequest {
+  int64 metric_id = 1;
+}
+
+message DeleteMetricResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message AddWhitelistEntryRequest {
+  int64 metric_id = 1;
+  string pattern = 2;
+  string action = 3;
+}
+
+message AddWhitelistEntryResponse {
+  bool success = 1;
+  string message = 2;
+  WhitelistEntry entry = 3;
+}
+
+message RemoveWhitelistEntryRequest {
+  int64 entry_id = 1;
+}
+
+message RemoveWhitelistEntryResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetWhitelistEntriesRequest {
+  int64 metric_id = 1;
+}
+
+message GetWhitelistEntriesResponse {
+  bool success = 1;
+  string message = 2;
+  repeated WhitelistEntry entries = 3;
+}
+
+message AddBlacklistEntryRequest {
+  int64 metric_id = 1;
+  string pattern = 2;
+  string action = 3;
+}
+
+message AddBlacklistEntryResponse {
+  bool success = 1;
+  string message = 2;
+  BlacklistEntry entry = 3;
+}
+
+message RemoveBlacklistEntryRequest {
+  int64 entry_id = 1;
+}
+
+message RemoveBlacklistEntryResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetBlacklistEntriesRequest {
+  int64 metric_id = 1;
+}
+
+message GetBlacklistEntriesResponse {
+  bool success = 1;
+  string message = 2;
+  repeated BlacklistEntry entries = 3;
+}
+
+message Metric {
+  int64 id = 1;
+  int64 user_id = 2;
+  string type = 3;
+  string config = 4;
+  bool is_active = 5;
+  string updated_at = 6;
+}
+
+message WhitelistEntry {
+  int64 id = 1;
+  int64 metric_id = 2;
+  string pattern = 3;
+  string action = 4;
+  string created_at = 5;
+}
+
+message BlacklistEntry {
+  int64 id = 1;
+  int64 metric_id = 2;
+  string pattern = 3;
+  string action = 4;
+  string created_at = 5;
+}

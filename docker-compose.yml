@@ -10,7 +10,6 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      # Инициализация схемы активностей
       - ./Backend/services/ActivityService/db/initActivity.sql:/docker-entrypoint-initdb.d/10-initActivity.sql:ro
       - postgres_activity_data:/var/lib/postgresql/data
     networks:
@@ -33,7 +32,6 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      # Инициализация схемы авторизации
       - ./Backend/services/AuthService/db/initAuthService.sql:/docker-entrypoint-initdb.d/10-initAuthService.sql:ro
       - postgres_auth_data:/var/lib/postgresql/data
     networks:
@@ -56,7 +54,6 @@ services:
     ports:
       - "5434:5432"
     volumes:
-      # Инициализация схемы пользователей
       - ./Backend/services/UserService/db/initUserService.sql:/docker-entrypoint-initdb.d/10-initUserService.sql:ro
       - postgres_user_data:/var/lib/postgresql/data
     networks:
@@ -79,7 +76,6 @@ services:
     ports:
       - "5435:5432"
     volumes:
-      # Инициализация схемы метрик
       - ./Backend/services/MetricsService/db/initMetricsService.sql:/docker-entrypoint-initdb.d/10-initMetricsService.sql:ro
       - postgres_metrics_data:/var/lib/postgresql/data
     networks:
@@ -102,7 +98,6 @@ services:
     ports:
       - "5436:5432"
     volumes:
-      # Инициализация схемы уведомлений
       - ./Backend/services/NotificationService/db/initNotificationService.sql:/docker-entrypoint-initdb.d/10-initNotificationService.sql:ro
       - postgres_notification_data:/var/lib/postgresql/data
     networks:
@@ -125,7 +120,6 @@ services:
     ports:
       - "5437:5432"
     volumes:
-      # Инициализация схемы отчетов
       - ./Backend/services/ReportService/db/initReportService.sql:/docker-entrypoint-initdb.d/10-initReportService.sql:ro
       - postgres_report_data:/var/lib/postgresql/data
     networks:
@@ -148,7 +142,6 @@ services:
     ports:
       - "5438:5432"
     volumes:
-      # Инициализация схемы агентов
       - ./Backend/services/AgentManagementService/db/InitAgent.sql:/docker-entrypoint-initdb.d/10-initAgent.sql:ro
       - postgres_agent_data:/var/lib/postgresql/data
     networks:
@@ -190,9 +183,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      # строка подключения для EF / Npgsql
       ConnectionStrings__DefaultConnection: "Host=postgres-activity;Database=activities;Username=postgres;Password=pass;TrustServerCertificate=true"
-      # RabbitMQ конфигурация (соответствует hardcoded значениям в Program.cs)
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__User: "guest"
       RabbitMQ__Password: "guest"
@@ -213,9 +204,9 @@ services:
         condition: service_healthy
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres-auth;Database=auth;Username=postgres;Password=pass;TrustServerCertificate=true"
-      ASPNETCORE_URLS: "http://+:5003"
     ports:
-      - "5003:5003"
+      - "5003:5003"   # gRPC
+      - "5007:5007"   # REST
     networks:
       - backend
 
@@ -268,9 +259,9 @@ services:
         condition: service_healthy
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres-notification;Database=notifications;Username=postgres;Password=pass;TrustServerCertificate=true"
-      ASPNETCORE_URLS: "http://+:5012"
     ports:
-      - "5012:5012"
+      - "5012:5012"   # gRPC
+      - "5017:5017"   # REST
     networks:
       - backend
 
@@ -282,7 +273,7 @@ services:
     restart: unless-stopped
     depends_on:
       activityservice:
-        condition: service_started
+        condition: service_healthy
     environment:
       ActivityService__Url: "http://activityservice:5001"
       Agent__ComputerId: "1"
@@ -335,19 +326,33 @@ services:
     container_name: gateway
     restart: unless-stopped
     depends_on:
-      - activityservice
-      - authservice
-      - userservice
-      - metricservice
-      - notificationservice
-      - reportservice
-      - agentmanagementservice
+      activityservice:
+        condition: service_healthy
+      authservice:
+        condition: service_healthy
+      userservice:
+        condition: service_healthy
+      metricservice:
+        condition: service_healthy
+      notificationservice:
+        condition: service_healthy
+      reportservice:
+        condition: service_healthy
+      agentmanagementservice:
+        condition: service_healthy
     environment:
       ASPNETCORE_URLS: "http://+:8080"
       Jwt__Key: "ThisIsASecretKeyForJWTTokenGeneration123456789"
       Jwt__Issuer: "ActivityMonitoringSystem"
       Jwt__Audience: "ActivityMonitoringSystem"
       ASPNETCORE_ENVIRONMENT: "Development"
+      Services__Activity: "http://activityservice:5001"
+      Services__Auth: "http://authservice:5003"
+      Services__User: "http://userservice:5004"
+      Services__Notification: "http://notificationservice:5012"
+      Services__Metrics: "http://metricservice:5010"
+      Services__Report: "http://reportservice:5013"
+      Services__Agent: "http://agentmanagementservice:5015"
     ports:
       - "8080:8080"
     networks:

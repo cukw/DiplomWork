@@ -11,13 +11,17 @@ import {
   Container,
   Avatar,
   InputAdornment,
-  IconButton
+  IconButton,
+  Stack,
+  Chip,
+  Divider,
 } from '@mui/material';
 import {
   Visibility,
   VisibilityOff,
   LockOutlined,
-  Security
+  Security,
+  ArrowForward,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -26,16 +30,15 @@ const Login = () => {
   const { login, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const [formData, setFormData] = useState({
     username: '',
-    password: ''
+    password: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user && !authLoading) {
       const from = location.state?.from?.pathname || '/dashboard';
@@ -44,37 +47,39 @@ const Login = () => {
   }, [user, authLoading, navigate, location]);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+
     if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.username || !formData.password) {
-      setError('Please enter both username and password');
+      setError('Введите логин и пароль');
       return;
     }
 
     try {
       setLoading(true);
       setError('');
-      
       await login(formData.username, formData.password);
-      
-      // Navigation will be handled by the useEffect above
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      setError(err.message || 'Не удалось выполнить вход. Проверьте учетные данные.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTogglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
+  const fillDemoCredentials = () => {
+    setFormData({
+      username: 'testuser',
+      password: 'password',
+    });
+    setError('');
   };
 
   if (authLoading) {
@@ -84,7 +89,6 @@ const Login = () => {
         justifyContent="center"
         alignItems="center"
         minHeight="100vh"
-        sx={{ backgroundColor: 'background.default' }}
       >
         <CircularProgress />
       </Box>
@@ -97,131 +101,205 @@ const Login = () => {
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-        py: 4
+        py: { xs: 3, md: 6 },
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      <Container maxWidth="sm">
-        <Card
+      <Box
+        aria-hidden
+        sx={(theme) => ({
+          position: 'absolute',
+          inset: 0,
+          background:
+            `radial-gradient(circle at 16% 18%, ${theme.palette.primary.main}14 0%, transparent 44%), ` +
+            `radial-gradient(circle at 88% 20%, ${theme.palette.secondary.main}14 0%, transparent 42%), ` +
+            `radial-gradient(circle at 50% 92%, ${theme.palette.info.main}12 0%, transparent 44%)`,
+          pointerEvents: 'none',
+        })}
+      />
+
+      <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+        <Box
           sx={{
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-            borderRadius: 2,
-            overflow: 'hidden'
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: '1.05fr 0.95fr' },
+            gap: 3,
+            alignItems: 'stretch',
           }}
         >
-          <CardContent sx={{ p: 4 }}>
-            <Box display="flex" flexDirection="column" alignItems="center" mb={4}>
-              <Avatar
-                sx={{
-                  mb: 2,
-                  width: 64,
-                  height: 64,
-                  backgroundColor: 'primary.main',
-                  boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
-                }}
-              >
-                <LockOutlined fontSize="large" />
-              </Avatar>
-              <Typography variant="h4" component="h1" gutterBottom color="primary">
-                Activity Monitor
-              </Typography>
-              <Typography variant="body2" color="text.secondary" align="center">
-                Sign in to access the user activity monitoring system
-              </Typography>
-            </Box>
+          <Card
+            sx={(theme) => ({
+              p: { xs: 1, md: 2 },
+              minHeight: { md: 520 },
+              display: 'flex',
+              alignItems: 'stretch',
+              background:
+                `linear-gradient(160deg, ${theme.palette.common.white}f2 0%, ${theme.palette.common.white}d9 100%)`,
+            })}
+          >
+            <CardContent sx={{ p: { xs: 2, md: 3 }, width: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Stack direction="row" spacing={1.5} alignItems="center" mb={3}>
+                <Avatar
+                  variant="rounded"
+                  sx={(theme) => ({
+                    width: 46,
+                    height: 46,
+                    borderRadius: 2.5,
+                    bgcolor: `${theme.palette.primary.main}18`,
+                    color: 'primary.dark',
+                  })}
+                >
+                  <LockOutlined />
+                </Avatar>
+                <Box>
+                  <Typography variant="h5">Вход в систему</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Панель мониторинга активности сотрудников
+                  </Typography>
+                </Box>
+              </Stack>
 
-            {error && (
-              <Alert severity="error" sx={{ mb: 3 }}>
-                {error}
-              </Alert>
-            )}
+              <Stack direction="row" spacing={1} mb={3} flexWrap="wrap">
+                <Chip size="small" label="JWT authentication" color="primary" variant="outlined" />
+                <Chip size="small" label="Gateway routing" color="default" variant="outlined" />
+                <Chip size="small" label="Audit ready" color="default" variant="outlined" />
+              </Stack>
 
-            <Box
-              component="form"
-              onSubmit={handleSubmit}
-              sx={{ width: '100%' }}
-            >
-              <TextField
-                fullWidth
-                label="Username"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                margin="normal"
-                variant="outlined"
-                autoComplete="username"
-                autoFocus
-                disabled={loading}
-                sx={{ mb: 2 }}
-              />
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
 
-              <TextField
-                fullWidth
-                label="Password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                onChange={handleChange}
-                margin="normal"
-                variant="outlined"
-                autoComplete="current-password"
-                disabled={loading}
-                sx={{ mb: 3 }}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label="toggle password visibility"
-                        onClick={handleTogglePasswordVisibility}
-                        edge="end"
-                        disabled={loading}
-                      >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
-              />
+              <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+                <TextField
+                  fullWidth
+                  label="Логин"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  margin="normal"
+                  autoComplete="username"
+                  autoFocus
+                  disabled={loading}
+                />
 
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                size="large"
-                disabled={loading}
-                sx={{
-                  py: 1.5,
-                  mb: 2,
-                  textTransform: 'none',
-                  fontSize: '1.1rem',
-                  fontWeight: 600,
-                  boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
-                }}
-              >
-                {loading ? (
-                  <CircularProgress size={24} color="inherit" />
-                ) : (
-                  'Sign In'
-                )}
-              </Button>
-            </Box>
+                <TextField
+                  fullWidth
+                  label="Пароль"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={handleChange}
+                  margin="normal"
+                  autoComplete="current-password"
+                  disabled={loading}
+                  sx={{ mt: 2 }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          edge="end"
+                          disabled={loading}
+                        >
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
 
-            <Box display="flex" justifyContent="center" mt={3}>
-              <Box display="flex" alignItems="center" color="text.secondary">
-                <Security sx={{ mr: 1, fontSize: 20 }} />
-                <Typography variant="caption">
-                  Secure authentication with JWT tokens
-                </Typography>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mt={3}>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    size="large"
+                    disabled={loading}
+                    endIcon={loading ? null : <ArrowForward />}
+                    sx={{ minWidth: 180, flex: { sm: 1 } }}
+                  >
+                    {loading ? <CircularProgress size={22} color="inherit" /> : 'Войти'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    size="large"
+                    onClick={fillDemoCredentials}
+                    disabled={loading}
+                    sx={{ flex: { sm: 1 } }}
+                  >
+                    Заполнить демо
+                  </Button>
+                </Stack>
               </Box>
-            </Box>
-          </CardContent>
-        </Card>
 
-        <Box mt={3} textAlign="center">
-          <Typography variant="body2" color="text.secondary">
-            Demo Credentials: admin / admin123
-          </Typography>
+              <Divider sx={{ my: 3 }} />
+
+              <Stack direction="row" spacing={1.25} alignItems="flex-start">
+                <Security color="primary" sx={{ mt: 0.15, fontSize: 20 }} />
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    Тестовый доступ
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Используйте `testuser / password` для входа в локальном окружении.
+                  </Typography>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+
+          <Card
+            sx={(theme) => ({
+              p: { xs: 1, md: 2 },
+              display: 'flex',
+              alignItems: 'stretch',
+              minHeight: { md: 520 },
+              background:
+                `linear-gradient(180deg, ${theme.palette.primary.main}0d 0%, ${theme.palette.common.white}ee 28%, ${theme.palette.common.white}db 100%)`,
+            })}
+          >
+            <CardContent sx={{ p: { xs: 2, md: 3 }, width: '100%' }}>
+              <Typography variant="overline" color="primary" sx={{ letterSpacing: '0.12em', fontWeight: 700 }}>
+                Security Workspace
+              </Typography>
+              <Typography variant="h4" sx={{ mt: 0.5, mb: 1.5 }}>
+                Центр наблюдения за активностью
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 3, lineHeight: 1.65 }}>
+                Интерфейс предназначен для оперативного контроля событий, аномалий и отчётности по пользовательской
+                активности. После входа откроется рабочая панель с live-метриками и журналом действий.
+              </Typography>
+
+              <Stack spacing={1.5}>
+                {[
+                  ['Gateway-first API', 'Все запросы проходят через единый gateway и JWT-проверку.'],
+                  ['Anomaly feed', 'Выделение подозрительных действий и быстрый просмотр свежих инцидентов.'],
+                  ['Reports & analytics', 'Экспорт и визуализация статистики по активности и рискам.'],
+                ].map(([title, description]) => (
+                  <Box
+                    key={title}
+                    sx={(theme) => ({
+                      p: 1.75,
+                      borderRadius: 2.5,
+                      border: `1px solid ${theme.palette.primary.main}14`,
+                      backgroundColor: `${theme.palette.common.white}aa`,
+                    })}
+                  >
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.35 }}>
+                      {title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {description}
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            </CardContent>
+          </Card>
         </Box>
       </Container>
     </Box>

@@ -21,6 +21,7 @@ RUN dotnet publish "MetricsService.csproj" \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 WORKDIR /app
 EXPOSE 5010 5011
+ENV ASPNETCORE_URLS=http://+:5010;http://+:5011
 ENV DOTNET_EnableDiagnostics=0
 
 # Копируем только publish
@@ -28,6 +29,6 @@ COPY --from=build /app/publish .
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:5005 || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:5011/health || exit 1
 
 ENTRYPOINT ["dotnet", "MetricsService.dll"]

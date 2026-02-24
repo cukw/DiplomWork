@@ -8,14 +8,23 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.4" />
-    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.0.4" />
-    <PackageReference Include="Grpc.Net.Client" Version="2.65.0" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0" />
-    <PackageReference Include="Ocelot" Version="24.1.0" />
-    <None Update="ocelot.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.65.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.28.3" />
+    <PackageReference Include="Grpc.Net.ClientFactory" Version="2.65.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.65.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
 
+  <ItemGroup>
+    <Protobuf Include="Protos/activity.proto" GrpcServices="Client" />
+    <Protobuf Include="Protos/auth.proto"     GrpcServices="Client" />
+    <Protobuf Include="Protos/user.proto"     GrpcServices="Client" />
+    <Protobuf Include="Protos/notification.proto" GrpcServices="Client" />
+    <Protobuf Include="Protos/metrics.proto"  GrpcServices="Client" />
+    <Protobuf Include="Protos/report.proto"   GrpcServices="Client" />
+    <Protobuf Include="Protos/agent.proto"    GrpcServices="Client" />
   </ItemGroup>
 
 </Project>

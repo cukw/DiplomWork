@@ -20,6 +20,7 @@ message GetActivitiesRequest {
   optional string from_timestamp = 3;  // ISO8601
   optional int32 limit = 4;
   optional bool only_blocked = 5;
+  optional string to_timestamp = 6;    // ISO8601
 }
 
 message GetActivitiesReply {

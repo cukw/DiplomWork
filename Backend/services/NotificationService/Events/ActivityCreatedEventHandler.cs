@@ -21,7 +21,7 @@ public class ActivityCreatedEventHandler : IConsumer<ActivityCreatedEvent>
     public async Task Consume(ConsumeContext<ActivityCreatedEvent> context)
     {
         var @event = context.Message;
-        _logger.LogInformation("Processing ActivityCreatedEvent for activity {ActivityId}, computer {ComputerId}, type {ActivityType}", 
+        _logger.LogInformation("Processing ActivityCreatedEvent for activity {ActivityId}, computer {ComputerId}, type {ActivityType}",
             @event.ActivityId, @event.ComputerId, @event.ActivityType);
 
         try
@@ -33,7 +33,7 @@ public class ActivityCreatedEventHandler : IConsumer<ActivityCreatedEvent>
 
             // Check if this activity type requires notification
             var notificationTypes = new[] { "MALWARE", "DATA_EXFILTRATION", "UNAUTHORIZED_ACCESS", "SUSPICIOUS_ACTIVITY" };
-            
+
             if (notificationTypes.Contains(@event.ActivityType.ToUpper()))
             {
                 var notification = new Notification

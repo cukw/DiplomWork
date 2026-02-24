@@ -1,0 +1,155 @@
+syntax = "proto3";
+
+option csharp_namespace = "Gateway.Protos.Notification";
+
+package notification;
+
+service NotificationService {
+  rpc SendNotification (SendNotificationRequest) returns (SendNotificationResponse);
+  rpc GetNotifications (GetNotificationsRequest) returns (GetNotificationsResponse);
+  rpc MarkAsRead (MarkAsReadRequest) returns (MarkAsReadResponse);
+  rpc MarkAllAsRead (MarkAllAsReadRequest) returns (MarkAllAsReadResponse);
+  rpc DeleteNotification (DeleteNotificationRequest) returns (DeleteNotificationResponse);
+  rpc GetUnreadCount (GetUnreadCountRequest) returns (GetUnreadCountResponse);
+
+  rpc CreateNotificationTemplate (CreateNotificationTemplateRequest) returns (CreateNotificationTemplateResponse);
+  rpc UpdateNotificationTemplate (UpdateNotificationTemplateRequest) returns (UpdateNotificationTemplateResponse);
+  rpc GetNotificationTemplate (GetNotificationTemplateRequest) returns (GetNotificationTemplateResponse);
+  rpc GetAllNotificationTemplates (GetAllNotificationTemplatesRequest) returns (GetAllNotificationTemplatesResponse);
+  rpc DeleteNotificationTemplate (DeleteNotificationTemplateRequest) returns (DeleteNotificationTemplateResponse);
+}
+
+message SendNotificationRequest {
+  int64 user_id = 1;
+  string type = 2;
+  string title = 3;
+  string message = 4;
+  string channel = 5;
+}
+
+message SendNotificationResponse {
+  bool success = 1;
+  string message = 2;
+  Notification notification = 3;
+}
+
+message GetNotificationsRequest {
+  int64 user_id = 1;
+  bool unread_only = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message GetNotificationsResponse {
+  bool success = 1;
+  string message = 2;
+  repeated Notification notifications = 3;
+  int32 total_count = 4;
+}
+
+message MarkAsReadRequest {
+  int64 notification_id = 1;
+}
+
+message MarkAsReadResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message MarkAllAsReadRequest {
+  int64 user_id = 1;
+}
+
+message MarkAllAsReadResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message DeleteNotificationRequest {
+  int64 notification_id = 1;
+}
+
+message DeleteNotificationResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetUnreadCountRequest {
+  int64 user_id = 1;
+}
+
+message GetUnreadCountResponse {
+  bool success = 1;
+  string message = 2;
+  int32 count = 3;
+}
+
+message CreateNotificationTemplateRequest {
+  string type = 1;
+  string subject = 2;
+  string body_template = 3;
+}
+
+message CreateNotificationTemplateResponse {
+  bool success = 1;
+  string message = 2;
+  NotificationTemplate template = 3;
+}
+
+message UpdateNotificationTemplateRequest {
+  int64 template_id = 1;
+  string subject = 2;
+  string body_template = 3;
+}
+
+message UpdateNotificationTemplateResponse {
+  bool success = 1;
+  string message = 2;
+  NotificationTemplate template = 3;
+}
+
+message GetNotificationTemplateRequest {
+  string type = 1;
+}
+
+message GetNotificationTemplateResponse {
+  bool success = 1;
+  string message = 2;
+  NotificationTemplate template = 3;
+}
+
+message GetAllNotificationTemplatesRequest {
+}
+
+message GetAllNotificationTemplatesResponse {
+  bool success = 1;
+  string message = 2;
+  repeated NotificationTemplate templates = 3;
+}
+
+message DeleteNotificationTemplateRequest {
+  int64 template_id = 1;
+}
+
+message DeleteNotificationTemplateResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message Notification {
+  int64 id = 1;
+  int64 user_id = 2;
+  string type = 3;
+  string title = 4;
+  string message = 5;
+  bool is_read = 6;
+  string sent_at = 7;
+  string channel = 8;
+}
+
+message NotificationTemplate {
+  int64 id = 1;
+  string type = 2;
+  string subject = 3;
+  string body_template = 4;
+}

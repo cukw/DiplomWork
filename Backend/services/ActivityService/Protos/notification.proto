@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option csharp_namespace = "ActivityService.NotificationGrpc";
+
+package notification;
+
+service NotificationService {
+  rpc SendNotification (SendNotificationRequest) returns (SendNotificationResponse);
+}
+
+message SendNotificationRequest {
+  int64 user_id = 1;
+  string type = 2;
+  string title = 3;
+  string message = 4;
+  string channel = 5;
+}
+
+message SendNotificationResponse {
+  bool success = 1;
+  string message = 2;
+}

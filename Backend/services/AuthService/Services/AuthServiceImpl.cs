@@ -76,6 +76,9 @@ public class AuthServiceImpl : AuthService.AuthServiceBase
             // Generate tokens
             var token = _jwtService.GenerateToken(user);
             var refreshToken = _jwtService.GenerateRefreshToken();
+            
+            _logger.LogInformation("Generated token details - Length: {Length}, Contains dots: {ContainsDots}, Preview: {Preview}",
+                token.Length, token.Contains("."), token.Substring(0, Math.Min(50, token.Length)));
 
             // Store refresh token
             var refreshTokenExpirationDays = int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"] ?? "7");

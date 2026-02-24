@@ -21,7 +21,7 @@ public class AnomalyDetectedEventHandler : IConsumer<AnomalyDetectedEvent>
     public async Task Consume(ConsumeContext<AnomalyDetectedEvent> context)
     {
         var @event = context.Message;
-        _logger.LogInformation("Processing AnomalyDetectedEvent for activity {ActivityId}, anomaly type {AnomalyType}", 
+        _logger.LogInformation("Processing AnomalyDetectedEvent for activity {ActivityId}, anomaly type {AnomalyType}",
             @event.ActivityId, @event.AnomalyType);
 
         try
@@ -49,7 +49,7 @@ public class AnomalyDetectedEventHandler : IConsumer<AnomalyDetectedEvent>
             _db.Notifications.Add(notification);
             await _db.SaveChangesAsync();
 
-            _logger.LogInformation("Created anomaly notification for activity {ActivityId}, anomaly type {AnomalyType}", 
+            _logger.LogInformation("Created anomaly notification for activity {ActivityId}, anomaly type {AnomalyType}",
                 @event.ActivityId, @event.AnomalyType);
         }
         catch (Exception ex)
