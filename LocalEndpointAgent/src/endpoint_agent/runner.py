@@ -33,6 +33,9 @@ class EndpointAgentRunner:
             cfg.services.agent_management_url,
             computer_id=cfg.agent.computer_id,
             version=cfg.agent.version,
+            signing_secret=cfg.security.control_plane_signing.secret,
+            signing_key_id=cfg.security.control_plane_signing.key_id,
+            allow_unsigned=cfg.security.control_plane_signing.allow_unsigned,
         )
         self.collectors = default_collectors(cfg.agent.computer_id, cfg.agent.user_id)
         self._stop = asyncio.Event()

@@ -236,12 +236,18 @@ def _render_config_yaml(
     activity_service_url: str,
     agent_management_url: str,
     state_dir: Path,
+    control_plane_signing_secret: str | None,
+    control_plane_signing_key_id: str,
+    control_plane_allow_unsigned: bool,
 ) -> str:
     user_id_line = "null" if user_id is None else str(user_id)
     safe_device = device_name.replace('"', "")
     safe_activity = activity_service_url.replace('"', "")
     safe_agent = agent_management_url.replace('"', "")
+    safe_cp_secret = (control_plane_signing_secret or "").replace('"', "")
+    safe_cp_key_id = (control_plane_signing_key_id or "default").replace('"', "")
     state_dir_str = str(state_dir).replace("\\", "/").replace('"', "")
+    cp_allow_unsigned = "true" if control_plane_allow_unsigned else "false"
     return f"""agent:
   computer_id: {computer_id}
   user_id: {user_id_line}
@@ -277,6 +283,12 @@ collectors:
 risk:
   local_high_risk_threshold: 85.0
   enable_auto_lock: true
+
+security:
+  control_plane_signing:
+    secret: "{safe_cp_secret}"
+    key_id: "{safe_cp_key_id}"
+    allow_unsigned: {cp_allow_unsigned}
 """
 
 
@@ -289,6 +301,9 @@ def _write_runtime_files(
     device_name: str,
     activity_service_url: str,
     agent_management_url: str,
+    control_plane_signing_secret: str | None,
+    control_plane_signing_key_id: str,
+    control_plane_allow_unsigned: bool,
     dry_run: bool,
 ) -> tuple[Path, Path]:
     app_dir = install_root / "app"
@@ -306,6 +321,9 @@ def _write_runtime_files(
         activity_service_url=activity_service_url,
         agent_management_url=agent_management_url,
         state_dir=state_dir,
+        control_plane_signing_secret=control_plane_signing_secret,
+        control_plane_signing_key_id=control_plane_signing_key_id,
+        control_plane_allow_unsigned=control_plane_allow_unsigned,
     )
     _print(f"Writing config: {config_path}")
     if not dry_run:
@@ -507,6 +525,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device-name", default=socket.gethostname(), help="Device name for agent identity")
     parser.add_argument("--activity-service-url", default="http://localhost:5001", help="Direct gRPC URL for ActivityService")
     parser.add_argument("--agent-management-url", default="http://localhost:5015", help="Direct gRPC URL for AgentManagementService")
+    parser.add_argument("--control-plane-signing-secret", default="", help="Shared secret for verifying signed agent policy/commands (optional)")
+    parser.add_argument("--control-plane-signing-key-id", default="default", help="Expected control-plane signing key ID")
+    parser.add_argument("--require-signed-control-plane", action="store_true", help="Reject unsigned policy/commands from AgentManagementService")
     parser.add_argument("--install-dir", default=None, help="Target installation directory")
     parser.add_argument("--python", default=sys.executable, help="Python interpreter to create venv with")
     parser.add_argument("--skip-autostart", action="store_true", help="Do not configure autostart")
@@ -566,6 +587,9 @@ def main() -> int:
             device_name=args.device_name,
             activity_service_url=args.activity_service_url,
             agent_management_url=args.agent_management_url,
+            control_plane_signing_secret=args.control_plane_signing_secret or None,
+            control_plane_signing_key_id=args.control_plane_signing_key_id,
+            control_plane_allow_unsigned=not args.require_signed_control_plane,
             dry_run=args.dry_run,
         )
 

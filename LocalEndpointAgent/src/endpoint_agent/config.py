@@ -53,6 +53,16 @@ class RiskConfig(BaseModel):
     enable_auto_lock: bool = True
 
 
+class ControlPlaneSigningConfig(BaseModel):
+    secret: str | None = None
+    key_id: str = "default"
+    allow_unsigned: bool = True
+
+
+class SecurityConfig(BaseModel):
+    control_plane_signing: ControlPlaneSigningConfig = Field(default_factory=ControlPlaneSigningConfig)
+
+
 class AgentIdentityConfig(BaseModel):
     computer_id: int
     user_id: int | None = None
@@ -66,6 +76,7 @@ class AgentConfig(BaseModel):
     runtime: RuntimeConfig = Field(default_factory=RuntimeConfig)
     collectors: CollectorsConfig = Field(default_factory=CollectorsConfig)
     risk: RiskConfig = Field(default_factory=RiskConfig)
+    security: SecurityConfig = Field(default_factory=SecurityConfig)
 
     @property
     def state_dir_path(self) -> Path:
