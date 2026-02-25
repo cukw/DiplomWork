@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Card,
@@ -25,7 +25,8 @@ import {
   Alert,
   CircularProgress,
   InputAdornment,
-  Pagination
+  Pagination,
+  Stack,
 } from '@mui/material';
 import {
   Add,
@@ -35,124 +36,107 @@ import {
   Delete,
   Computer,
   Person,
-  Email,
-  Phone
+  Lan,
 } from '@mui/icons-material';
-import { useAuth } from '../contexts/AuthContext';
-import axios from 'axios';
+import { userAPI } from '../services/api';
+
+const PAGE_SIZE = 10;
+const FETCH_PAGE_SIZE = 500;
+
+const emptyForm = {
+  authUserId: '',
+  fullName: '',
+  department: '',
+  hostname: '',
+  osVersion: '',
+  ipAddress: '',
+  macAddress: '',
+};
+
+const formatDateTime = (value) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+};
+
+const normalizeUsers = (rows) => (rows || []).map((u) => ({
+  id: u.id,
+  authUserId: u.authUserId,
+  fullName: u.fullName || 'Unnamed user',
+  department: u.department || 'Unassigned',
+  createdAt: u.createdAt,
+  computer: u.computer || null,
+}));
 
 const Users = () => {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+
   const [selectedUser, setSelectedUser] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    fullName: '',
-    phone: '',
-    department: '',
-    position: '',
-    role: 'User'
-  });
+  const [formData, setFormData] = useState(emptyForm);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [page, searchTerm]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
-      
-      // Mock data for demonstration
-      const mockUsers = [
-        { 
-          id: 1, 
-          username: 'john.doe', 
-          email: 'john.doe@company.com', 
-          fullName: 'John Doe', 
-          phone: '+1234567890', 
-          department: 'IT', 
-          position: 'Developer', 
-          role: 'Admin',
-          status: 'Active',
-          lastLogin: '2024-01-15 10:30:00',
-          computerCount: 2
-        },
-        { 
-          id: 2, 
-          username: 'jane.smith', 
-          email: 'jane.smith@company.com', 
-          fullName: 'Jane Smith', 
-          phone: '+1234567891', 
-          department: 'HR', 
-          position: 'Manager', 
-          role: 'User',
-          status: 'Active',
-          lastLogin: '2024-01-15 09:45:00',
-          computerCount: 1
-        },
-        { 
-          id: 3, 
-          username: 'bob.johnson', 
-          email: 'bob.johnson@company.com', 
-          fullName: 'Bob Johnson', 
-          phone: '+1234567892', 
-          department: 'Finance', 
-          position: 'Analyst', 
-          role: 'User',
-          status: 'Inactive',
-          lastLogin: '2024-01-14 16:20:00',
-          computerCount: 1
-        },
-        { 
-          id: 4, 
-          username: 'alice.brown', 
-          email: 'alice.brown@company.com', 
-          fullName: 'Alice Brown', 
-          phone: '+1234567893', 
-          department: 'IT', 
-          position: 'System Administrator', 
-          role: 'Admin',
-          status: 'Active',
-          lastLogin: '2024-01-15 11:15:00',
-          computerCount: 3
-        },
-        { 
-          id: 5, 
-          username: 'charlie.wilson', 
-          email: 'charlie.wilson@company.com', 
-          fullName: 'Charlie Wilson', 
-          phone: '+1234567894', 
-          department: 'Marketing', 
-          position: 'Specialist', 
-          role: 'User',
-          status: 'Active',
-          lastLogin: '2024-01-15 08:30:00',
-          computerCount: 1
-        }
-      ];
-      
-      setUsers(mockUsers);
-      setTotalPages(1);
+      if (!silent) setLoading(true);
+      setError(null);
+
+      const response = await userAPI.getUsers({ page: 1, pageSize: FETCH_PAGE_SIZE });
+      setUsers(normalizeUsers(response?.users || []));
     } catch (err) {
-      setError('Failed to load users');
+      setError(err?.response?.data?.message || err?.message || 'Failed to load users');
       console.error('Users fetch error:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
+  const filteredUsers = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return users;
+
+    return users.filter((user) => {
+      const haystack = [
+        user.fullName,
+        user.department,
+        String(user.id ?? ''),
+        String(user.authUserId ?? ''),
+        user.computer?.hostname,
+        user.computer?.ipAddress,
+        user.computer?.macAddress,
+        user.computer?.status,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }, [users, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedUsers = filteredUsers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const resetForm = () => setFormData(emptyForm);
+
   const handleSearch = (event) => {
     setSearchTerm(event.target.value);
-    setPage(1);
   };
 
   const handleMenuClick = (event, user) => {
@@ -162,80 +146,119 @@ const Users = () => {
 
   const handleMenuClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleAddUser = () => {
     setSelectedUser(null);
+    resetForm();
+    setDialogOpen(true);
   };
 
   const handleEdit = () => {
-    if (selectedUser) {
-      setFormData({
-        username: selectedUser.username,
-        email: selectedUser.email,
-        fullName: selectedUser.fullName,
-        phone: selectedUser.phone,
-        department: selectedUser.department,
-        position: selectedUser.position,
-        role: selectedUser.role
-      });
-      setDialogOpen(true);
-    }
+    if (!selectedUser) return;
+
+    setFormData({
+      authUserId: String(selectedUser.authUserId ?? ''),
+      fullName: selectedUser.fullName || '',
+      department: selectedUser.department || '',
+      hostname: selectedUser.computer?.hostname || '',
+      osVersion: selectedUser.computer?.osVersion || '',
+      ipAddress: selectedUser.computer?.ipAddress || '',
+      macAddress: selectedUser.computer?.macAddress || '',
+    });
+    setDialogOpen(true);
     handleMenuClose();
   };
 
   const handleDelete = () => {
+    if (!selectedUser) return;
     setDeleteDialogOpen(true);
     handleMenuClose();
   };
 
-  const handleAddUser = () => {
-    setFormData({
-      username: '',
-      email: '',
-      fullName: '',
-      phone: '',
-      department: '',
-      position: '',
-      role: 'User'
-    });
-    setDialogOpen(true);
-  };
-
   const handleSaveUser = async () => {
     try {
-      // In a real application, this would be an API call
-      console.log('Saving user:', formData);
-      
-      // For demo purposes, we'll just close the dialog
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
+
+      const fullName = String(formData.fullName || '').trim();
+      const department = String(formData.department || '').trim();
+
+      if (!fullName) {
+        setError('Full Name is required');
+        return;
+      }
+      if (!department) {
+        setError('Department is required');
+        return;
+      }
+
+      if (selectedUser?.id) {
+        await userAPI.updateUser(selectedUser.id, {
+          fullName,
+          department,
+        });
+        setSuccess('User updated successfully');
+      } else {
+        const authUserId = Number(formData.authUserId);
+        if (!Number.isFinite(authUserId) || authUserId <= 0) {
+          setError('Auth User ID must be a positive number');
+          return;
+        }
+
+        await userAPI.createUser({
+          authUserId,
+          fullName,
+          department,
+          hostname: String(formData.hostname || '').trim(),
+          osVersion: String(formData.osVersion || '').trim(),
+          ipAddress: String(formData.ipAddress || '').trim(),
+          macAddress: String(formData.macAddress || '').trim(),
+        });
+        setSuccess('User created successfully');
+      }
+
       setDialogOpen(false);
-      fetchUsers(); // Refresh the list
+      setSelectedUser(null);
+      resetForm();
+      await fetchUsers({ silent: true });
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError('Failed to save user');
+      setError(err?.response?.data?.message || err?.message || 'Failed to save user');
       console.error('Save user error:', err);
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleConfirmDelete = async () => {
+    if (!selectedUser?.id) return;
+
     try {
-      // In a real application, this would be an API call
-      console.log('Deleting user:', selectedUser?.id);
-      
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
+
+      await userAPI.deleteUser(selectedUser.id);
+      setSuccess(`User "${selectedUser.fullName}" deleted`);
       setDeleteDialogOpen(false);
-      fetchUsers(); // Refresh the list
+      setSelectedUser(null);
+      await fetchUsers({ silent: true });
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError('Failed to delete user');
+      setError(err?.response?.data?.message || err?.message || 'Failed to delete user');
       console.error('Delete user error:', err);
+    } finally {
+      setSaving(false);
     }
   };
 
-  const getRoleColor = (role) => {
-    switch (role) {
-      case 'Admin': return 'error';
-      case 'Manager': return 'warning';
-      default: return 'primary';
-    }
-  };
-
-  const getStatusColor = (status) => {
-    return status === 'Active' ? 'success' : 'default';
+  const getComputerStatusColor = (status) => {
+    const normalized = String(status || '').toLowerCase();
+    if (normalized.includes('online') || normalized.includes('active')) return 'success';
+    if (normalized.includes('offline')) return 'warning';
+    return 'default';
   };
 
   if (loading) {
@@ -248,13 +271,14 @@ const Users = () => {
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">User Management</Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={handleAddUser}
-        >
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} gap={2} flexWrap="wrap">
+        <Box>
+          <Typography variant="h4">User Management</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Real CRUD via UserService (gateway `/api/user/users`)
+          </Typography>
+        </Box>
+        <Button variant="contained" startIcon={<Add />} onClick={handleAddUser}>
           Add User
         </Button>
       </Box>
@@ -265,11 +289,17 @@ const Users = () => {
         </Alert>
       )}
 
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {success}
+        </Alert>
+      )}
+
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <TextField
             fullWidth
-            placeholder="Search users..."
+            placeholder="Search by name, department, computer, IP, MAC, auth ID..."
             value={searchTerm}
             onChange={handleSearch}
             InputProps={{
@@ -289,77 +319,75 @@ const Users = () => {
             <TableHead>
               <TableRow>
                 <TableCell>User</TableCell>
-                <TableCell>Contact</TableCell>
                 <TableCell>Department</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Computers</TableCell>
-                <TableCell>Last Login</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell>Computer</TableCell>
+                <TableCell>Network</TableCell>
+                <TableCell>Created</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
+              {pagedUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    No users found
+                  </TableCell>
+                </TableRow>
+              ) : pagedUsers.map((row) => (
+                <TableRow key={row.id} hover>
                   <TableCell>
-                    <Box display="flex" alignItems="center">
-                      <Person sx={{ mr: 2, color: 'text.secondary' }} />
+                    <Box display="flex" alignItems="center" gap={1.5}>
+                      <Person sx={{ color: 'text.secondary' }} />
                       <Box>
-                        <Typography variant="subtitle2">{user.fullName}</Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          @{user.username}
+                        <Typography variant="subtitle2">{row.fullName}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          User #{row.id} · Auth #{row.authUserId || '-'}
                         </Typography>
                       </Box>
                     </Box>
                   </TableCell>
+                  <TableCell>{row.department}</TableCell>
                   <TableCell>
-                    <Box>
-                      <Box display="flex" alignItems="center" mb={0.5}>
-                        <Email sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                        <Typography variant="body2">{user.email}</Typography>
-                      </Box>
-                      <Box display="flex" alignItems="center">
-                        <Phone sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                        <Typography variant="body2">{user.phone}</Typography>
-                      </Box>
-                    </Box>
+                    {row.computer ? (
+                      <Stack spacing={0.5}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <Computer sx={{ fontSize: 16, color: 'text.secondary' }} />
+                          <Typography variant="body2">{row.computer.hostname || '-'}</Typography>
+                        </Box>
+                        <Chip
+                          size="small"
+                          label={(row.computer.status || 'unknown').toUpperCase()}
+                          color={getComputerStatusColor(row.computer.status)}
+                          sx={{ width: 'fit-content' }}
+                        />
+                      </Stack>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">No computer</Typography>
+                    )}
                   </TableCell>
                   <TableCell>
-                    <Box>
-                      <Typography variant="body2">{user.department}</Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        {user.position}
+                    {row.computer ? (
+                      <Stack spacing={0.5}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <Lan sx={{ fontSize: 16, color: 'text.secondary' }} />
+                          <Typography variant="body2">{row.computer.ipAddress || '-'}</Typography>
+                        </Box>
+                        <Typography variant="caption" color="text.secondary">
+                          {row.computer.macAddress || '-'}
+                        </Typography>
+                      </Stack>
+                    ) : '-'}
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{formatDateTime(row.createdAt)}</Typography>
+                    {row.computer?.lastSeen && (
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        Last seen: {formatDateTime(row.computer.lastSeen)}
                       </Typography>
-                    </Box>
+                    )}
                   </TableCell>
-                  <TableCell>
-                    <Chip 
-                      label={user.role} 
-                      color={getRoleColor(user.role)}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Chip 
-                      label={user.status} 
-                      color={getStatusColor(user.status)}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Box display="flex" alignItems="center">
-                      <Computer sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                      <Typography variant="body2">{user.computerCount}</Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{user.lastLogin}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <IconButton
-                      onClick={(e) => handleMenuClick(e, user)}
-                      size="small"
-                    >
+                  <TableCell align="right">
+                    <IconButton onClick={(e) => handleMenuClick(e, row)} size="small">
                       <MoreVert />
                     </IconButton>
                   </TableCell>
@@ -368,117 +396,114 @@ const Users = () => {
             </TableBody>
           </Table>
         </TableContainer>
-        
-        <Box display="flex" justifyContent="center" p={2}>
+
+        <Box display="flex" justifyContent="space-between" alignItems="center" p={2} flexWrap="wrap" gap={1}>
+          <Typography variant="body2" color="text.secondary">
+            Showing {pagedUsers.length} of {filteredUsers.length} loaded users
+          </Typography>
           <Pagination
             count={totalPages}
-            page={page}
-            onChange={(event, value) => setPage(value)}
+            page={safePage}
+            onChange={(_event, value) => setPage(value)}
             color="primary"
           />
         </Box>
       </Paper>
 
-      {/* User Form Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {selectedUser ? 'Edit User' : 'Add New User'}
-        </DialogTitle>
+        <DialogTitle>{selectedUser ? 'Edit User' : 'Add New User'}</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="Username"
-                value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                label="Auth User ID"
+                type="number"
+                value={formData.authUserId}
+                onChange={(e) => setFormData((prev) => ({ ...prev, authUserId: e.target.value }))}
+                disabled={Boolean(selectedUser)}
+                helperText={selectedUser ? 'Auth user link is immutable in current API' : 'Required'}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} md={8}>
               <TextField
                 fullWidth
                 label="Full Name"
                 value={formData.fullName}
-                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                onChange={(e) => setFormData((prev) => ({ ...prev, fullName: e.target.value }))}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Department"
                 value={formData.department}
-                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                onChange={(e) => setFormData((prev) => ({ ...prev, department: e.target.value }))}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Position"
-                value={formData.position}
-                onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                label="Hostname"
+                value={formData.hostname}
+                onChange={(e) => setFormData((prev) => ({ ...prev, hostname: e.target.value }))}
+                disabled={Boolean(selectedUser)}
+                helperText={selectedUser ? 'Computer details are managed by current backend separately' : ''}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                select
-                label="Role"
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                SelectProps={{ native: true }}
-              >
-                <option value="User">User</option>
-                <option value="Manager">Manager</option>
-                <option value="Admin">Admin</option>
-              </TextField>
+                label="OS Version"
+                value={formData.osVersion}
+                onChange={(e) => setFormData((prev) => ({ ...prev, osVersion: e.target.value }))}
+                disabled={Boolean(selectedUser)}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="IP Address"
+                value={formData.ipAddress}
+                onChange={(e) => setFormData((prev) => ({ ...prev, ipAddress: e.target.value }))}
+                disabled={Boolean(selectedUser)}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="MAC Address"
+                value={formData.macAddress}
+                onChange={(e) => setFormData((prev) => ({ ...prev, macAddress: e.target.value }))}
+                disabled={Boolean(selectedUser)}
+              />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSaveUser} variant="contained">Save</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete user "{selectedUser?.fullName}"? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleConfirmDelete} color="error" variant="contained">
-            Delete
+          <Button onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button>
+          <Button onClick={handleSaveUser} variant="contained" disabled={saving}>
+            {saving ? 'Saving...' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Context Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Delete user "{selectedUser?.fullName}" (ID {selectedUser?.id})? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={saving}>Cancel</Button>
+          <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={saving}>
+            {saving ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
         <MenuItem onClick={handleEdit}>
           <Edit sx={{ mr: 1 }} fontSize="small" />
           Edit

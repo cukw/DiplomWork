@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "jeRRqJvTkkk=",
+  "dgSpecHash": "KqVZQo8e3yI=",
   "success": true,
   "projectFilePath": "/Users/cukw/FinalWork/Backend/services/MetricsService/MetricsService.csproj",
   "expectedPackageFiles": [
@@ -14,6 +14,9 @@
     "/Users/cukw/.nuget/packages/grpc.net.common/2.65.0/grpc.net.common.2.65.0.nupkg.sha512",
     "/Users/cukw/.nuget/packages/grpc.tools/2.65.0/grpc.tools.2.65.0.nupkg.sha512",
     "/Users/cukw/.nuget/packages/humanizer.core/2.14.1/humanizer.core.2.14.1.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/masstransit/8.2.5/masstransit.8.2.5.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/masstransit.abstractions/8.2.5/masstransit.abstractions.8.2.5.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/masstransit.rabbitmq/8.2.5/masstransit.rabbitmq.8.2.5.nupkg.sha512",
     "/Users/cukw/.nuget/packages/microsoft.bcl.asyncinterfaces/6.0.0/microsoft.bcl.asyncinterfaces.6.0.0.nupkg.sha512",
     "/Users/cukw/.nuget/packages/microsoft.codeanalysis.analyzers/3.3.3/microsoft.codeanalysis.analyzers.3.3.3.nupkg.sha512",
     "/Users/cukw/.nuget/packages/microsoft.codeanalysis.common/4.5.0/microsoft.codeanalysis.common.4.5.0.nupkg.sha512",
@@ -29,6 +32,7 @@
     "/Users/cukw/.nuget/packages/mono.texttemplating/2.2.1/mono.texttemplating.2.2.1.nupkg.sha512",
     "/Users/cukw/.nuget/packages/npgsql/8.0.4/npgsql.8.0.4.nupkg.sha512",
     "/Users/cukw/.nuget/packages/npgsql.entityframeworkcore.postgresql/8.0.4/npgsql.entityframeworkcore.postgresql.8.0.4.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/rabbitmq.client/6.8.1/rabbitmq.client.6.8.1.nupkg.sha512",
     "/Users/cukw/.nuget/packages/system.codedom/4.4.0/system.codedom.4.4.0.nupkg.sha512",
     "/Users/cukw/.nuget/packages/system.composition/6.0.0/system.composition.6.0.0.nupkg.sha512",
     "/Users/cukw/.nuget/packages/system.composition.attributedmodel/6.0.0/system.composition.attributedmodel.6.0.0.nupkg.sha512",
@@ -42,7 +46,7 @@
     {
       "code": "NU1510",
       "level": "Warning",
-      "message": "PackageReference System.Text.Json не будет урезано. Рассмотрите возможность удаления этого пакета из зависимостей, так как он, вероятно, не требуется.",
+      "message": "PackageReference System.Text.Json will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.",
       "projectPath": "/Users/cukw/FinalWork/Backend/services/MetricsService/MetricsService.csproj",
       "warningLevel": 1,
       "filePath": "/Users/cukw/FinalWork/Backend/services/MetricsService/MetricsService.csproj",
@@ -54,7 +58,7 @@
     {
       "code": "NU1903",
       "level": "Warning",
-      "message": "У пакета \"System.Text.Json\" 8.0.4 есть известная уязвимость https://github.com/advisories/GHSA-8g4q-xg66-9fp4 (уровень серьезности: высокий)",
+      "message": "Package 'System.Text.Json' 8.0.4 has a known high severity vulnerability, https://github.com/advisories/GHSA-8g4q-xg66-9fp4",
       "projectPath": "/Users/cukw/FinalWork/Backend/services/MetricsService/MetricsService.csproj",
       "warningLevel": 1,
       "filePath": "/Users/cukw/FinalWork/Backend/services/MetricsService/MetricsService.csproj",

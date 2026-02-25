@@ -11,6 +11,14 @@ service AgentManagementService {
   rpc GetAgentsByComputer (GetAgentsByComputerRequest) returns (GetAgentsByComputerResponse);
   rpc GetAllAgents (GetAllAgentsRequest) returns (GetAllAgentsResponse);
   rpc DeleteAgent (DeleteAgentRequest) returns (DeleteAgentResponse);
+
+  rpc GetAgentPolicy (GetAgentPolicyRequest) returns (GetAgentPolicyResponse);
+  rpc UpsertAgentPolicy (UpsertAgentPolicyRequest) returns (UpsertAgentPolicyResponse);
+  rpc DeleteAgentPolicy (DeleteAgentPolicyRequest) returns (DeleteAgentPolicyResponse);
+  rpc GetPendingAgentCommands (GetPendingAgentCommandsRequest) returns (GetPendingAgentCommandsResponse);
+  rpc GetAgentCommands (GetAgentCommandsRequest) returns (GetAgentCommandsResponse);
+  rpc CreateAgentCommand (CreateAgentCommandRequest) returns (CreateAgentCommandResponse);
+  rpc AckAgentCommand (AckAgentCommandRequest) returns (AckAgentCommandResponse);
   
   rpc CreateSyncBatch (CreateSyncBatchRequest) returns (CreateSyncBatchResponse);
   rpc UpdateSyncBatch (UpdateSyncBatchRequest) returns (UpdateSyncBatchResponse);
@@ -83,6 +91,85 @@ message DeleteAgentRequest {
 message DeleteAgentResponse {
   bool success = 1;
   string message = 2;
+}
+
+message GetAgentPolicyRequest {
+  int64 agent_id = 1;
+}
+
+message GetAgentPolicyResponse {
+  bool success = 1;
+  string message = 2;
+  AgentPolicy policy = 3;
+}
+
+message UpsertAgentPolicyRequest {
+  AgentPolicy policy = 1;
+}
+
+message UpsertAgentPolicyResponse {
+  bool success = 1;
+  string message = 2;
+  AgentPolicy policy = 3;
+}
+
+message DeleteAgentPolicyRequest {
+  int64 agent_id = 1;
+}
+
+message DeleteAgentPolicyResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetPendingAgentCommandsRequest {
+  int64 agent_id = 1;
+  int32 limit = 2;
+}
+
+message GetPendingAgentCommandsResponse {
+  bool success = 1;
+  string message = 2;
+  repeated AgentCommand commands = 3;
+}
+
+message GetAgentCommandsRequest {
+  int64 agent_id = 1;
+  string status = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message GetAgentCommandsResponse {
+  bool success = 1;
+  string message = 2;
+  repeated AgentCommand commands = 3;
+  int32 total_count = 4;
+}
+
+message CreateAgentCommandRequest {
+  int64 agent_id = 1;
+  string type = 2;
+  string payload_json = 3;
+  string requested_by = 4;
+}
+
+message CreateAgentCommandResponse {
+  bool success = 1;
+  string message = 2;
+  AgentCommand command = 3;
+}
+
+message AckAgentCommandRequest {
+  int64 command_id = 1;
+  string status = 2;
+  string result_message = 3;
+}
+
+message AckAgentCommandResponse {
+  bool success = 1;
+  string message = 2;
+  AgentCommand command = 3;
 }
 
 message CreateSyncBatchRequest {
@@ -162,4 +249,39 @@ message SyncBatch {
   string status = 4;
   string synced_at = 5;
   int32 records_count = 6;
+}
+
+message AgentPolicy {
+  int64 id = 1;
+  int64 agent_id = 2;
+  int64 computer_id = 3;
+  string policy_version = 4;
+  int32 collection_interval_sec = 5;
+  int32 heartbeat_interval_sec = 6;
+  int32 flush_interval_sec = 7;
+  bool enable_process_collection = 8;
+  bool enable_browser_collection = 9;
+  bool enable_active_window_collection = 10;
+  bool enable_idle_collection = 11;
+  int32 idle_threshold_sec = 12;
+  int32 browser_poll_interval_sec = 13;
+  int32 process_snapshot_limit = 14;
+  float high_risk_threshold = 15;
+  bool auto_lock_enabled = 16;
+  bool admin_blocked = 17;
+  string blocked_reason = 18;
+  repeated string browsers = 19;
+  string updated_at = 20;
+}
+
+message AgentCommand {
+  int64 id = 1;
+  int64 agent_id = 2;
+  string type = 3;
+  string payload_json = 4;
+  string status = 5;
+  string requested_by = 6;
+  string result_message = 7;
+  string created_at = 8;
+  string acknowledged_at = 9;
 }

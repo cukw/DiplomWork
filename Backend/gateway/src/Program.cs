@@ -45,6 +45,8 @@ builder.Services.AddGrpcClient<AgentClient>(o =>
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<AlertRuleStore>();
+builder.Services.AddSingleton<AppSettingsStore>();
+builder.Services.AddSingleton<DownloadFileStore>();
 
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>

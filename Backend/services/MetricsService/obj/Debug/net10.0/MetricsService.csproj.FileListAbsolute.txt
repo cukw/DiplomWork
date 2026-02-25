@@ -108,3 +108,7 @@
 /Users/cukw/FinalWork/Backend/services/MetricsService/obj/Debug/net10.0/MetricsService.pdb
 /Users/cukw/FinalWork/Backend/services/MetricsService/obj/Debug/net10.0/MetricsService.genruntimeconfig.cache
 /Users/cukw/FinalWork/Backend/services/MetricsService/obj/Debug/net10.0/ref/MetricsService.dll
+/Users/cukw/FinalWork/Backend/services/MetricsService/bin/Debug/net10.0/MassTransit.dll
+/Users/cukw/FinalWork/Backend/services/MetricsService/bin/Debug/net10.0/MassTransit.Abstractions.dll
+/Users/cukw/FinalWork/Backend/services/MetricsService/bin/Debug/net10.0/MassTransit.RabbitMqTransport.dll
+/Users/cukw/FinalWork/Backend/services/MetricsService/bin/Debug/net10.0/RabbitMQ.Client.dll

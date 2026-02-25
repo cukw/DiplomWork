@@ -2,7 +2,6 @@ using Grpc.Core;
 using ActivityService.Services.Data;
 using ActivityService.Services.Models;
 using ActivityService.Services.Events;
-using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Google.Protobuf.Collections;
 using System.Globalization;
@@ -13,18 +12,15 @@ namespace ActivityService.Services
     {
         private readonly AppDbContext _db;
         private readonly ILogger<ActivityServiceImpl> _logger;
-        private readonly IPublishEndpoint _publishEndpoint;
         private readonly IAnomalyDetectionService _anomalyDetectionService;
 
         public ActivityServiceImpl(
             AppDbContext db,
             ILogger<ActivityServiceImpl> logger,
-            IPublishEndpoint publishEndpoint,
             IAnomalyDetectionService anomalyDetectionService)
         {
             _db = db;
             _logger = logger;
-            _publishEndpoint = publishEndpoint;
             _anomalyDetectionService = anomalyDetectionService;
         }
 
@@ -106,6 +102,8 @@ namespace ActivityService.Services
                 Synced       = request.Activity.Synced
             };
 
+            await using var tx = await _db.Database.BeginTransactionAsync(context.CancellationToken);
+
             _db.Activities.Add(activity);
             await _db.SaveChangesAsync(context.CancellationToken);
 
@@ -117,18 +115,12 @@ namespace ActivityService.Services
                 await _db.SaveChangesAsync(context.CancellationToken);
 
                 foreach (var anomaly in anomalies)
-                {
-                    await _publishEndpoint.Publish(new AnomalyDetectedEvent(
-                        activity.Id, activity.ComputerId, activity.ActivityType,
-                        anomaly.Type, anomaly.Description ?? ""),
-                        context.CancellationToken);
-                }
+                    _db.OutboxMessages.Add(OutboxEventEnvelopeFactory.CreateAnomalyDetected(activity, anomaly));
             }
 
-            // Publish activity created event
-            await _publishEndpoint.Publish(new ActivityCreatedEvent(
-                activity.Id, activity.ComputerId, activity.ActivityType),
-                context.CancellationToken);
+            _db.OutboxMessages.Add(OutboxEventEnvelopeFactory.CreateActivityCreated(activity));
+            await _db.SaveChangesAsync(context.CancellationToken);
+            await tx.CommitAsync(context.CancellationToken);
 
             _logger.LogInformation("Created activity {Id} for computer {ComputerId} with type {ActivityType}, detected {AnomalyCount} anomalies",
                 activity.Id, activity.ComputerId, activity.ActivityType, anomalies.Count);
@@ -214,6 +206,8 @@ namespace ActivityService.Services
             if (activity.RiskScore < 0 || activity.RiskScore > 100)
                 throw new RpcException(new Status(StatusCode.InvalidArgument, "RiskScore must be between 0 and 100"));
 
+            await using var tx = await _db.Database.BeginTransactionAsync(context.CancellationToken);
+
             await _db.SaveChangesAsync(context.CancellationToken);
 
             var anomalies = await _anomalyDetectionService.DetectAnomalies(activity);
@@ -223,13 +217,12 @@ namespace ActivityService.Services
                 await _db.SaveChangesAsync(context.CancellationToken);
 
                 foreach (var anomaly in anomalies)
-                {
-                    await _publishEndpoint.Publish(new AnomalyDetectedEvent(
-                        activity.Id, activity.ComputerId, activity.ActivityType,
-                        anomaly.Type, anomaly.Description ?? ""),
-                        context.CancellationToken);
-                }
+                    _db.OutboxMessages.Add(OutboxEventEnvelopeFactory.CreateAnomalyDetected(activity, anomaly));
             }
+
+            _db.OutboxMessages.Add(OutboxEventEnvelopeFactory.CreateActivityCreated(activity));
+            await _db.SaveChangesAsync(context.CancellationToken);
+            await tx.CommitAsync(context.CancellationToken);
 
             _logger.LogInformation("Updated activity {Id}, detected {AnomalyCount} anomalies",
                 activity.Id, anomalies.Count);

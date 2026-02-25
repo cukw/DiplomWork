@@ -18,3 +18,16 @@ CREATE TABLE notification_templates (
 
 CREATE INDEX idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX idx_notifications_is_read ON notifications(is_read);
+
+CREATE TABLE processed_event_inbox (
+    id          BIGSERIAL PRIMARY KEY,
+    consumer    VARCHAR(128) NOT NULL,
+    event_key   VARCHAR(256) NOT NULL,
+    message_id  VARCHAR(128),
+    processed_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX uq_processed_event_inbox_consumer_event_key
+    ON processed_event_inbox(consumer, event_key);
+CREATE INDEX idx_processed_event_inbox_processed_at
+    ON processed_event_inbox(processed_at);

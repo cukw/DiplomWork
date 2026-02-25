@@ -158,11 +158,13 @@ services:
     container_name: rabbitmq
     restart: unless-stopped
     ports:
-      - "5672:5672"     # AMQP
-      - "15672:15672"   # Web UI
+      - "127.0.0.1:15672:15672"   # Web UI (local admin only)
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-ams_rabbit}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-ChangeMeRabbitPass123!}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     networks:
       - backend
     healthcheck:
@@ -185,8 +187,12 @@ services:
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres-activity;Database=activities;Username=postgres;Password=pass;TrustServerCertificate=true"
       RabbitMQ__Host: "rabbitmq"
-      RabbitMQ__User: "guest"
-      RabbitMQ__Password: "guest"
+      RabbitMQ__User: ${RABBITMQ_USER:-ams_rabbit}
+      RabbitMQ__Password: ${RABBITMQ_PASS:-ChangeMeRabbitPass123!}
+      RabbitMQ__VHost: ${RABBITMQ_VHOST:-/}
+      RabbitMQ__PublishRetryLimit: "3"
+      RabbitMQ__DispatcherPollMs: "1000"
+      RabbitMQ__DispatcherBatchSize: "100"
     ports:
       - "5001:5001"   # gRPC
       - "5002:5002"   # health / http
@@ -237,8 +243,16 @@ services:
     depends_on:
       postgres-metrics:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres-metrics;Database=metrics;Username=postgres;Password=pass;TrustServerCertificate=true"
+      RabbitMQ__Host: "rabbitmq"
+      RabbitMQ__User: ${RABBITMQ_USER:-ams_rabbit}
+      RabbitMQ__Password: ${RABBITMQ_PASS:-ChangeMeRabbitPass123!}
+      RabbitMQ__VHost: ${RABBITMQ_VHOST:-/}
+      RabbitMQ__PrefetchCount: "16"
+      RabbitMQ__RetryLimit: "5"
       ASPNETCORE_URLS: "http://+:5010;http://+:5011"
     ports:
       - "5010:5010"   # gRPC
@@ -259,6 +273,12 @@ services:
         condition: service_healthy
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres-notification;Database=notifications;Username=postgres;Password=pass;TrustServerCertificate=true"
+      RabbitMQ__Host: "rabbitmq"
+      RabbitMQ__User: ${RABBITMQ_USER:-ams_rabbit}
+      RabbitMQ__Password: ${RABBITMQ_PASS:-ChangeMeRabbitPass123!}
+      RabbitMQ__VHost: ${RABBITMQ_VHOST:-/}
+      RabbitMQ__PrefetchCount: "16"
+      RabbitMQ__RetryLimit: "5"
     ports:
       - "5012:5012"   # gRPC
       - "5017:5017"   # REST
@@ -291,8 +311,16 @@ services:
     depends_on:
       postgres-report:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres-report;Database=reports;Username=postgres;Password=pass;TrustServerCertificate=true"
+      RabbitMQ__Host: "rabbitmq"
+      RabbitMQ__User: ${RABBITMQ_USER:-ams_rabbit}
+      RabbitMQ__Password: ${RABBITMQ_PASS:-ChangeMeRabbitPass123!}
+      RabbitMQ__VHost: ${RABBITMQ_VHOST:-/}
+      RabbitMQ__PrefetchCount: "16"
+      RabbitMQ__RetryLimit: "5"
       ASPNETCORE_URLS: "http://+:5013;http://+:5014"
     ports:
       - "5013:5013"   # gRPC
@@ -355,6 +383,8 @@ services:
       Services__Agent: "http://agentmanagementservice:5015"
     ports:
       - "8080:8080"
+    volumes:
+      - gateway_data:/app/data
     networks:
       - backend
 
@@ -397,3 +427,5 @@ volumes:
   postgres_notification_data:
   postgres_report_data:
   postgres_agent_data:
+  rabbitmq_data:
+  gateway_data:

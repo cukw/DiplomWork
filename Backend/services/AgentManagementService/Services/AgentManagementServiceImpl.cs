@@ -8,7 +8,7 @@ using ProtoSyncBatch = global::AgentManagementService.SyncBatch;
 
 namespace AgentManagementService.Services;
 
-public class AgentManagementServiceImpl : AgentManagementService.AgentManagementServiceBase
+public partial class AgentManagementServiceImpl : AgentManagementService.AgentManagementServiceBase
 {
     private readonly AgentDbContext _db;
     private readonly ILogger<AgentManagementServiceImpl> _logger;

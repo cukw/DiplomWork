@@ -1,12 +1,29 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 :root {
-  --app-bg-1: #f8fafc;
-  --app-bg-2: #eef2ff;
-  --app-bg-3: #ecfeff;
+  --app-bg-1: #f8fbff;
+  --app-bg-2: #eaf2ff;
+  --app-bg-3: #f3f8ff;
   --app-ink: #0f172a;
   --app-muted: #475569;
-  --grid-line: rgba(15, 118, 110, 0.06);
+  --grid-line: rgba(37, 99, 235, 0.05);
+  --accent-a: 37, 99, 235;
+  --accent-b: 14, 165, 233;
+  --scroll-thumb: rgba(37, 99, 235, 0.24);
+  --scroll-track: rgba(148, 163, 184, 0.08);
+}
+
+html[data-theme='dark'] {
+  --app-bg-1: #040404;
+  --app-bg-2: #0a0a0a;
+  --app-bg-3: #111111;
+  --app-ink: #f8fafc;
+  --app-muted: #cbd5e1;
+  --grid-line: rgba(250, 204, 21, 0.07);
+  --accent-a: 250, 204, 21;
+  --accent-b: 245, 158, 11;
+  --scroll-thumb: rgba(250, 204, 21, 0.24);
+  --scroll-track: rgba(250, 204, 21, 0.06);
 }
 
 * {
@@ -24,11 +41,12 @@ body {
   color: var(--app-ink);
   font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
   background:
-    radial-gradient(circle at 12% 10%, rgba(20, 184, 166, 0.12) 0%, rgba(20, 184, 166, 0) 45%),
-    radial-gradient(circle at 92% 12%, rgba(251, 191, 36, 0.12) 0%, rgba(251, 191, 36, 0) 40%),
+    radial-gradient(circle at 12% 10%, rgba(var(--accent-a), 0.14) 0%, rgba(var(--accent-a), 0) 48%),
+    radial-gradient(circle at 92% 12%, rgba(var(--accent-b), 0.14) 0%, rgba(var(--accent-b), 0) 44%),
     linear-gradient(180deg, var(--app-bg-1) 0%, var(--app-bg-2) 52%, var(--app-bg-3) 100%);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background 180ms ease, color 180ms ease;
 }
 
 body::before {
@@ -60,14 +78,14 @@ code {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgba(15, 118, 110, 0.24);
+  background: var(--scroll-thumb);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 *::-webkit-scrollbar-track {
-  background: rgba(148, 163, 184, 0.08);
+  background: var(--scroll-track);
 }
 
 @keyframes pageFadeIn {

@@ -52,7 +52,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
-import { agentAPI, systemAPI, alertRulesAPI } from '../services/api';
+import { agentAPI, systemAPI, alertRulesAPI, settingsAPI } from '../services/api';
 
 const DEFAULT_ALERT_RULE_FORM = {
   name: '',
@@ -85,6 +85,105 @@ const OPERATOR_LABELS = {
   eq: '=',
 };
 
+const DEFAULT_AGENT_POLICY_FORM = {
+  collectionIntervalSec: 5,
+  heartbeatIntervalSec: 15,
+  flushIntervalSec: 5,
+  enableProcessCollection: true,
+  enableBrowserCollection: true,
+  enableActiveWindowCollection: true,
+  enableIdleCollection: true,
+  idleThresholdSec: 120,
+  browserPollIntervalSec: 10,
+  processSnapshotLimit: 50,
+  highRiskThreshold: 85,
+  autoLockEnabled: true,
+  adminBlocked: false,
+  blockedReason: '',
+  browsersCsv: 'chrome, edge, firefox',
+};
+
+const DEFAULT_AGENT_COMMAND_FORM = {
+  type: 'PING',
+  payloadJson: '{}',
+  requestedBy: '',
+};
+
+const AGENT_COMMAND_TYPES = [
+  'PING',
+  'REFRESH_POLICY',
+  'BLOCK_WORKSTATION',
+  'UNBLOCK_WORKSTATION',
+  'SET_COLLECTION_STATE',
+  'SET_LOG_LEVEL',
+];
+
+const AGENT_COMMAND_STATUS_OPTIONS = [
+  { value: '', label: 'All' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'running', label: 'Running' },
+  { value: 'success', label: 'Success' },
+  { value: 'failed', label: 'Failed' },
+  { value: 'ignored', label: 'Ignored' },
+];
+
+const mapAgentPolicyToForm = (policy) => ({
+  collectionIntervalSec: policy?.collectionIntervalSec ?? 5,
+  heartbeatIntervalSec: policy?.heartbeatIntervalSec ?? 15,
+  flushIntervalSec: policy?.flushIntervalSec ?? 5,
+  enableProcessCollection: policy?.enableProcessCollection ?? true,
+  enableBrowserCollection: policy?.enableBrowserCollection ?? true,
+  enableActiveWindowCollection: policy?.enableActiveWindowCollection ?? true,
+  enableIdleCollection: policy?.enableIdleCollection ?? true,
+  idleThresholdSec: policy?.idleThresholdSec ?? 120,
+  browserPollIntervalSec: policy?.browserPollIntervalSec ?? 10,
+  processSnapshotLimit: policy?.processSnapshotLimit ?? 50,
+  highRiskThreshold: policy?.highRiskThreshold ?? 85,
+  autoLockEnabled: policy?.autoLockEnabled ?? true,
+  adminBlocked: policy?.adminBlocked ?? false,
+  blockedReason: policy?.blockedReason ?? '',
+  browsersCsv: Array.isArray(policy?.browsers) && policy.browsers.length > 0
+    ? policy.browsers.join(', ')
+    : 'chrome, edge, firefox',
+});
+
+const buildAgentPolicyPayload = (form) => ({
+  collectionIntervalSec: Math.max(1, Number(form.collectionIntervalSec) || 5),
+  heartbeatIntervalSec: Math.max(1, Number(form.heartbeatIntervalSec) || 15),
+  flushIntervalSec: Math.max(1, Number(form.flushIntervalSec) || 5),
+  enableProcessCollection: Boolean(form.enableProcessCollection),
+  enableBrowserCollection: Boolean(form.enableBrowserCollection),
+  enableActiveWindowCollection: Boolean(form.enableActiveWindowCollection),
+  enableIdleCollection: Boolean(form.enableIdleCollection),
+  idleThresholdSec: Math.max(5, Number(form.idleThresholdSec) || 120),
+  browserPollIntervalSec: Math.max(5, Number(form.browserPollIntervalSec) || 10),
+  processSnapshotLimit: Math.max(1, Number(form.processSnapshotLimit) || 50),
+  highRiskThreshold: Math.max(0, Math.min(100, Number(form.highRiskThreshold) || 85)),
+  autoLockEnabled: Boolean(form.autoLockEnabled),
+  adminBlocked: Boolean(form.adminBlocked),
+  blockedReason: String(form.blockedReason || '').trim(),
+  browsers: String(form.browsersCsv || '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean),
+});
+
+const getCommandStatusColor = (status) => {
+  const normalized = String(status || '').toLowerCase();
+  if (normalized === 'success') return 'success';
+  if (normalized === 'pending' || normalized === 'running') return 'warning';
+  if (normalized === 'failed') return 'error';
+  return 'default';
+};
+
+const normalizeListEntries = (entries) => (Array.isArray(entries) ? entries : [])
+  .map((entry, index) => ({
+    id: Number(entry?.id) > 0 ? Number(entry.id) : Date.now() + index,
+    application: String(entry?.application || '').trim(),
+    description: String(entry?.description || '').trim(),
+  }))
+  .filter((entry) => entry.application);
+
 const Settings = () => {
   useAuth();
   const { addNotification } = useNotifications();
@@ -99,6 +198,19 @@ const Settings = () => {
   const [monitoringDataLoading, setMonitoringDataLoading] = useState(false);
   const [monitoringDataError, setMonitoringDataError] = useState(null);
   const [monitoringLastUpdated, setMonitoringLastUpdated] = useState(null);
+  const [selectedMonitoringAgentId, setSelectedMonitoringAgentId] = useState(null);
+  const [selectedAgentPolicy, setSelectedAgentPolicy] = useState(null);
+  const [agentPolicyForm, setAgentPolicyForm] = useState(DEFAULT_AGENT_POLICY_FORM);
+  const [agentControlLoading, setAgentControlLoading] = useState(false);
+  const [agentControlError, setAgentControlError] = useState(null);
+  const [agentPolicySaving, setAgentPolicySaving] = useState(false);
+  const [agentActionLoading, setAgentActionLoading] = useState(false);
+  const [agentCommands, setAgentCommands] = useState([]);
+  const [agentCommandsTotal, setAgentCommandsTotal] = useState(0);
+  const [agentCommandStatusFilter, setAgentCommandStatusFilter] = useState('');
+  const [agentCommandForm, setAgentCommandForm] = useState(DEFAULT_AGENT_COMMAND_FORM);
+  const [agentCommandSaving, setAgentCommandSaving] = useState(false);
+  const [agentAdminReason, setAgentAdminReason] = useState('');
   const [alertRules, setAlertRules] = useState([]);
   const [alertRuleMetadata, setAlertRuleMetadata] = useState(null);
   const [alertRulesLoading, setAlertRulesLoading] = useState(false);
@@ -184,18 +296,66 @@ const Settings = () => {
   }, [tabValue, monitoringSettings.realTimeMonitoring, monitoringSettings.monitoringInterval]);
 
   useEffect(() => {
+    if (tabValue !== 3) return;
+
+    if (!monitoringAgents.length) {
+      setSelectedMonitoringAgentId(null);
+      setSelectedAgentPolicy(null);
+      setAgentPolicyForm(DEFAULT_AGENT_POLICY_FORM);
+      setAgentCommands([]);
+      setAgentCommandsTotal(0);
+      return;
+    }
+
+    setSelectedMonitoringAgentId((prev) => {
+      if (prev && monitoringAgents.some((agent) => agent.id === prev)) return prev;
+      return monitoringAgents[0].id;
+    });
+  }, [tabValue, monitoringAgents]);
+
+  useEffect(() => {
+    if (tabValue !== 3 || !selectedMonitoringAgentId) return;
+    fetchAgentControlData(selectedMonitoringAgentId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabValue, selectedMonitoringAgentId, agentCommandStatusFilter]);
+
+  useEffect(() => {
     if (tabValue !== 2) return;
     fetchAlertRules();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabValue]);
 
-  const fetchSettings = async () => {
+  const applySettingsPayload = (payload) => {
+    if (!payload || typeof payload !== 'object') return;
+
+    if (payload.generalSettings) {
+      setGeneralSettings((prev) => ({ ...prev, ...payload.generalSettings }));
+    }
+    if (payload.securitySettings) {
+      setSecuritySettings((prev) => ({ ...prev, ...payload.securitySettings }));
+    }
+    if (payload.notificationSettings) {
+      setNotificationSettings((prev) => ({ ...prev, ...payload.notificationSettings }));
+    }
+    if (payload.monitoringSettings) {
+      setMonitoringSettings((prev) => ({ ...prev, ...payload.monitoringSettings }));
+    }
+    if (payload.whitelistEntries) {
+      setWhitelistEntries(normalizeListEntries(payload.whitelistEntries));
+    }
+    if (payload.blacklistEntries) {
+      setBlacklistEntries(normalizeListEntries(payload.blacklistEntries));
+    }
+  };
+
+  const fetchSettings = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
-      // In a real application, this would fetch settings from the API
-      // For now, we're using default values
+      if (!silent) setLoading(true);
+      setError(null);
+      const payload = await settingsAPI.getSettings();
+      applySettingsPayload(payload);
     } catch (err) {
-      setError('Failed to load settings');
+      setError(err?.response?.data?.message || err?.message || 'Failed to load settings');
       console.error('Settings fetch error:', err);
     } finally {
       setLoading(false);
@@ -210,10 +370,19 @@ const Settings = () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // In a real application, this would save settings via API
-      console.log(`Saving ${category} settings`);
-      
+
+      const payload = {
+        generalSettings,
+        securitySettings,
+        notificationSettings,
+        monitoringSettings,
+        whitelistEntries: normalizeListEntries(whitelistEntries),
+        blacklistEntries: normalizeListEntries(blacklistEntries),
+      };
+
+      const saved = await settingsAPI.saveSettings(payload);
+      applySettingsPayload(saved);
+
       setSuccess(`${category} settings saved successfully`);
       if (typeof addNotification === 'function') {
         addNotification({
@@ -226,7 +395,7 @@ const Settings = () => {
       
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError('Failed to save settings');
+      setError(err?.response?.data?.message || err?.message || 'Failed to save settings');
       console.error('Save settings error:', err);
     } finally {
       setLoading(false);
@@ -290,8 +459,12 @@ const Settings = () => {
       } else if (confirmAction?.type === 'delete_alert_rule') {
         await alertRulesAPI.deleteRule(confirmAction.id);
         setAlertRules((prev) => prev.filter((rule) => rule.id !== confirmAction.id));
-      } else if (confirmAction?.type === 'restart_system') {
-        setSuccess('Restart request queued (demo action)');
+      } else if (confirmAction?.type === 'reset_agent_policy') {
+        await agentAPI.deleteAgentPolicy(confirmAction.agentId);
+        if (confirmAction.agentId) {
+          await fetchAgentControlData(confirmAction.agentId, { silent: true });
+        }
+        setSuccess('Agent policy reset to defaults');
         setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
@@ -302,12 +475,13 @@ const Settings = () => {
     }
   };
 
-  const handleSystemRestart = () => {
-    setConfirmAction({
-      type: 'restart_system',
-      message: 'Are you sure you want to restart the monitoring system? This will temporarily interrupt monitoring.'
-    });
-    setConfirmDialogOpen(true);
+  const handleReloadSettings = async () => {
+    await fetchSettings();
+    if (tabValue === 3) {
+      await fetchMonitoringData({ silent: true });
+    }
+    setSuccess('Settings reloaded');
+    setTimeout(() => setSuccess(null), 2000);
   };
 
   const normalizeAlertRulePayload = (formState) => ({
@@ -473,8 +647,152 @@ const Settings = () => {
     }
   };
 
+  const fetchAgentControlData = async (agentId, { silent = false } = {}) => {
+    if (!agentId) return;
+
+    try {
+      if (!silent) setAgentControlLoading(true);
+      setAgentControlError(null);
+
+      const commandQuery = { page: 1, pageSize: 20 };
+      if (agentCommandStatusFilter) commandQuery.status = agentCommandStatusFilter;
+
+      const [policyResult, commandsResult] = await Promise.allSettled([
+        agentAPI.getAgentPolicy(agentId),
+        agentAPI.getAgentCommands(agentId, commandQuery),
+      ]);
+
+      if (policyResult.status === 'fulfilled') {
+        const policy = policyResult.value || null;
+        setSelectedAgentPolicy(policy);
+        setAgentPolicyForm(mapAgentPolicyToForm(policy));
+      }
+
+      if (commandsResult.status === 'fulfilled') {
+        setAgentCommands(commandsResult.value?.commands || []);
+        setAgentCommandsTotal(commandsResult.value?.totalCount || 0);
+      }
+
+      if (policyResult.status !== 'fulfilled' && commandsResult.status !== 'fulfilled') {
+        throw policyResult.reason || commandsResult.reason;
+      }
+    } catch (err) {
+      setAgentControlError(err?.response?.data?.message || err?.message || 'Failed to load agent control data');
+    } finally {
+      setAgentControlLoading(false);
+    }
+  };
+
+  const handleAgentPolicyFieldChange = (field, value) => {
+    setAgentPolicyForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveAgentPolicy = async () => {
+    if (!selectedMonitoringAgentId) return;
+
+    try {
+      setAgentPolicySaving(true);
+      setAgentControlError(null);
+
+      const payload = buildAgentPolicyPayload(agentPolicyForm);
+      const savedPolicy = await agentAPI.upsertAgentPolicy(selectedMonitoringAgentId, payload);
+
+      setSelectedAgentPolicy(savedPolicy);
+      setAgentPolicyForm(mapAgentPolicyToForm(savedPolicy));
+      setSuccess('Agent policy saved successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setAgentControlError(err?.response?.data?.message || err?.message || 'Failed to save agent policy');
+    } finally {
+      setAgentPolicySaving(false);
+    }
+  };
+
+  const handleResetAgentPolicy = () => {
+    if (!selectedMonitoringAgentId) return;
+
+    setConfirmAction({
+      type: 'reset_agent_policy',
+      agentId: selectedMonitoringAgentId,
+      message: `Reset policy for agent #${selectedMonitoringAgentId} to defaults?`,
+    });
+    setConfirmDialogOpen(true);
+  };
+
+  const handleAgentCommandFieldChange = (field, value) => {
+    setAgentCommandForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleCreateAgentCommand = async () => {
+    if (!selectedMonitoringAgentId) return;
+
+    try {
+      setAgentCommandSaving(true);
+      setAgentControlError(null);
+
+      const type = String(agentCommandForm.type || '').trim();
+      if (!type) {
+        setAgentControlError('Command type is required');
+        return;
+      }
+
+      const payloadJson = String(agentCommandForm.payloadJson || '').trim() || '{}';
+      try {
+        JSON.parse(payloadJson);
+      } catch {
+        setAgentControlError('Command payload must be valid JSON');
+        return;
+      }
+
+      await agentAPI.createAgentCommand(selectedMonitoringAgentId, {
+        type,
+        payloadJson,
+        requestedBy: agentCommandForm.requestedBy || undefined,
+      });
+
+      setSuccess('Agent command queued successfully');
+      setTimeout(() => setSuccess(null), 3000);
+      await fetchAgentControlData(selectedMonitoringAgentId, { silent: true });
+    } catch (err) {
+      setAgentControlError(err?.response?.data?.message || err?.message || 'Failed to queue command');
+    } finally {
+      setAgentCommandSaving(false);
+    }
+  };
+
+  const handleAgentBlockAction = async (blocked) => {
+    if (!selectedMonitoringAgentId) return;
+
+    try {
+      setAgentActionLoading(true);
+      setAgentControlError(null);
+
+      const reason = String(agentAdminReason || '').trim()
+        || (blocked ? 'Blocked by admin' : 'Unblocked by admin');
+
+      if (blocked) {
+        await agentAPI.blockWorkstation(selectedMonitoringAgentId, reason);
+      } else {
+        await agentAPI.unblockWorkstation(selectedMonitoringAgentId, reason);
+      }
+
+      setSuccess(blocked ? 'Block command queued' : 'Unblock command queued');
+      setTimeout(() => setSuccess(null), 3000);
+
+      await Promise.all([
+        fetchAgentControlData(selectedMonitoringAgentId, { silent: true }),
+        fetchMonitoringData({ silent: true }),
+      ]);
+    } catch (err) {
+      setAgentControlError(err?.response?.data?.message || err?.message || 'Failed to send block/unblock command');
+    } finally {
+      setAgentActionLoading(false);
+    }
+  };
+
   const healthServices = systemHealth?.services || [];
   const healthyServicesCount = healthServices.filter((service) => service.status === 'healthy').length;
+  const selectedMonitoringAgent = monitoringAgents.find((agent) => agent.id === selectedMonitoringAgentId) || null;
   const agentStatusSummary = monitoringAgents.reduce((acc, agent) => {
     const status = (agent?.status || 'unknown').toLowerCase();
     acc[status] = (acc[status] || 0) + 1;
@@ -491,9 +809,10 @@ const Settings = () => {
         <Button
           variant="outlined"
           startIcon={<Refresh />}
-          onClick={handleSystemRestart}
+          onClick={handleReloadSettings}
+          disabled={loading}
         >
-          Restart System
+          Reload Settings
         </Button>
       </Box>
 
@@ -1031,6 +1350,473 @@ const Settings = () => {
                     </TableContainer>
                   </Grid>
                 </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2} flexWrap="wrap" mb={2}>
+                  <Box>
+                    <Typography variant="h6">Agent Control Plane</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Configure collection policy and send direct commands (block/unblock, refresh policy) for a selected endpoint agent.
+                    </Typography>
+                  </Box>
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<Refresh />}
+                      onClick={() => selectedMonitoringAgentId && fetchAgentControlData(selectedMonitoringAgentId)}
+                      disabled={!selectedMonitoringAgentId || agentControlLoading}
+                    >
+                      {agentControlLoading ? 'Refreshing...' : 'Refresh Agent'}
+                    </Button>
+                  </Stack>
+                </Box>
+
+                {agentControlError && (
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    {agentControlError}
+                  </Alert>
+                )}
+
+                {monitoringAgents.length === 0 ? (
+                  <Alert severity="info">
+                    No agents available yet. Start a local endpoint agent and wait for heartbeat registration.
+                  </Alert>
+                ) : (
+                  <Grid container spacing={2}>
+                    <Grid item xs={12}>
+                      <Grid container spacing={2} alignItems="center">
+                        <Grid item xs={12} md={4}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel>Selected Agent</InputLabel>
+                            <Select
+                              label="Selected Agent"
+                              value={selectedMonitoringAgentId || ''}
+                              onChange={(e) => setSelectedMonitoringAgentId(Number(e.target.value))}
+                            >
+                              {monitoringAgents.map((agent) => (
+                                <MenuItem key={agent.id} value={agent.id}>
+                                  #{agent.id} · PC {agent.computerId ?? '-'} · {(agent.status || 'unknown').toUpperCase()}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Grid>
+
+                        <Grid item xs={12} md={8}>
+                          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
+                            <Chip
+                              size="small"
+                              label={`Agent #${selectedMonitoringAgent?.id ?? '-'}`}
+                              variant="outlined"
+                            />
+                            <Chip
+                              size="small"
+                              label={`Computer: ${selectedMonitoringAgent?.computerId ?? '-'}`}
+                              variant="outlined"
+                            />
+                            <Chip
+                              size="small"
+                              color={String(selectedMonitoringAgent?.status || '').toLowerCase().includes('online') || String(selectedMonitoringAgent?.status || '').toLowerCase().includes('active') ? 'success' : 'warning'}
+                              label={(selectedMonitoringAgent?.status || 'unknown').toUpperCase()}
+                            />
+                            <Chip
+                              size="small"
+                              color={agentPolicyForm.adminBlocked ? 'error' : 'success'}
+                              label={agentPolicyForm.adminBlocked ? 'ADMIN BLOCKED' : 'NOT BLOCKED'}
+                            />
+                            {selectedMonitoringAgent?.lastHeartbeat && (
+                              <Chip
+                                size="small"
+                                variant="outlined"
+                                label={`Heartbeat: ${new Date(selectedMonitoringAgent.lastHeartbeat).toLocaleTimeString()}`}
+                              />
+                            )}
+                          </Stack>
+                        </Grid>
+                      </Grid>
+                    </Grid>
+
+                    <Grid item xs={12} lg={7}>
+                      <Paper variant="outlined" sx={{ p: 2 }}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                          <Typography variant="subtitle1">Collection Policy</Typography>
+                          <Stack direction="row" spacing={1}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="warning"
+                              onClick={handleResetAgentPolicy}
+                              disabled={!selectedMonitoringAgentId || agentPolicySaving || agentControlLoading}
+                            >
+                              Reset Policy
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="contained"
+                              startIcon={<Save />}
+                              onClick={handleSaveAgentPolicy}
+                              disabled={!selectedMonitoringAgentId || agentPolicySaving}
+                            >
+                              {agentPolicySaving ? 'Saving...' : 'Save Policy'}
+                            </Button>
+                          </Stack>
+                        </Box>
+
+                        <Grid container spacing={2}>
+                          <Grid item xs={12} md={4}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              type="number"
+                              label="Collection Interval (s)"
+                              value={agentPolicyForm.collectionIntervalSec}
+                              onChange={(e) => handleAgentPolicyFieldChange('collectionIntervalSec', e.target.value)}
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={4}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              type="number"
+                              label="Heartbeat Interval (s)"
+                              value={agentPolicyForm.heartbeatIntervalSec}
+                              onChange={(e) => handleAgentPolicyFieldChange('heartbeatIntervalSec', e.target.value)}
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={4}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              type="number"
+                              label="Flush Interval (s)"
+                              value={agentPolicyForm.flushIntervalSec}
+                              onChange={(e) => handleAgentPolicyFieldChange('flushIntervalSec', e.target.value)}
+                            />
+                          </Grid>
+
+                          <Grid item xs={12} md={4}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              type="number"
+                              label="Idle Threshold (s)"
+                              value={agentPolicyForm.idleThresholdSec}
+                              onChange={(e) => handleAgentPolicyFieldChange('idleThresholdSec', e.target.value)}
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={4}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              type="number"
+                              label="Browser Poll (s)"
+                              value={agentPolicyForm.browserPollIntervalSec}
+                              onChange={(e) => handleAgentPolicyFieldChange('browserPollIntervalSec', e.target.value)}
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={4}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              type="number"
+                              label="Process Snapshot Limit"
+                              value={agentPolicyForm.processSnapshotLimit}
+                              onChange={(e) => handleAgentPolicyFieldChange('processSnapshotLimit', e.target.value)}
+                            />
+                          </Grid>
+
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              type="number"
+                              inputProps={{ min: 0, max: 100, step: 0.1 }}
+                              label="High Risk Threshold"
+                              value={agentPolicyForm.highRiskThreshold}
+                              onChange={(e) => handleAgentPolicyFieldChange('highRiskThreshold', e.target.value)}
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="Browsers (comma-separated)"
+                              value={agentPolicyForm.browsersCsv}
+                              onChange={(e) => handleAgentPolicyFieldChange('browsersCsv', e.target.value)}
+                              placeholder="chrome, edge, firefox"
+                            />
+                          </Grid>
+
+                          <Grid item xs={12}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="Blocked Reason"
+                              value={agentPolicyForm.blockedReason}
+                              onChange={(e) => handleAgentPolicyFieldChange('blockedReason', e.target.value)}
+                              helperText="Used when admin block is active; also set automatically by block/unblock actions."
+                            />
+                          </Grid>
+
+                          <Grid item xs={12} md={6}>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={Boolean(agentPolicyForm.enableProcessCollection)}
+                                  onChange={(e) => handleAgentPolicyFieldChange('enableProcessCollection', e.target.checked)}
+                                />
+                              }
+                              label="Collect Processes"
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={Boolean(agentPolicyForm.enableBrowserCollection)}
+                                  onChange={(e) => handleAgentPolicyFieldChange('enableBrowserCollection', e.target.checked)}
+                                />
+                              }
+                              label="Collect Browser Visits"
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={Boolean(agentPolicyForm.enableActiveWindowCollection)}
+                                  onChange={(e) => handleAgentPolicyFieldChange('enableActiveWindowCollection', e.target.checked)}
+                                />
+                              }
+                              label="Collect Active Window"
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={Boolean(agentPolicyForm.enableIdleCollection)}
+                                  onChange={(e) => handleAgentPolicyFieldChange('enableIdleCollection', e.target.checked)}
+                                />
+                              }
+                              label="Collect Idle Time"
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={Boolean(agentPolicyForm.autoLockEnabled)}
+                                  onChange={(e) => handleAgentPolicyFieldChange('autoLockEnabled', e.target.checked)}
+                                />
+                              }
+                              label="Auto-lock on High Risk"
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={Boolean(agentPolicyForm.adminBlocked)}
+                                  disabled
+                                />
+                              }
+                              label="Admin Block Flag (read-only)"
+                            />
+                          </Grid>
+                        </Grid>
+
+                        <Divider sx={{ my: 2 }} />
+
+                        <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap">
+                          <Typography variant="caption" color="text.secondary">
+                            Policy version: {selectedAgentPolicy?.policyVersion || '-'} | Updated:{' '}
+                            {selectedAgentPolicy?.updatedAt ? new Date(selectedAgentPolicy.updatedAt).toLocaleString() : '-'}
+                          </Typography>
+                          <Stack direction="row" spacing={1}>
+                            <Button
+                              size="small"
+                              color="error"
+                              variant="outlined"
+                              onClick={() => handleAgentBlockAction(true)}
+                              disabled={!selectedMonitoringAgentId || agentActionLoading}
+                            >
+                              Block PC
+                            </Button>
+                            <Button
+                              size="small"
+                              color="success"
+                              variant="outlined"
+                              onClick={() => handleAgentBlockAction(false)}
+                              disabled={!selectedMonitoringAgentId || agentActionLoading}
+                            >
+                              Unblock PC
+                            </Button>
+                          </Stack>
+                        </Box>
+                      </Paper>
+                    </Grid>
+
+                    <Grid item xs={12} lg={5}>
+                      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+                        <Typography variant="subtitle1" gutterBottom>Admin Commands</Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={12} sm={6}>
+                            <FormControl fullWidth size="small">
+                              <InputLabel>Command Type</InputLabel>
+                              <Select
+                                label="Command Type"
+                                value={agentCommandForm.type}
+                                onChange={(e) => handleAgentCommandFieldChange('type', e.target.value)}
+                              >
+                                {AGENT_COMMAND_TYPES.map((type) => (
+                                  <MenuItem key={type} value={type}>{type}</MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="Requested By (optional)"
+                              value={agentCommandForm.requestedBy}
+                              onChange={(e) => handleAgentCommandFieldChange('requestedBy', e.target.value)}
+                              placeholder="admin"
+                            />
+                          </Grid>
+                          <Grid item xs={12}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="Reason / Note"
+                              value={agentAdminReason}
+                              onChange={(e) => setAgentAdminReason(e.target.value)}
+                              placeholder="Optional reason for block/unblock"
+                            />
+                          </Grid>
+                          <Grid item xs={12}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              multiline
+                              minRows={4}
+                              label="Command Payload JSON"
+                              value={agentCommandForm.payloadJson}
+                              onChange={(e) => handleAgentCommandFieldChange('payloadJson', e.target.value)}
+                              placeholder='{"reason":"Manual action"}'
+                            />
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                              <Button
+                                variant="contained"
+                                onClick={handleCreateAgentCommand}
+                                disabled={!selectedMonitoringAgentId || agentCommandSaving}
+                              >
+                                {agentCommandSaving ? 'Sending...' : 'Send Command'}
+                              </Button>
+                              <Button
+                                variant="outlined"
+                                onClick={() => handleAgentCommandFieldChange('payloadJson', '{}')}
+                                disabled={agentCommandSaving}
+                              >
+                                Reset Payload
+                              </Button>
+                            </Stack>
+                          </Grid>
+                        </Grid>
+                      </Paper>
+
+                      <Paper variant="outlined" sx={{ p: 2 }}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap" mb={1.5}>
+                          <Typography variant="subtitle1">
+                            Command History ({agentCommandsTotal || agentCommands.length})
+                          </Typography>
+                          <Stack direction="row" spacing={1}>
+                            <FormControl size="small" sx={{ minWidth: 140 }}>
+                              <InputLabel>Status</InputLabel>
+                              <Select
+                                label="Status"
+                                value={agentCommandStatusFilter}
+                                onChange={(e) => setAgentCommandStatusFilter(e.target.value)}
+                              >
+                                {AGENT_COMMAND_STATUS_OPTIONS.map((option) => (
+                                  <MenuItem key={option.value || 'all'} value={option.value}>
+                                    {option.label}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<Refresh />}
+                              onClick={() => selectedMonitoringAgentId && fetchAgentControlData(selectedMonitoringAgentId)}
+                              disabled={!selectedMonitoringAgentId || agentControlLoading}
+                            >
+                              Refresh
+                            </Button>
+                          </Stack>
+                        </Box>
+
+                        <TableContainer component={Paper} variant="outlined">
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>ID</TableCell>
+                                <TableCell>Type</TableCell>
+                                <TableCell>Status</TableCell>
+                                <TableCell>Created</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {agentCommands.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={4} align="center">No commands found</TableCell>
+                                </TableRow>
+                              ) : agentCommands.map((command) => (
+                                <TableRow key={command.id} hover>
+                                  <TableCell>{command.id}</TableCell>
+                                  <TableCell>
+                                    <Typography variant="body2" fontWeight={600}>
+                                      {command.type}
+                                    </Typography>
+                                    {command.resultMessage && (
+                                      <Typography variant="caption" color="text.secondary">
+                                        {command.resultMessage}
+                                      </Typography>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Chip
+                                      size="small"
+                                      color={getCommandStatusColor(command.status)}
+                                      label={String(command.status || 'unknown').toUpperCase()}
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Typography variant="caption" display="block">
+                                      {command.createdAt ? new Date(command.createdAt).toLocaleString() : '-'}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary" display="block">
+                                      Ack: {command.acknowledgedAt ? new Date(command.acknowledgedAt).toLocaleString() : '-'}
+                                    </Typography>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+                )}
               </CardContent>
             </Card>
           </Grid>

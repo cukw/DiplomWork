@@ -36,6 +36,23 @@ CREATE INDEX idx_anomalies_activity_id ON anomalies(activity_id);
 CREATE INDEX idx_anomalies_type ON anomalies(type);
 CREATE INDEX idx_anomalies_detected_at ON anomalies(detected_at);
 
+-- Transactional outbox для публикации событий в RabbitMQ
+CREATE TABLE activity_outbox (
+    id              BIGSERIAL PRIMARY KEY,
+    event_type      VARCHAR(128) NOT NULL,
+    activity_id     BIGINT,
+    payload         JSONB NOT NULL,
+    headers         JSONB,
+    attempt_count   INTEGER NOT NULL DEFAULT 0,
+    available_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    processed_at    TIMESTAMPTZ,
+    last_error      TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_activity_outbox_pending ON activity_outbox(processed_at, available_at);
+CREATE INDEX idx_activity_outbox_activity_id ON activity_outbox(activity_id);
+
 -- Тест данные 
 INSERT INTO activities (computer_id, activity_type, details, risk_score) VALUES
     (1, 'process_open', '{"app": "chrome.exe"}', 10.5),

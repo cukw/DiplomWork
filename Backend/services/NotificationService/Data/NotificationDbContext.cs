@@ -11,6 +11,7 @@ public class NotificationDbContext : DbContext
 
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<NotificationTemplate> NotificationTemplates { get; set; }
+    public DbSet<ProcessedEventInboxEntry> ProcessedEventInboxEntries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,6 +46,22 @@ public class NotificationDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Type).IsUnique().HasDatabaseName("uq_notification_templates_type");
+        });
+
+        modelBuilder.Entity<ProcessedEventInboxEntry>(entity =>
+        {
+            entity.ToTable("processed_event_inbox");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Consumer).HasColumnName("consumer").HasMaxLength(128).IsRequired();
+            entity.Property(e => e.EventKey).HasColumnName("event_key").HasMaxLength(256).IsRequired();
+            entity.Property(e => e.MessageId).HasColumnName("message_id").HasMaxLength(128);
+            entity.Property(e => e.ProcessedAt).HasColumnName("processed_at");
+            entity.HasIndex(e => new { e.Consumer, e.EventKey })
+                .IsUnique()
+                .HasDatabaseName("uq_processed_event_inbox_consumer_event_key");
+            entity.HasIndex(e => e.ProcessedAt)
+                .HasDatabaseName("idx_processed_event_inbox_processed_at");
         });
 
         // Seed default notification templates

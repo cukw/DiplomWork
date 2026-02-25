@@ -2,6 +2,7 @@ using MassTransit;
 using NotificationService.Data;
 using NotificationService.Models;
 using Microsoft.EntityFrameworkCore;
+using ActivityService.Services.Events;
 
 namespace NotificationService.Events;
 
@@ -34,6 +35,8 @@ public class AnomalyDetectedEventHandler : IConsumer<AnomalyDetectedEvent>
             // Determine notification priority based on anomaly type
             var priority = GetNotificationPriority(@event.AnomalyType);
             var channel = priority == "HIGH" ? "email" : "in_app";
+            var consumerName = nameof(AnomalyDetectedEventHandler);
+            var eventKey = EventProcessingHelper.AnomalyDetectedKey(@event);
 
             var notification = new Notification
             {
@@ -46,11 +49,24 @@ public class AnomalyDetectedEventHandler : IConsumer<AnomalyDetectedEvent>
                 IsRead = false
             };
 
+            _db.ProcessedEventInboxEntries.Add(new ProcessedEventInboxEntry
+            {
+                Consumer = consumerName,
+                EventKey = eventKey,
+                MessageId = context.MessageId?.ToString(),
+                ProcessedAt = DateTime.UtcNow
+            });
             _db.Notifications.Add(notification);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(context.CancellationToken);
 
             _logger.LogInformation("Created anomaly notification for activity {ActivityId}, anomaly type {AnomalyType}",
                 @event.ActivityId, @event.AnomalyType);
+        }
+        catch (DbUpdateException ex) when (EventProcessingHelper.IsDuplicateProcessing(ex))
+        {
+            _db.ChangeTracker.Clear();
+            _logger.LogInformation("Skipping duplicate AnomalyDetectedEvent for activity {ActivityId}, anomaly {AnomalyType} (MessageId={MessageId})",
+                @event.ActivityId, @event.AnomalyType, context.MessageId);
         }
         catch (Exception ex)
         {

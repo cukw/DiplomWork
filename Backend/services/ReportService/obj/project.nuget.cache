@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "SkkYXDF9ZDQ=",
+  "dgSpecHash": "o+CjGN2DOXw=",
   "success": true,
   "projectFilePath": "/Users/cukw/FinalWork/Backend/services/ReportService/ReportService.csproj",
   "expectedPackageFiles": [
@@ -19,6 +19,9 @@
     "/Users/cukw/.nuget/packages/grpc.tools/2.65.0/grpc.tools.2.65.0.nupkg.sha512",
     "/Users/cukw/.nuget/packages/humanizer.core/2.14.1/humanizer.core.2.14.1.nupkg.sha512",
     "/Users/cukw/.nuget/packages/irony.netcore/1.0.11/irony.netcore.1.0.11.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/masstransit/8.2.5/masstransit.8.2.5.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/masstransit.abstractions/8.2.5/masstransit.abstractions.8.2.5.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/masstransit.rabbitmq/8.2.5/masstransit.rabbitmq.8.2.5.nupkg.sha512",
     "/Users/cukw/.nuget/packages/microsoft.bcl.asyncinterfaces/6.0.0/microsoft.bcl.asyncinterfaces.6.0.0.nupkg.sha512",
     "/Users/cukw/.nuget/packages/microsoft.codeanalysis.analyzers/3.3.3/microsoft.codeanalysis.analyzers.3.3.3.nupkg.sha512",
     "/Users/cukw/.nuget/packages/microsoft.codeanalysis.common/4.5.0/microsoft.codeanalysis.common.4.5.0.nupkg.sha512",
@@ -36,6 +39,7 @@
     "/Users/cukw/.nuget/packages/netstandard.library/1.6.1/netstandard.library.1.6.1.nupkg.sha512",
     "/Users/cukw/.nuget/packages/npgsql/8.0.3/npgsql.8.0.3.nupkg.sha512",
     "/Users/cukw/.nuget/packages/npgsql.entityframeworkcore.postgresql/8.0.4/npgsql.entityframeworkcore.postgresql.8.0.4.nupkg.sha512",
+    "/Users/cukw/.nuget/packages/rabbitmq.client/6.8.1/rabbitmq.client.6.8.1.nupkg.sha512",
     "/Users/cukw/.nuget/packages/sixlabors.fonts/1.0.0/sixlabors.fonts.1.0.0.nupkg.sha512",
     "/Users/cukw/.nuget/packages/system.codedom/4.4.0/system.codedom.4.4.0.nupkg.sha512",
     "/Users/cukw/.nuget/packages/system.composition/6.0.0/system.composition.6.0.0.nupkg.sha512",

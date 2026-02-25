@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
 
 namespace MetricsService.Models;
@@ -24,6 +25,7 @@ public class Metric
     public virtual ICollection<BlacklistEntry> BlacklistEntries { get; set; } = new List<BlacklistEntry>();
     
     // Helper property to work with config as JSON object
+    [NotMapped]
     public Dictionary<string, object> ConfigDictionary
     {
         get

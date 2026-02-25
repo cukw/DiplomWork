@@ -338,7 +338,9 @@ const Dashboard = () => {
           mb: 3,
           overflow: 'hidden',
           background:
-            `linear-gradient(150deg, ${alpha(theme.palette.primary.main, 0.10)} 0%, ${alpha(theme.palette.info.main, 0.08)} 38%, ${alpha(theme.palette.common.white, 0.90)} 100%)`,
+            theme.palette.mode === 'dark'
+              ? `linear-gradient(150deg, ${alpha(theme.palette.primary.main, 0.18)} 0%, ${alpha(theme.palette.info.main, 0.14)} 38%, ${alpha(theme.palette.background.paper, 0.92)} 100%)`
+              : `linear-gradient(150deg, ${alpha(theme.palette.primary.main, 0.10)} 0%, ${alpha(theme.palette.info.main, 0.08)} 38%, ${alpha(theme.palette.common.white, 0.90)} 100%)`,
         })}
       >
         <CardContent sx={{ p: { xs: 2, md: 3 } }}>
@@ -367,7 +369,13 @@ const Dashboard = () => {
                 sx={(theme) => ({
                   p: 2,
                   height: '100%',
-                  backgroundColor: alpha(theme.palette.common.white, 0.74),
+                  border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.16 : 0.08)}`,
+                  backgroundColor: theme.palette.mode === 'dark'
+                    ? alpha(theme.palette.background.paper, 0.88)
+                    : alpha(theme.palette.common.white, 0.74),
+                  boxShadow: theme.palette.mode === 'dark'
+                    ? `0 12px 28px ${alpha(theme.palette.common.black, 0.26)}`
+                    : 'none',
                 })}
               >
                 <Stack spacing={1.5}>
@@ -666,7 +674,9 @@ const Dashboard = () => {
                           height: '100%',
                           border: `1px solid ${alpha(theme.palette.error.main, 0.12)}`,
                           background:
-                            `linear-gradient(180deg, ${alpha(theme.palette.error.main, 0.04)} 0%, ${alpha(theme.palette.common.white, 0.88)} 100%)`,
+                            theme.palette.mode === 'dark'
+                              ? `linear-gradient(180deg, ${alpha(theme.palette.error.main, 0.08)} 0%, ${alpha(theme.palette.background.paper, 0.92)} 100%)`
+                              : `linear-gradient(180deg, ${alpha(theme.palette.error.main, 0.04)} 0%, ${alpha(theme.palette.common.white, 0.88)} 100%)`,
                         })}
                       >
                         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>

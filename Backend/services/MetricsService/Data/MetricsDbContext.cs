@@ -27,6 +27,7 @@ public class MetricsDbContext : DbContext
             entity.Property(e => e.Config).IsRequired();
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.HasIndex(e => e.UserId);
+            entity.Ignore(e => e.ConfigDictionary);
             
             // Configure JSON column for PostgreSQL
             entity.Property(e => e.Config)

@@ -116,3 +116,7 @@
 /Users/cukw/FinalWork/Backend/services/ReportService/obj/Debug/net10.0/ReportService.pdb
 /Users/cukw/FinalWork/Backend/services/ReportService/obj/Debug/net10.0/ReportService.genruntimeconfig.cache
 /Users/cukw/FinalWork/Backend/services/ReportService/obj/Debug/net10.0/ref/ReportService.dll
+/Users/cukw/FinalWork/Backend/services/ReportService/bin/Debug/net10.0/MassTransit.dll
+/Users/cukw/FinalWork/Backend/services/ReportService/bin/Debug/net10.0/MassTransit.Abstractions.dll
+/Users/cukw/FinalWork/Backend/services/ReportService/bin/Debug/net10.0/MassTransit.RabbitMqTransport.dll
+/Users/cukw/FinalWork/Backend/services/ReportService/bin/Debug/net10.0/RabbitMQ.Client.dll

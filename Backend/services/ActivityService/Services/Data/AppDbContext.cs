@@ -7,6 +7,7 @@ namespace ActivityService.Services.Data
     {
         public DbSet<Activity> Activities => Set<Activity>();
         public DbSet<Anomaly> Anomalies => Set<Anomaly>();
+        public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
         
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
         
@@ -31,6 +32,18 @@ namespace ActivityService.Services.Data
                       .HasForeignKey(e => e.ActivityId)
                       .OnDelete(DeleteBehavior.Cascade)
                       .HasConstraintName("FK_anomalies_activities");
+            });
+
+            modelBuilder.Entity<OutboxMessage>(entity =>
+            {
+                entity.ToTable("activity_outbox");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.EventType).HasMaxLength(128).IsRequired();
+                entity.Property(e => e.Payload).HasColumnType("jsonb").IsRequired();
+                entity.Property(e => e.Headers).HasColumnType("jsonb");
+                entity.Property(e => e.LastError).HasColumnType("text");
+                entity.HasIndex(e => new { e.ProcessedAt, e.AvailableAt }).HasDatabaseName("idx_activity_outbox_pending");
+                entity.HasIndex(e => e.ActivityId).HasDatabaseName("idx_activity_outbox_activity_id");
             });
         }
     }

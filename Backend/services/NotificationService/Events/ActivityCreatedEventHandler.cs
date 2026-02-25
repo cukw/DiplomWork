@@ -2,6 +2,7 @@ using MassTransit;
 using NotificationService.Data;
 using NotificationService.Models;
 using Microsoft.EntityFrameworkCore;
+using ActivityService.Services.Events;
 
 namespace NotificationService.Events;
 
@@ -36,6 +37,8 @@ public class ActivityCreatedEventHandler : IConsumer<ActivityCreatedEvent>
 
             if (notificationTypes.Contains(@event.ActivityType.ToUpper()))
             {
+                var consumerName = nameof(ActivityCreatedEventHandler);
+                var eventKey = EventProcessingHelper.ActivityCreatedKey(@event);
                 var notification = new Notification
                 {
                     UserId = userId,
@@ -47,11 +50,24 @@ public class ActivityCreatedEventHandler : IConsumer<ActivityCreatedEvent>
                     IsRead = false
                 };
 
+                _db.ProcessedEventInboxEntries.Add(new ProcessedEventInboxEntry
+                {
+                    Consumer = consumerName,
+                    EventKey = eventKey,
+                    MessageId = context.MessageId?.ToString(),
+                    ProcessedAt = DateTime.UtcNow
+                });
                 _db.Notifications.Add(notification);
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(context.CancellationToken);
 
                 _logger.LogInformation("Created security notification for activity {ActivityId}", @event.ActivityId);
             }
+        }
+        catch (DbUpdateException ex) when (EventProcessingHelper.IsDuplicateProcessing(ex))
+        {
+            _db.ChangeTracker.Clear();
+            _logger.LogInformation("Skipping duplicate ActivityCreatedEvent for activity {ActivityId} (MessageId={MessageId})",
+                @event.ActivityId, context.MessageId);
         }
         catch (Exception ex)
         {

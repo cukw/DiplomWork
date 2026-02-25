@@ -317,11 +317,58 @@ export const agentAPI = {
     const response = await api.post(`/agent/agents/${id}/sync`);
     return response.data;
   },
+
+  getAgentPolicy: async (id) => {
+    const response = await api.get(`/agent/agents/${id}/policy`);
+    return response.data;
+  },
+
+  upsertAgentPolicy: async (id, payload) => {
+    const response = await api.put(`/agent/agents/${id}/policy`, payload);
+    return response.data;
+  },
+
+  deleteAgentPolicy: async (id) => {
+    const response = await api.delete(`/agent/agents/${id}/policy`);
+    return response.data;
+  },
+
+  getAgentCommands: async (id, params = {}) => {
+    const response = await api.get(`/agent/agents/${id}/commands`, { params });
+    return response.data;
+  },
+
+  createAgentCommand: async (id, payload) => {
+    const response = await api.post(`/agent/agents/${id}/commands`, payload);
+    return response.data;
+  },
+
+  blockWorkstation: async (id, reason = 'Blocked by admin') => {
+    const response = await api.post(`/agent/agents/${id}/commands/block`, { reason });
+    return response.data;
+  },
+
+  unblockWorkstation: async (id, reason = 'Unblocked by admin') => {
+    const response = await api.post(`/agent/agents/${id}/commands/unblock`, { reason });
+    return response.data;
+  },
 };
 
 export const systemAPI = {
   getHealth: async () => {
     const response = await api.get('/system/health');
+    return response.data;
+  },
+};
+
+export const settingsAPI = {
+  getSettings: async () => {
+    const response = await api.get('/app-settings');
+    return response.data;
+  },
+
+  saveSettings: async (payload) => {
+    const response = await api.put('/app-settings', payload);
     return response.data;
   },
 };

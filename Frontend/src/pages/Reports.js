@@ -132,7 +132,7 @@ const Reports = () => {
   const [customStartDate, setCustomStartDate] = useState(formatDateInput(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000)));
   const [customEndDate, setCustomEndDate] = useState(formatDateInput(new Date()));
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [exportFormat, setExportFormat] = useState('pdf');
+  const [exportFormat, setExportFormat] = useState('csv');
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -312,6 +312,22 @@ const Reports = () => {
           ? `Export created: ${result.fileName}`
           : 'Export request sent successfully',
       });
+
+      if (result?.downloadUrl) {
+        const href = String(result.downloadUrl);
+        const absoluteHref = href.startsWith('http://') || href.startsWith('https://')
+          ? href
+          : `${window.location.origin}${href.startsWith('/') ? '' : '/'}${href}`;
+        const a = document.createElement('a');
+        a.href = absoluteHref;
+        if (result?.fileName) {
+          a.download = result.fileName;
+        }
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+
       setExportDialogOpen(false);
     } catch (err) {
       setExportMessage({
@@ -846,9 +862,8 @@ const Reports = () => {
                   label="Export Format"
                   onChange={(e) => setExportFormat(e.target.value)}
                 >
-                  <MenuItem value="pdf">PDF</MenuItem>
-                  <MenuItem value="excel">Excel</MenuItem>
                   <MenuItem value="csv">CSV</MenuItem>
+                  <MenuItem value="json">JSON</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -857,7 +872,7 @@ const Reports = () => {
                 Selected period: {liveData.period?.label || '-'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Source: ReportService export endpoint (`/api/report/export`)
+                Source: Gateway export generator (`/api/report/export`) with secure file download
               </Typography>
             </Grid>
           </Grid>

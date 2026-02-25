@@ -30,6 +30,7 @@ import {
   Menu as MenuIcon,
   Dashboard,
   People,
+  Memory,
   Assessment,
   Settings,
   Notifications,
@@ -41,16 +42,20 @@ import {
   CheckCircleOutline,
   DeleteOutline,
   AccessTime,
+  DarkMode,
+  LightMode,
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
+import { useThemeMode } from '../contexts/ThemeModeContext';
 import { liveAPI } from '../services/api';
 
 const drawerWidth = 272;
 
 const menuItems = [
   { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard', subtitle: 'Live activity overview' },
+  { text: 'Agents', icon: <Memory />, path: '/agents', subtitle: 'Endpoints and control plane' },
   { text: 'Users', icon: <People />, path: '/users', subtitle: 'Directory and access' },
   { text: 'Reports', icon: <Assessment />, path: '/reports', subtitle: 'Exports and trends' },
   { text: 'Analytics', icon: <BarChart />, path: '/analytics', subtitle: 'Detailed metrics' },
@@ -59,6 +64,7 @@ const menuItems = [
 
 const pageTitles = {
   '/dashboard': { title: 'Operations Dashboard', subtitle: 'Current activity, anomalies and trends' },
+  '/agents': { title: 'Agents', subtitle: 'Inventory, capabilities and command history' },
   '/users': { title: 'User Management', subtitle: 'Accounts, roles and workstation mapping' },
   '/reports': { title: 'Reports', subtitle: 'Generated reports and exports' },
   '/analytics': { title: 'Analytics', subtitle: 'Behavior and activity breakdowns' },
@@ -99,6 +105,7 @@ const SNOOZE_STORAGE_KEY = 'notification_snooze_until';
 
 const Layout = () => {
   const { user, logout } = useAuth();
+  const { mode: themeMode, toggleMode } = useThemeMode();
   const {
     notifications,
     unreadCount,
@@ -404,7 +411,7 @@ const Layout = () => {
         sx={(theme) => ({
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
-          backgroundColor: alpha(theme.palette.common.white, 0.72),
+          backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.78 : 0.72),
           color: 'text.primary',
           boxShadow: 'none',
         })}
@@ -430,6 +437,12 @@ const Layout = () => {
           </Box>
 
           <Stack direction="row" spacing={1} alignItems="center">
+            <Tooltip title={themeMode === 'dark' ? 'Светлая тема (бело-синяя)' : 'Темная тема (черно-желтая)'}>
+              <IconButton color="inherit" onClick={toggleMode}>
+                {themeMode === 'dark' ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+
             <Tooltip title="Refresh notifications">
               <span>
                 <IconButton
@@ -465,7 +478,7 @@ const Layout = () => {
                 pr: 1.25,
                 py: 0.4,
                 border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
-                backgroundColor: alpha(theme.palette.common.white, 0.6),
+                backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.60 : 0.60),
                 display: { xs: 'none', sm: 'inline-flex' },
               })}
               startIcon={
@@ -551,7 +564,7 @@ const Layout = () => {
             p: 0.5,
             borderRadius: 3,
             border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
-            backgroundColor: alpha(theme.palette.common.white, 0.92),
+            backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.92 : 0.92),
             backdropFilter: 'blur(18px)',
           }),
         }}
@@ -715,7 +728,7 @@ const Layout = () => {
             borderRadius: 3,
             minWidth: 220,
             border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
-            backgroundColor: alpha(theme.palette.common.white, 0.94),
+            backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.94 : 0.94),
             backdropFilter: 'blur(18px)',
           }),
         }}
