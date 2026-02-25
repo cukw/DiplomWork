@@ -12,13 +12,16 @@ public partial class AgentManagementServiceImpl : AgentManagementService.AgentMa
 {
     private readonly AgentDbContext _db;
     private readonly ILogger<AgentManagementServiceImpl> _logger;
+    private readonly ControlPlaneSigningService _controlPlaneSigning;
 
     public AgentManagementServiceImpl(
         AgentDbContext db,
-        ILogger<AgentManagementServiceImpl> logger)
+        ILogger<AgentManagementServiceImpl> logger,
+        ControlPlaneSigningService controlPlaneSigning)
     {
         _db = db;
         _logger = logger;
+        _controlPlaneSigning = controlPlaneSigning;
     }
 
     public override async Task<RegisterAgentResponse> RegisterAgent(RegisterAgentRequest request, ServerCallContext context)

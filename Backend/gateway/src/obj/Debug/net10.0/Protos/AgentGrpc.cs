@@ -82,6 +82,14 @@ namespace Gateway.Protos.Agent {
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
     static readonly grpc::Marshaller<global::Gateway.Protos.Agent.DeleteAgentPolicyResponse> __Marshaller_agent_DeleteAgentPolicyResponse = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Gateway.Protos.Agent.DeleteAgentPolicyResponse.Parser));
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Marshaller<global::Gateway.Protos.Agent.GetAgentPolicyVersionsRequest> __Marshaller_agent_GetAgentPolicyVersionsRequest = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Gateway.Protos.Agent.GetAgentPolicyVersionsRequest.Parser));
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Marshaller<global::Gateway.Protos.Agent.GetAgentPolicyVersionsResponse> __Marshaller_agent_GetAgentPolicyVersionsResponse = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Gateway.Protos.Agent.GetAgentPolicyVersionsResponse.Parser));
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Marshaller<global::Gateway.Protos.Agent.RestoreAgentPolicyVersionRequest> __Marshaller_agent_RestoreAgentPolicyVersionRequest = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Gateway.Protos.Agent.RestoreAgentPolicyVersionRequest.Parser));
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Marshaller<global::Gateway.Protos.Agent.RestoreAgentPolicyVersionResponse> __Marshaller_agent_RestoreAgentPolicyVersionResponse = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Gateway.Protos.Agent.RestoreAgentPolicyVersionResponse.Parser));
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
     static readonly grpc::Marshaller<global::Gateway.Protos.Agent.GetPendingAgentCommandsRequest> __Marshaller_agent_GetPendingAgentCommandsRequest = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Gateway.Protos.Agent.GetPendingAgentCommandsRequest.Parser));
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
     static readonly grpc::Marshaller<global::Gateway.Protos.Agent.GetPendingAgentCommandsResponse> __Marshaller_agent_GetPendingAgentCommandsResponse = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::Gateway.Protos.Agent.GetPendingAgentCommandsResponse.Parser));
@@ -189,6 +197,22 @@ namespace Gateway.Protos.Agent {
         "DeleteAgentPolicy",
         __Marshaller_agent_DeleteAgentPolicyRequest,
         __Marshaller_agent_DeleteAgentPolicyResponse);
+
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Method<global::Gateway.Protos.Agent.GetAgentPolicyVersionsRequest, global::Gateway.Protos.Agent.GetAgentPolicyVersionsResponse> __Method_GetAgentPolicyVersions = new grpc::Method<global::Gateway.Protos.Agent.GetAgentPolicyVersionsRequest, global::Gateway.Protos.Agent.GetAgentPolicyVersionsResponse>(
+        grpc::MethodType.Unary,
+        __ServiceName,
+        "GetAgentPolicyVersions",
+        __Marshaller_agent_GetAgentPolicyVersionsRequest,
+        __Marshaller_agent_GetAgentPolicyVersionsResponse);
+
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Method<global::Gateway.Protos.Agent.RestoreAgentPolicyVersionRequest, global::Gateway.Protos.Agent.RestoreAgentPolicyVersionResponse> __Method_RestoreAgentPolicyVersion = new grpc::Method<global::Gateway.Protos.Agent.RestoreAgentPolicyVersionRequest, global::Gateway.Protos.Agent.RestoreAgentPolicyVersionResponse>(
+        grpc::MethodType.Unary,
+        __ServiceName,
+        "RestoreAgentPolicyVersion",
+        __Marshaller_agent_RestoreAgentPolicyVersionRequest,
+        __Marshaller_agent_RestoreAgentPolicyVersionResponse);
 
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
     static readonly grpc::Method<global::Gateway.Protos.Agent.GetPendingAgentCommandsRequest, global::Gateway.Protos.Agent.GetPendingAgentCommandsResponse> __Method_GetPendingAgentCommands = new grpc::Method<global::Gateway.Protos.Agent.GetPendingAgentCommandsRequest, global::Gateway.Protos.Agent.GetPendingAgentCommandsResponse>(
@@ -474,6 +498,46 @@ namespace Gateway.Protos.Agent {
       public virtual grpc::AsyncUnaryCall<global::Gateway.Protos.Agent.DeleteAgentPolicyResponse> DeleteAgentPolicyAsync(global::Gateway.Protos.Agent.DeleteAgentPolicyRequest request, grpc::CallOptions options)
       {
         return CallInvoker.AsyncUnaryCall(__Method_DeleteAgentPolicy, null, options, request);
+      }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual global::Gateway.Protos.Agent.GetAgentPolicyVersionsResponse GetAgentPolicyVersions(global::Gateway.Protos.Agent.GetAgentPolicyVersionsRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      {
+        return GetAgentPolicyVersions(request, new grpc::CallOptions(headers, deadline, cancellationToken));
+      }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual global::Gateway.Protos.Agent.GetAgentPolicyVersionsResponse GetAgentPolicyVersions(global::Gateway.Protos.Agent.GetAgentPolicyVersionsRequest request, grpc::CallOptions options)
+      {
+        return CallInvoker.BlockingUnaryCall(__Method_GetAgentPolicyVersions, null, options, request);
+      }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual grpc::AsyncUnaryCall<global::Gateway.Protos.Agent.GetAgentPolicyVersionsResponse> GetAgentPolicyVersionsAsync(global::Gateway.Protos.Agent.GetAgentPolicyVersionsRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      {
+        return GetAgentPolicyVersionsAsync(request, new grpc::CallOptions(headers, deadline, cancellationToken));
+      }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual grpc::AsyncUnaryCall<global::Gateway.Protos.Agent.GetAgentPolicyVersionsResponse> GetAgentPolicyVersionsAsync(global::Gateway.Protos.Agent.GetAgentPolicyVersionsRequest request, grpc::CallOptions options)
+      {
+        return CallInvoker.AsyncUnaryCall(__Method_GetAgentPolicyVersions, null, options, request);
+      }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual global::Gateway.Protos.Agent.RestoreAgentPolicyVersionResponse RestoreAgentPolicyVersion(global::Gateway.Protos.Agent.RestoreAgentPolicyVersionRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      {
+        return RestoreAgentPolicyVersion(request, new grpc::CallOptions(headers, deadline, cancellationToken));
+      }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual global::Gateway.Protos.Agent.RestoreAgentPolicyVersionResponse RestoreAgentPolicyVersion(global::Gateway.Protos.Agent.RestoreAgentPolicyVersionRequest request, grpc::CallOptions options)
+      {
+        return CallInvoker.BlockingUnaryCall(__Method_RestoreAgentPolicyVersion, null, options, request);
+      }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual grpc::AsyncUnaryCall<global::Gateway.Protos.Agent.RestoreAgentPolicyVersionResponse> RestoreAgentPolicyVersionAsync(global::Gateway.Protos.Agent.RestoreAgentPolicyVersionRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+      {
+        return RestoreAgentPolicyVersionAsync(request, new grpc::CallOptions(headers, deadline, cancellationToken));
+      }
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual grpc::AsyncUnaryCall<global::Gateway.Protos.Agent.RestoreAgentPolicyVersionResponse> RestoreAgentPolicyVersionAsync(global::Gateway.Protos.Agent.RestoreAgentPolicyVersionRequest request, grpc::CallOptions options)
+      {
+        return CallInvoker.AsyncUnaryCall(__Method_RestoreAgentPolicyVersion, null, options, request);
       }
       [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
       public virtual global::Gateway.Protos.Agent.GetPendingAgentCommandsResponse GetPendingAgentCommands(global::Gateway.Protos.Agent.GetPendingAgentCommandsRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))

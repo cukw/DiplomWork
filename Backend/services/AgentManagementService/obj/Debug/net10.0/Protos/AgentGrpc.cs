@@ -82,6 +82,14 @@ namespace AgentManagementService {
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
     static readonly grpc::Marshaller<global::AgentManagementService.DeleteAgentPolicyResponse> __Marshaller_agent_DeleteAgentPolicyResponse = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::AgentManagementService.DeleteAgentPolicyResponse.Parser));
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Marshaller<global::AgentManagementService.GetAgentPolicyVersionsRequest> __Marshaller_agent_GetAgentPolicyVersionsRequest = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::AgentManagementService.GetAgentPolicyVersionsRequest.Parser));
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Marshaller<global::AgentManagementService.GetAgentPolicyVersionsResponse> __Marshaller_agent_GetAgentPolicyVersionsResponse = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::AgentManagementService.GetAgentPolicyVersionsResponse.Parser));
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Marshaller<global::AgentManagementService.RestoreAgentPolicyVersionRequest> __Marshaller_agent_RestoreAgentPolicyVersionRequest = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::AgentManagementService.RestoreAgentPolicyVersionRequest.Parser));
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Marshaller<global::AgentManagementService.RestoreAgentPolicyVersionResponse> __Marshaller_agent_RestoreAgentPolicyVersionResponse = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::AgentManagementService.RestoreAgentPolicyVersionResponse.Parser));
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
     static readonly grpc::Marshaller<global::AgentManagementService.GetPendingAgentCommandsRequest> __Marshaller_agent_GetPendingAgentCommandsRequest = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::AgentManagementService.GetPendingAgentCommandsRequest.Parser));
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
     static readonly grpc::Marshaller<global::AgentManagementService.GetPendingAgentCommandsResponse> __Marshaller_agent_GetPendingAgentCommandsResponse = grpc::Marshallers.Create(__Helper_SerializeMessage, context => __Helper_DeserializeMessage(context, global::AgentManagementService.GetPendingAgentCommandsResponse.Parser));
@@ -189,6 +197,22 @@ namespace AgentManagementService {
         "DeleteAgentPolicy",
         __Marshaller_agent_DeleteAgentPolicyRequest,
         __Marshaller_agent_DeleteAgentPolicyResponse);
+
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Method<global::AgentManagementService.GetAgentPolicyVersionsRequest, global::AgentManagementService.GetAgentPolicyVersionsResponse> __Method_GetAgentPolicyVersions = new grpc::Method<global::AgentManagementService.GetAgentPolicyVersionsRequest, global::AgentManagementService.GetAgentPolicyVersionsResponse>(
+        grpc::MethodType.Unary,
+        __ServiceName,
+        "GetAgentPolicyVersions",
+        __Marshaller_agent_GetAgentPolicyVersionsRequest,
+        __Marshaller_agent_GetAgentPolicyVersionsResponse);
+
+    [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+    static readonly grpc::Method<global::AgentManagementService.RestoreAgentPolicyVersionRequest, global::AgentManagementService.RestoreAgentPolicyVersionResponse> __Method_RestoreAgentPolicyVersion = new grpc::Method<global::AgentManagementService.RestoreAgentPolicyVersionRequest, global::AgentManagementService.RestoreAgentPolicyVersionResponse>(
+        grpc::MethodType.Unary,
+        __ServiceName,
+        "RestoreAgentPolicyVersion",
+        __Marshaller_agent_RestoreAgentPolicyVersionRequest,
+        __Marshaller_agent_RestoreAgentPolicyVersionResponse);
 
     [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
     static readonly grpc::Method<global::AgentManagementService.GetPendingAgentCommandsRequest, global::AgentManagementService.GetPendingAgentCommandsResponse> __Method_GetPendingAgentCommands = new grpc::Method<global::AgentManagementService.GetPendingAgentCommandsRequest, global::AgentManagementService.GetPendingAgentCommandsResponse>(
@@ -327,6 +351,18 @@ namespace AgentManagementService {
       }
 
       [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual global::System.Threading.Tasks.Task<global::AgentManagementService.GetAgentPolicyVersionsResponse> GetAgentPolicyVersions(global::AgentManagementService.GetAgentPolicyVersionsRequest request, grpc::ServerCallContext context)
+      {
+        throw new grpc::RpcException(new grpc::Status(grpc::StatusCode.Unimplemented, ""));
+      }
+
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+      public virtual global::System.Threading.Tasks.Task<global::AgentManagementService.RestoreAgentPolicyVersionResponse> RestoreAgentPolicyVersion(global::AgentManagementService.RestoreAgentPolicyVersionRequest request, grpc::ServerCallContext context)
+      {
+        throw new grpc::RpcException(new grpc::Status(grpc::StatusCode.Unimplemented, ""));
+      }
+
+      [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
       public virtual global::System.Threading.Tasks.Task<global::AgentManagementService.GetPendingAgentCommandsResponse> GetPendingAgentCommands(global::AgentManagementService.GetPendingAgentCommandsRequest request, grpc::ServerCallContext context)
       {
         throw new grpc::RpcException(new grpc::Status(grpc::StatusCode.Unimplemented, ""));
@@ -397,6 +433,8 @@ namespace AgentManagementService {
           .AddMethod(__Method_GetAgentPolicy, serviceImpl.GetAgentPolicy)
           .AddMethod(__Method_UpsertAgentPolicy, serviceImpl.UpsertAgentPolicy)
           .AddMethod(__Method_DeleteAgentPolicy, serviceImpl.DeleteAgentPolicy)
+          .AddMethod(__Method_GetAgentPolicyVersions, serviceImpl.GetAgentPolicyVersions)
+          .AddMethod(__Method_RestoreAgentPolicyVersion, serviceImpl.RestoreAgentPolicyVersion)
           .AddMethod(__Method_GetPendingAgentCommands, serviceImpl.GetPendingAgentCommands)
           .AddMethod(__Method_GetAgentCommands, serviceImpl.GetAgentCommands)
           .AddMethod(__Method_CreateAgentCommand, serviceImpl.CreateAgentCommand)
@@ -424,6 +462,8 @@ namespace AgentManagementService {
       serviceBinder.AddMethod(__Method_GetAgentPolicy, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::AgentManagementService.GetAgentPolicyRequest, global::AgentManagementService.GetAgentPolicyResponse>(serviceImpl.GetAgentPolicy));
       serviceBinder.AddMethod(__Method_UpsertAgentPolicy, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::AgentManagementService.UpsertAgentPolicyRequest, global::AgentManagementService.UpsertAgentPolicyResponse>(serviceImpl.UpsertAgentPolicy));
       serviceBinder.AddMethod(__Method_DeleteAgentPolicy, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::AgentManagementService.DeleteAgentPolicyRequest, global::AgentManagementService.DeleteAgentPolicyResponse>(serviceImpl.DeleteAgentPolicy));
+      serviceBinder.AddMethod(__Method_GetAgentPolicyVersions, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::AgentManagementService.GetAgentPolicyVersionsRequest, global::AgentManagementService.GetAgentPolicyVersionsResponse>(serviceImpl.GetAgentPolicyVersions));
+      serviceBinder.AddMethod(__Method_RestoreAgentPolicyVersion, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::AgentManagementService.RestoreAgentPolicyVersionRequest, global::AgentManagementService.RestoreAgentPolicyVersionResponse>(serviceImpl.RestoreAgentPolicyVersion));
       serviceBinder.AddMethod(__Method_GetPendingAgentCommands, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::AgentManagementService.GetPendingAgentCommandsRequest, global::AgentManagementService.GetPendingAgentCommandsResponse>(serviceImpl.GetPendingAgentCommands));
       serviceBinder.AddMethod(__Method_GetAgentCommands, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::AgentManagementService.GetAgentCommandsRequest, global::AgentManagementService.GetAgentCommandsResponse>(serviceImpl.GetAgentCommands));
       serviceBinder.AddMethod(__Method_CreateAgentCommand, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::AgentManagementService.CreateAgentCommandRequest, global::AgentManagementService.CreateAgentCommandResponse>(serviceImpl.CreateAgentCommand));

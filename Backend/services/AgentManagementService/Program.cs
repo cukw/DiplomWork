@@ -23,6 +23,7 @@ builder.WebHost.ConfigureKestrel(options =>
 // Add services to the container.
 builder.Services.AddGrpc();
 builder.Services.AddControllers();
+builder.Services.AddSingleton<ControlPlaneSigningService>();
 
 // Configure Entity Framework
 builder.Services.AddDbContext<AgentDbContext>(options =>
@@ -72,6 +73,17 @@ using (var scope = app.Services.CreateScope())
             updated_at TIMESTAMP NOT NULL DEFAULT NOW()
         );
         CREATE INDEX IF NOT EXISTS idx_agent_policies_computer_id ON agent_policies(computer_id);
+        CREATE TABLE IF NOT EXISTS agent_policy_versions (
+            id SERIAL PRIMARY KEY,
+            agent_id INTEGER NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+            policy_version VARCHAR(50) NOT NULL,
+            change_type VARCHAR(20) NOT NULL DEFAULT 'update',
+            changed_by VARCHAR(100) NOT NULL DEFAULT 'system',
+            snapshot_json TEXT NOT NULL DEFAULT '{{}}',
+            created_at TIMESTAMP NOT NULL DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_agent_policy_versions_agent_id ON agent_policy_versions(agent_id);
+        CREATE INDEX IF NOT EXISTS idx_agent_policy_versions_agent_created_at ON agent_policy_versions(agent_id, created_at);
         CREATE TABLE IF NOT EXISTS agent_commands (
             id SERIAL PRIMARY KEY,
             agent_id INTEGER NOT NULL REFERENCES agents(id) ON DELETE CASCADE,

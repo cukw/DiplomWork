@@ -13,6 +13,7 @@ public class AgentDbContext : DbContext
     public DbSet<Models.Agent> Agents { get; set; }
     public DbSet<Models.SyncBatch> SyncBatches { get; set; }
     public DbSet<Models.AgentPolicy> AgentPolicies { get; set; }
+    public DbSet<Models.AgentPolicyVersion> AgentPolicyVersions { get; set; }
     public DbSet<Models.AgentCommand> AgentCommands { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -49,6 +50,18 @@ public class AgentDbContext : DbContext
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
             entity.HasIndex(e => e.AgentId).IsUnique();
             entity.HasIndex(e => e.ComputerId);
+        });
+
+        modelBuilder.Entity<Models.AgentPolicyVersion>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.PolicyVersion).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.ChangeType).IsRequired().HasMaxLength(20).HasDefaultValue("update");
+            entity.Property(e => e.ChangedBy).HasMaxLength(100).HasDefaultValue("system");
+            entity.Property(e => e.SnapshotJson).IsRequired().HasDefaultValue("{}");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.HasIndex(e => e.AgentId);
+            entity.HasIndex(e => new { e.AgentId, e.CreatedAt });
         });
 
         modelBuilder.Entity<Models.AgentCommand>(entity =>

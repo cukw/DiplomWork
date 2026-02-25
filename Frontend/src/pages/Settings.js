@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Card,
@@ -108,6 +108,8 @@ const DEFAULT_AGENT_COMMAND_FORM = {
   payloadJson: '{}',
   requestedBy: '',
 };
+
+const ACCESS_LIST_AUTOSAVE_STORAGE_KEY = 'settings.accessLists.autosave';
 
 const AGENT_COMMAND_TYPES = [
   'PING',
@@ -273,6 +275,17 @@ const Settings = () => {
     { id: 1, application: 'torrent.exe', description: 'Torrent Client' },
     { id: 2, application: 'game.exe', description: 'Gaming Application' }
   ]);
+  const [listSettingsDirty, setListSettingsDirty] = useState(false);
+  const [listSettingsSaving, setListSettingsSaving] = useState(false);
+  const [listSettingsAutoSave, setListSettingsAutoSave] = useState(() => {
+    try {
+      const raw = localStorage.getItem(ACCESS_LIST_AUTOSAVE_STORAGE_KEY);
+      return raw === null ? true : raw === 'true';
+    } catch {
+      return true;
+    }
+  });
+  const accessListAutosaveTimerRef = useRef(null);
 
   useEffect(() => {
     fetchSettings();
@@ -342,9 +355,11 @@ const Settings = () => {
     }
     if (payload.whitelistEntries) {
       setWhitelistEntries(normalizeListEntries(payload.whitelistEntries));
+      setListSettingsDirty(false);
     }
     if (payload.blacklistEntries) {
       setBlacklistEntries(normalizeListEntries(payload.blacklistEntries));
+      setListSettingsDirty(false);
     }
   };
 
@@ -408,13 +423,14 @@ const Settings = () => {
       application: '',
       description: ''
     };
-    setWhitelistEntries([...whitelistEntries, newEntry]);
+    setWhitelistEntries((prev) => [...prev, newEntry]);
   };
 
   const handleUpdateWhitelistEntry = (id, field, value) => {
-    setWhitelistEntries(whitelistEntries.map(entry => 
+    setWhitelistEntries((prev) => prev.map(entry => 
       entry.id === id ? { ...entry, [field]: value } : entry
     ));
+    setListSettingsDirty(true);
   };
 
   const handleDeleteWhitelistEntry = (id) => {
@@ -432,13 +448,14 @@ const Settings = () => {
       application: '',
       description: ''
     };
-    setBlacklistEntries([...blacklistEntries, newEntry]);
+    setBlacklistEntries((prev) => [...prev, newEntry]);
   };
 
   const handleUpdateBlacklistEntry = (id, field, value) => {
-    setBlacklistEntries(blacklistEntries.map(entry => 
+    setBlacklistEntries((prev) => prev.map(entry => 
       entry.id === id ? { ...entry, [field]: value } : entry
     ));
+    setListSettingsDirty(true);
   };
 
   const handleDeleteBlacklistEntry = (id) => {
@@ -453,9 +470,11 @@ const Settings = () => {
   const handleConfirmAction = async () => {
     try {
       if (confirmAction?.type === 'delete_whitelist') {
-        setWhitelistEntries(whitelistEntries.filter(entry => entry.id !== confirmAction.id));
+        setWhitelistEntries((prev) => prev.filter(entry => entry.id !== confirmAction.id));
+        setListSettingsDirty(true);
       } else if (confirmAction?.type === 'delete_blacklist') {
-        setBlacklistEntries(blacklistEntries.filter(entry => entry.id !== confirmAction.id));
+        setBlacklistEntries((prev) => prev.filter(entry => entry.id !== confirmAction.id));
+        setListSettingsDirty(true);
       } else if (confirmAction?.type === 'delete_alert_rule') {
         await alertRulesAPI.deleteRule(confirmAction.id);
         setAlertRules((prev) => prev.filter((rule) => rule.id !== confirmAction.id));
@@ -475,6 +494,39 @@ const Settings = () => {
     }
   };
 
+  const handleSaveAccessLists = async ({ silent = false } = {}) => {
+    try {
+      setListSettingsSaving(true);
+      setError(null);
+
+      const normalizedWhitelist = normalizeListEntries(whitelistEntries);
+      const normalizedBlacklist = normalizeListEntries(blacklistEntries);
+
+      const [whitelistResp, blacklistResp] = await Promise.all([
+        settingsAPI.replaceWhitelistEntries(normalizedWhitelist),
+        settingsAPI.replaceBlacklistEntries(normalizedBlacklist),
+      ]);
+
+      if (Array.isArray(whitelistResp?.entries)) {
+        setWhitelistEntries(normalizeListEntries(whitelistResp.entries));
+      }
+      if (Array.isArray(blacklistResp?.entries)) {
+        setBlacklistEntries(normalizeListEntries(blacklistResp.entries));
+      }
+      setListSettingsDirty(false);
+
+      if (!silent) {
+        setSuccess('Whitelist/Blacklist settings saved successfully');
+        setTimeout(() => setSuccess(null), 2500);
+      }
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Failed to save whitelist/blacklist settings');
+      console.error('Access list save error:', err);
+    } finally {
+      setListSettingsSaving(false);
+    }
+  };
+
   const handleReloadSettings = async () => {
     await fetchSettings();
     if (tabValue === 3) {
@@ -483,6 +535,35 @@ const Settings = () => {
     setSuccess('Settings reloaded');
     setTimeout(() => setSuccess(null), 2000);
   };
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACCESS_LIST_AUTOSAVE_STORAGE_KEY, String(Boolean(listSettingsAutoSave)));
+    } catch {
+      // ignore storage failures
+    }
+  }, [listSettingsAutoSave]);
+
+  useEffect(() => {
+    if (tabValue !== 4 || !listSettingsAutoSave || !listSettingsDirty) return undefined;
+    const hasDraftRows = [...whitelistEntries, ...blacklistEntries]
+      .some((entry) => !String(entry?.application || '').trim());
+    if (hasDraftRows) return undefined;
+    if (accessListAutosaveTimerRef.current) {
+      window.clearTimeout(accessListAutosaveTimerRef.current);
+    }
+    accessListAutosaveTimerRef.current = window.setTimeout(() => {
+      handleSaveAccessLists({ silent: true });
+    }, 800);
+
+    return () => {
+      if (accessListAutosaveTimerRef.current) {
+        window.clearTimeout(accessListAutosaveTimerRef.current);
+        accessListAutosaveTimerRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabValue, listSettingsAutoSave, listSettingsDirty, whitelistEntries, blacklistEntries]);
 
   const normalizeAlertRulePayload = (formState) => ({
     name: String(formState.name || '').trim(),
@@ -1899,6 +1980,44 @@ const Settings = () => {
       {/* Whitelist/Blacklist Settings */}
       {tabValue === 4 && (
         <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap">
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                    <Typography variant="h6">Access Lists</Typography>
+                    <Chip
+                      size="small"
+                      color={listSettingsDirty ? 'warning' : 'success'}
+                      label={listSettingsDirty ? 'Unsaved changes' : 'Saved'}
+                    />
+                  </Stack>
+
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <FormControlLabel
+                      sx={{ mr: 0 }}
+                      control={
+                        <Switch
+                          checked={listSettingsAutoSave}
+                          onChange={(e) => setListSettingsAutoSave(e.target.checked)}
+                        />
+                      }
+                      label="Autosave"
+                    />
+                    <Button
+                      variant="contained"
+                      startIcon={<Save />}
+                      onClick={() => handleSaveAccessLists()}
+                      disabled={loading || listSettingsSaving || !listSettingsDirty}
+                    >
+                      {listSettingsSaving ? 'Saving...' : 'Save Access Lists'}
+                    </Button>
+                  </Stack>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
           <Grid item xs={12} md={6}>
             <Card>
               <CardContent>

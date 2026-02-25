@@ -205,6 +205,46 @@ public class AgentController : ControllerBase
         catch (RpcException ex) { return StatusCode(500, new { message = ex.Status.Detail }); }
     }
 
+    [HttpGet("agents/{id:long}/policy/versions")]
+    public async Task<IActionResult> GetPolicyVersions(long id, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    {
+        try
+        {
+            var resp = await _agent.GetAgentPolicyVersionsAsync(new GetAgentPolicyVersionsRequest
+            {
+                AgentId = id,
+                Page = page,
+                PageSize = pageSize
+            });
+            if (!resp.Success) return BadRequest(new { message = resp.Message });
+            return Ok(new { versions = resp.Versions.Select(MapPolicyVersion), totalCount = resp.TotalCount });
+        }
+        catch (RpcException ex) { return StatusCode(500, new { message = ex.Status.Detail }); }
+    }
+
+    [HttpPost("agents/{id:long}/policy/versions/{versionId:long}/restore")]
+    public async Task<IActionResult> RestorePolicyVersion(long id, long versionId, [FromBody] RestorePolicyVersionDto? dto = null)
+    {
+        try
+        {
+            var resp = await _agent.RestoreAgentPolicyVersionAsync(new RestoreAgentPolicyVersionRequest
+            {
+                AgentId = id,
+                VersionId = versionId,
+                RequestedBy = dto?.RequestedBy ?? User.Identity?.Name ?? "panel"
+            });
+            if (!resp.Success) return BadRequest(new { message = resp.Message });
+
+            return Ok(new
+            {
+                message = resp.Message,
+                policy = MapPolicy(resp.Policy),
+                restoredFrom = MapPolicyVersion(resp.RestoredFrom)
+            });
+        }
+        catch (RpcException ex) { return StatusCode(500, new { message = ex.Status.Detail }); }
+    }
+
     [HttpGet("agents/{id:long}/commands")]
     public async Task<IActionResult> GetCommands(long id, [FromQuery] string? status = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
@@ -334,7 +374,10 @@ public class AgentController : ControllerBase
         adminBlocked = p.AdminBlocked,
         blockedReason = p.BlockedReason,
         browsers = p.Browsers.ToArray(),
-        updatedAt = p.UpdatedAt
+        updatedAt = p.UpdatedAt,
+        signature = p.Signature,
+        signatureKeyId = p.SignatureKeyId,
+        signatureAlg = p.SignatureAlg
     };
 
     private static object? MapCommand(AgentCommand? c) => c is null ? null : new
@@ -347,7 +390,21 @@ public class AgentController : ControllerBase
         requestedBy = c.RequestedBy,
         resultMessage = c.ResultMessage,
         createdAt = c.CreatedAt,
-        acknowledgedAt = c.AcknowledgedAt
+        acknowledgedAt = c.AcknowledgedAt,
+        signature = c.Signature,
+        signatureKeyId = c.SignatureKeyId,
+        signatureAlg = c.SignatureAlg
+    };
+
+    private static object? MapPolicyVersion(Gateway.Protos.Agent.AgentPolicyVersion? v) => v is null ? null : new
+    {
+        id = v.Id,
+        agentId = v.AgentId,
+        policyVersion = v.PolicyVersion,
+        changeType = v.ChangeType,
+        changedBy = v.ChangedBy,
+        createdAt = v.CreatedAt,
+        snapshotJson = v.SnapshotJson
     };
 
     private static AgentPolicy MergePolicy(AgentPolicy current, UpsertAgentPolicyDto dto, long agentId)
@@ -394,6 +451,7 @@ public class AgentController : ControllerBase
     public record SyncDto(string? BatchId, int RecordsCount);
     public record CreateAgentCommandDto(string? Type, string? PayloadJson, object? Payload, string? RequestedBy);
     public record BlockCommandDto(string? Reason);
+    public record RestorePolicyVersionDto(string? RequestedBy);
     public record UpsertAgentPolicyDto(
         string? PolicyVersion = null,
         long? ComputerId = null,

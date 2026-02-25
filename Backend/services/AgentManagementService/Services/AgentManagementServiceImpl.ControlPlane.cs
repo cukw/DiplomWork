@@ -76,6 +76,7 @@ public partial class AgentManagementServiceImpl
                 _db.AgentPolicies.Add(entity);
 
             await _db.SaveChangesAsync();
+            await SavePolicyVersionSnapshotAsync(entity, isNew ? "create" : "update", "system");
 
             return new UpsertAgentPolicyResponse
             {
@@ -111,6 +112,7 @@ public partial class AgentManagementServiceImpl
                 return new DeleteAgentPolicyResponse { Success = true, Message = "Agent policy already deleted" };
             }
 
+            await SavePolicyVersionSnapshotAsync(policy, "delete", "system");
             _db.AgentPolicies.Remove(policy);
             await _db.SaveChangesAsync();
 
@@ -289,6 +291,7 @@ public partial class AgentManagementServiceImpl
         };
         _db.AgentPolicies.Add(policy);
         await _db.SaveChangesAsync();
+        await SavePolicyVersionSnapshotAsync(policy, "create", "system");
         return policy;
     }
 
@@ -324,7 +327,7 @@ public partial class AgentManagementServiceImpl
         entity.BrowsersJson = JsonSerializer.Serialize(browsers);
     }
 
-    private static ProtoAgentPolicy MapPolicyToProto(Models.AgentPolicy policy)
+    private ProtoAgentPolicy MapPolicyToProto(Models.AgentPolicy policy)
     {
         var browsers = ParseBrowsers(policy.BrowsersJson);
         var proto = new ProtoAgentPolicy
@@ -350,12 +353,13 @@ public partial class AgentManagementServiceImpl
             UpdatedAt = policy.UpdatedAt.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
         };
         proto.Browsers.AddRange(browsers);
+        _controlPlaneSigning.ApplyPolicySignature(proto);
         return proto;
     }
 
-    private static ProtoAgentCommand MapCommandToProto(Models.AgentCommand command)
+    private ProtoAgentCommand MapCommandToProto(Models.AgentCommand command)
     {
-        return new ProtoAgentCommand
+        var proto = new ProtoAgentCommand
         {
             Id = command.Id,
             AgentId = command.AgentId,
@@ -367,6 +371,8 @@ public partial class AgentManagementServiceImpl
             CreatedAt = command.CreatedAt.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
             AcknowledgedAt = command.AcknowledgedAt?.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? string.Empty
         };
+        _controlPlaneSigning.ApplyCommandSignature(proto);
+        return proto;
     }
 
     private static string[] ParseBrowsers(string? value)

@@ -340,6 +340,8 @@ services:
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres-agent;Database=agents;Username=postgres;Password=pass;TrustServerCertificate=true"
       ASPNETCORE_URLS: "http://+:5015;http://+:5016"
+      AgentSigning__KeyId: "${AGENT_SIGNING_KEY_ID:-default}"
+      AgentSigning__Secret: "${AGENT_SIGNING_SECRET:-}"
     ports:
       - "5015:5015"   # gRPC
       - "5016:5016"   # REST

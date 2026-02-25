@@ -196,6 +196,8 @@ const Agents = () => {
   const [selectedAgentId, setSelectedAgentId] = useState(null);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [policy, setPolicy] = useState(null);
+  const [policyVersions, setPolicyVersions] = useState([]);
+  const [policyVersionsTotal, setPolicyVersionsTotal] = useState(0);
   const [commands, setCommands] = useState([]);
   const [commandsTotal, setCommandsTotal] = useState(0);
 
@@ -203,6 +205,7 @@ const Agents = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [commandStatusFilter, setCommandStatusFilter] = useState('all');
   const [commandPage, setCommandPage] = useState(1);
+  const [policyVersionsPage, setPolicyVersionsPage] = useState(1);
 
   const [customCommandType, setCustomCommandType] = useState('PING');
   const [customCommandPayload, setCustomCommandPayload] = useState('{}');
@@ -243,12 +246,15 @@ const Agents = () => {
 
   useEffect(() => {
     setCommandPage(1);
+    setPolicyVersionsPage(1);
   }, [selectedAgentId, commandStatusFilter]);
 
   useEffect(() => {
     if (!selectedAgentId) {
       setSelectedAgent(null);
       setPolicy(null);
+      setPolicyVersions([]);
+      setPolicyVersionsTotal(0);
       setCommands([]);
       setCommandsTotal(0);
       return;
@@ -260,9 +266,13 @@ const Agents = () => {
         setLoadingDetails(true);
         setError(null);
 
-        const [agentResp, policyResp, commandsResp] = await Promise.all([
+        const [agentResp, policyResp, policyVersionsResp, commandsResp] = await Promise.all([
           agentAPI.getAgentById(selectedAgentId),
           agentAPI.getAgentPolicy(selectedAgentId),
+          agentAPI.getAgentPolicyVersions(selectedAgentId, {
+            page: policyVersionsPage,
+            pageSize: 10,
+          }),
           agentAPI.getAgentCommands(selectedAgentId, {
             page: commandPage,
             pageSize: COMMAND_PAGE_SIZE,
@@ -274,6 +284,8 @@ const Agents = () => {
 
         setSelectedAgent(normalizeAgent(agentResp));
         setPolicy(policyResp || null);
+        setPolicyVersions(policyVersionsResp?.versions || []);
+        setPolicyVersionsTotal(policyVersionsResp?.totalCount || 0);
         setCommands(commandsResp?.commands || []);
         setCommandsTotal(commandsResp?.totalCount || 0);
       } catch (err) {
@@ -286,7 +298,7 @@ const Agents = () => {
 
     fetchDetails();
     return () => { alive = false; };
-  }, [selectedAgentId, commandStatusFilter, commandPage]);
+  }, [selectedAgentId, commandStatusFilter, commandPage, policyVersionsPage]);
 
   const filteredAgents = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -323,9 +335,13 @@ const Agents = () => {
       const rows = (listResp?.agents || []).map(normalizeAgent);
       setAgents(rows);
       if (selectedAgentId && rows.some((a) => a.id === selectedAgentId)) {
-        const [agentResp, policyResp, commandsResp] = await Promise.all([
+        const [agentResp, policyResp, policyVersionsResp, commandsResp] = await Promise.all([
           agentAPI.getAgentById(selectedAgentId),
           agentAPI.getAgentPolicy(selectedAgentId),
+          agentAPI.getAgentPolicyVersions(selectedAgentId, {
+            page: policyVersionsPage,
+            pageSize: 10,
+          }),
           agentAPI.getAgentCommands(selectedAgentId, {
             page: commandPage,
             pageSize: COMMAND_PAGE_SIZE,
@@ -334,6 +350,8 @@ const Agents = () => {
         ]);
         setSelectedAgent(normalizeAgent(agentResp));
         setPolicy(policyResp || null);
+        setPolicyVersions(policyVersionsResp?.versions || []);
+        setPolicyVersionsTotal(policyVersionsResp?.totalCount || 0);
         setCommands(commandsResp?.commands || []);
         setCommandsTotal(commandsResp?.totalCount || 0);
       }
@@ -361,9 +379,13 @@ const Agents = () => {
       clearSuccessLater();
       setCommandPage(1);
       // detail refetch via effect on commandPage won't trigger if already 1, fetch directly
-      const [agentResp, policyResp, commandsResp] = await Promise.all([
+      const [agentResp, policyResp, policyVersionsResp, commandsResp] = await Promise.all([
         agentAPI.getAgentById(selectedAgentId),
         agentAPI.getAgentPolicy(selectedAgentId),
+        agentAPI.getAgentPolicyVersions(selectedAgentId, {
+          page: policyVersionsPage,
+          pageSize: 10,
+        }),
         agentAPI.getAgentCommands(selectedAgentId, {
           page: 1,
           pageSize: COMMAND_PAGE_SIZE,
@@ -372,6 +394,8 @@ const Agents = () => {
       ]);
       setSelectedAgent(normalizeAgent(agentResp));
       setPolicy(policyResp || null);
+      setPolicyVersions(policyVersionsResp?.versions || []);
+      setPolicyVersionsTotal(policyVersionsResp?.totalCount || 0);
       setCommands(commandsResp?.commands || []);
       setCommandsTotal(commandsResp?.totalCount || 0);
     } catch (err) {
@@ -436,7 +460,34 @@ const Agents = () => {
     }
   };
 
+  const handleRestorePolicyVersion = async (versionId) => {
+    if (!selectedAgentId || !versionId) return;
+    const confirmed = window.confirm(`Restore policy version #${versionId} for agent #${selectedAgentId}?`);
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      setError(null);
+      const result = await agentAPI.restoreAgentPolicyVersion(selectedAgentId, versionId, {});
+      setPolicy(result?.policy || null);
+      setSuccess(result?.message || `Policy version #${versionId} restored`);
+      clearSuccessLater();
+
+      const versionsResp = await agentAPI.getAgentPolicyVersions(selectedAgentId, {
+        page: policyVersionsPage,
+        pageSize: 10,
+      });
+      setPolicyVersions(versionsResp?.versions || []);
+      setPolicyVersionsTotal(versionsResp?.totalCount || 0);
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Failed to restore policy version');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const commandPages = Math.max(1, Math.ceil(commandsTotal / COMMAND_PAGE_SIZE));
+  const policyVersionPages = Math.max(1, Math.ceil(policyVersionsTotal / 10));
 
   return (
     <Box>
@@ -689,6 +740,108 @@ const Agents = () => {
                   </Card>
                 </Grid>
               </Grid>
+
+              <Card>
+                <CardContent>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap" mb={2}>
+                    <Typography variant="h6">Policy Versions</Typography>
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                      <Typography variant="body2" color="text.secondary">
+                        {policyVersionsTotal} version(s)
+                      </Typography>
+                      <Button variant="outlined" size="small" startIcon={<Refresh />} onClick={hardRefresh} disabled={actionLoading}>
+                        Refresh
+                      </Button>
+                    </Stack>
+                  </Box>
+
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>ID</TableCell>
+                          <TableCell>Policy Version</TableCell>
+                          <TableCell>Change</TableCell>
+                          <TableCell>Changed By</TableCell>
+                          <TableCell>Created</TableCell>
+                          <TableCell align="right">Action</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {policyVersions.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6}>
+                              <Alert severity="info">No policy versions recorded yet.</Alert>
+                            </TableCell>
+                          </TableRow>
+                        ) : policyVersions.map((version) => (
+                          <TableRow key={version.id} hover>
+                            <TableCell>#{version.id}</TableCell>
+                            <TableCell>{version.policyVersion || '—'}</TableCell>
+                            <TableCell>
+                              <Chip
+                                size="small"
+                                label={version.changeType || 'update'}
+                                color={
+                                  version.changeType === 'delete'
+                                    ? 'warning'
+                                    : version.changeType === 'rollback'
+                                      ? 'info'
+                                      : version.changeType === 'create'
+                                        ? 'success'
+                                        : 'default'
+                                }
+                                variant={version.changeType === 'update' ? 'outlined' : 'filled'}
+                              />
+                            </TableCell>
+                            <TableCell>{version.changedBy || 'system'}</TableCell>
+                            <TableCell>{formatDateTime(version.createdAt)}</TableCell>
+                            <TableCell align="right">
+                              <Tooltip title="Restore this policy snapshot as the current policy">
+                                <span>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => handleRestorePolicyVersion(version.id)}
+                                    disabled={actionLoading || !selectedAgentId}
+                                  >
+                                    Restore
+                                  </Button>
+                                </span>
+                              </Tooltip>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+
+                  <Box mt={2} display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap">
+                    <Typography variant="caption" color="text.secondary">
+                      Rollback creates a new policy version entry to preserve audit history.
+                    </Typography>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => setPolicyVersionsPage((p) => Math.max(1, p - 1))}
+                        disabled={policyVersionsPage <= 1 || loadingDetails}
+                      >
+                        Prev
+                      </Button>
+                      <Chip size="small" label={`Page ${policyVersionsPage} / ${policyVersionPages}`} />
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => setPolicyVersionsPage((p) => Math.min(policyVersionPages, p + 1))}
+                        disabled={policyVersionsPage >= policyVersionPages || loadingDetails}
+                      >
+                        Next
+                      </Button>
+                    </Stack>
+                  </Box>
+                </CardContent>
+              </Card>
 
               <Card>
                 <CardContent>

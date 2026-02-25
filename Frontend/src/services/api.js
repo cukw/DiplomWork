@@ -333,6 +333,16 @@ export const agentAPI = {
     return response.data;
   },
 
+  getAgentPolicyVersions: async (id, params = {}) => {
+    const response = await api.get(`/agent/agents/${id}/policy/versions`, { params });
+    return response.data;
+  },
+
+  restoreAgentPolicyVersion: async (id, versionId, payload = {}) => {
+    const response = await api.post(`/agent/agents/${id}/policy/versions/${versionId}/restore`, payload);
+    return response.data;
+  },
+
   getAgentCommands: async (id, params = {}) => {
     const response = await api.get(`/agent/agents/${id}/commands`, { params });
     return response.data;
@@ -369,6 +379,56 @@ export const settingsAPI = {
 
   saveSettings: async (payload) => {
     const response = await api.put('/app-settings', payload);
+    return response.data;
+  },
+
+  getWhitelistEntries: async () => {
+    const response = await api.get('/app-settings/whitelist');
+    return response.data;
+  },
+
+  replaceWhitelistEntries: async (entries) => {
+    const response = await api.put('/app-settings/whitelist', entries);
+    return response.data;
+  },
+
+  createWhitelistEntry: async (entry) => {
+    const response = await api.post('/app-settings/whitelist', entry);
+    return response.data;
+  },
+
+  updateWhitelistEntry: async (id, entry) => {
+    const response = await api.put(`/app-settings/whitelist/${id}`, entry);
+    return response.data;
+  },
+
+  deleteWhitelistEntry: async (id) => {
+    const response = await api.delete(`/app-settings/whitelist/${id}`);
+    return response.data;
+  },
+
+  getBlacklistEntries: async () => {
+    const response = await api.get('/app-settings/blacklist');
+    return response.data;
+  },
+
+  replaceBlacklistEntries: async (entries) => {
+    const response = await api.put('/app-settings/blacklist', entries);
+    return response.data;
+  },
+
+  createBlacklistEntry: async (entry) => {
+    const response = await api.post('/app-settings/blacklist', entry);
+    return response.data;
+  },
+
+  updateBlacklistEntry: async (id, entry) => {
+    const response = await api.put(`/app-settings/blacklist/${id}`, entry);
+    return response.data;
+  },
+
+  deleteBlacklistEntry: async (id) => {
+    const response = await api.delete(`/app-settings/blacklist/${id}`);
     return response.data;
   },
 };
