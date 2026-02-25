@@ -1,0 +1,18 @@
+{
+  "version": "1",
+  "updated_at": "2026-02-24T00:00:00Z",
+  "collection_interval_sec": 5,
+  "heartbeat_interval_sec": 15,
+  "flush_interval_sec": 5,
+  "enable_process_collection": true,
+  "enable_browser_collection": true,
+  "enable_active_window_collection": true,
+  "enable_idle_collection": true,
+  "idle_threshold_sec": 120,
+  "browser_poll_interval_sec": 10,
+  "process_snapshot_limit": 50,
+  "high_risk_threshold": 85.0,
+  "auto_lock_enabled": true,
+  "admin_blocked": false,
+  "blocked_reason": null
+}

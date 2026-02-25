@@ -1,0 +1,35 @@
+agent:
+  computer_id: 1
+  user_id: 1
+  version: "0.1.0"
+  device_name: "workstation-01"
+
+services:
+  activity_service_url: "http://localhost:5001"
+  agent_management_url: "http://localhost:5015"
+
+runtime:
+  state_dir: "./state"
+  heartbeat_interval_sec: 15
+  policy_refresh_interval_sec: 30
+  flush_interval_sec: 5
+  collection_interval_sec: 5
+  max_batch_size: 100
+
+collectors:
+  processes:
+    enabled: true
+    snapshot_limit: 50
+  browser_history:
+    enabled: true
+    poll_interval_sec: 10
+    browsers: ["chrome", "edge", "firefox"]
+  active_window:
+    enabled: true
+  idle_time:
+    enabled: true
+    idle_threshold_sec: 120
+
+risk:
+  local_high_risk_threshold: 85.0
+  enable_auto_lock: true
