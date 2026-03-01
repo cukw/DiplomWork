@@ -24,17 +24,13 @@ public class UserDbContext : DbContext
             entity.Property(e => e.Department).HasMaxLength(100);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.HasIndex(e => e.AuthUserId).IsUnique();
-            
-            // One-to-one relationship with Computer
-            entity.HasOne(e => e.Computer)
-                .WithOne(c => c.User)
-                .HasForeignKey<Computer>(c => c.UserId);
         });
 
         // Configure Computer entity
         modelBuilder.Entity<Computer>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.UserId).IsRequired();
             entity.Property(e => e.Hostname).IsRequired().HasMaxLength(255);
             entity.Property(e => e.OsVersion).HasMaxLength(100);
             entity.Property(e => e.IpAddress).HasMaxLength(15);
@@ -48,7 +44,9 @@ public class UserDbContext : DbContext
             // One-to-one relationship with User
             entity.HasOne(e => e.User)
                 .WithOne(u => u.Computer)
-                .HasForeignKey<Computer>(c => c.UserId);
+                .HasForeignKey<Computer>(c => c.UserId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

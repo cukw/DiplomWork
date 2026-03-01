@@ -27,6 +27,8 @@ builder.WebHost.ConfigureKestrel(options =>
 
 builder.Services.AddControllers();
 builder.Services.AddGrpc();
+builder.Services.AddHttpClient("NotificationDelivery");
+builder.Services.Configure<NotificationDeliveryOptions>(builder.Configuration.GetSection("Delivery"));
 
 builder.Services.AddDbContext<NotificationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));

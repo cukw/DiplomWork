@@ -49,30 +49,31 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useThemeMode } from '../contexts/ThemeModeContext';
-import { liveAPI } from '../services/api';
+import { activityAPI, liveAPI } from '../services/api';
+import AlertDetailsDialog from './AlertDetailsDialog';
 
 const drawerWidth = 272;
 
 const menuItems = [
-  { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard', subtitle: 'Live activity overview' },
-  { text: 'Agents', icon: <Memory />, path: '/agents', subtitle: 'Endpoints and control plane' },
-  { text: 'Users', icon: <People />, path: '/users', subtitle: 'Directory and access' },
-  { text: 'Reports', icon: <Assessment />, path: '/reports', subtitle: 'Exports and trends' },
-  { text: 'Analytics', icon: <BarChart />, path: '/analytics', subtitle: 'Detailed metrics' },
-  { text: 'Settings', icon: <Settings />, path: '/settings', subtitle: 'System configuration' },
+  { text: 'Панель мониторинга', icon: <Dashboard />, path: '/dashboard', subtitle: 'Оперативная активность' },
+  { text: 'Агенты', icon: <Memory />, path: '/agents', subtitle: 'Устройства и управление' },
+  { text: 'Пользователи', icon: <People />, path: '/users', subtitle: 'Доступ и учетные записи' },
+  { text: 'Отчеты', icon: <Assessment />, path: '/reports', subtitle: 'Экспорт и тренды' },
+  { text: 'Аналитика', icon: <BarChart />, path: '/analytics', subtitle: 'Подробные метрики' },
+  { text: 'Настройки', icon: <Settings />, path: '/settings', subtitle: 'Конфигурация системы' },
 ];
 
 const pageTitles = {
-  '/dashboard': { title: 'Operations Dashboard', subtitle: 'Current activity, anomalies and trends' },
-  '/agents': { title: 'Agents', subtitle: 'Inventory, capabilities and command history' },
-  '/users': { title: 'User Management', subtitle: 'Accounts, roles and workstation mapping' },
-  '/reports': { title: 'Reports', subtitle: 'Generated reports and exports' },
-  '/analytics': { title: 'Analytics', subtitle: 'Behavior and activity breakdowns' },
-  '/settings': { title: 'System Settings', subtitle: 'Security, notifications and monitoring' },
+  '/dashboard': { title: 'Панель мониторинга', subtitle: 'Текущая активность, тревоги и тренды' },
+  '/agents': { title: 'Агенты', subtitle: 'Инвентаризация, возможности и история команд' },
+  '/users': { title: 'Пользователи', subtitle: 'Учетные записи, роли и привязка рабочих станций' },
+  '/reports': { title: 'Отчеты', subtitle: 'Сформированные отчеты и экспорт' },
+  '/analytics': { title: 'Аналитика', subtitle: 'Разбор поведения и активности' },
+  '/settings': { title: 'Системные настройки', subtitle: 'Безопасность, уведомления и мониторинг' },
 };
 
 const formatDateTime = (value) => {
-  if (!value) return 'No timestamp';
+  if (!value) return '—';
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
@@ -86,11 +87,11 @@ const formatDateTime = (value) => {
 };
 
 const getNotificationText = (notification) => {
-  if (!notification) return { title: 'Notification', body: '' };
+  if (!notification) return { title: 'Уведомление', body: '' };
 
   return {
-    title: notification.title || notification.type || 'Notification',
-    body: notification.message || notification.description || notification.text || 'No details',
+    title: notification.title || notification.type || 'Уведомление',
+    body: notification.message || notification.description || notification.text || 'Нет подробностей',
   };
 };
 
@@ -126,6 +127,9 @@ const Layout = () => {
   const [notificationFilter, setNotificationFilter] = useState('all');
   const [snoozedUntilMap, setSnoozedUntilMap] = useState({});
   const [liveConnected, setLiveConnected] = useState(false);
+  const [selectedAlert, setSelectedAlert] = useState(null);
+  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [alertDetailsOpen, setAlertDetailsOpen] = useState(false);
   const lastUnreadCountRef = useRef(unreadCount);
 
   useEffect(() => {
@@ -151,8 +155,8 @@ const Layout = () => {
   };
 
   const routeMeta = pageTitles[location.pathname] || {
-    title: 'Activity Monitoring',
-    subtitle: 'Protected workspace',
+    title: 'Мониторинг активности',
+    subtitle: 'Защищенное рабочее пространство',
   };
 
   const isProfileMenuOpen = Boolean(profileAnchorEl);
@@ -187,6 +191,56 @@ const Layout = () => {
   const handleNotificationClick = async (notification) => {
     if (!notification?.isRead) {
       await markAsRead(notification.id);
+    }
+
+    const mappedAlert = {
+      id: notification?.id,
+      type: notification?.type || notification?.title,
+      title: notification?.title,
+      description: notification?.message || notification?.description || notification?.text,
+      timestamp: notification?.timestamp,
+      sentAt: notification?.sentAt,
+      channel: notification?.channel,
+      source: notification?.source,
+      activityId: notification?.activityId ?? notification?.activity_id,
+      isRead: notification?.isRead ?? notification?.is_read,
+      acknowledged: notification?.acknowledged,
+      severity: getNotificationSeverity(notification) === 'high'
+        ? 'Высокий'
+        : getNotificationSeverity(notification) === 'medium'
+          ? 'Средний'
+          : 'Низкий',
+    };
+    setSelectedAlert(mappedAlert);
+    setSelectedActivity(null);
+    setAlertDetailsOpen(true);
+
+    const activityId = mappedAlert.activityId;
+    if (activityId == null) return;
+
+    try {
+      const response = await activityAPI.getActivities({
+        page: 1,
+        pageSize: 25,
+        activityId,
+        id: activityId,
+      });
+      const items = response?.items || response?.activities || (Array.isArray(response) ? response : []);
+      const matched = (Array.isArray(items) ? items : []).find((item) => Number(item?.id) === Number(activityId));
+      if (!matched) return;
+
+      setSelectedActivity({
+        id: matched?.id,
+        timestamp: matched?.timestamp,
+        activityType: matched?.activityType ?? matched?.activity_type,
+        computerId: matched?.computerId ?? matched?.computer_id,
+        processName: matched?.processName ?? matched?.process_name,
+        riskScore: Number(matched?.riskScore ?? matched?.risk_score ?? 0),
+        url: matched?.url ?? '',
+        details: matched?.details ?? '',
+      });
+    } catch {
+      setSelectedActivity(null);
     }
   };
 
@@ -309,10 +363,10 @@ const Layout = () => {
           </Avatar>
           <Box>
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-              Activity Monitor
+              Монитор активности
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Security Operations Console
+              Консоль безопасности
             </Typography>
           </Box>
         </Stack>
@@ -323,7 +377,7 @@ const Layout = () => {
         color="text.secondary"
         sx={{ px: 1.5, letterSpacing: '0.08em', fontWeight: 700 }}
       >
-        Navigation
+        Навигация
       </Typography>
 
       <List sx={{ mt: 0.5, px: 0.5 }}>
@@ -380,11 +434,11 @@ const Layout = () => {
         <Stack direction="row" spacing={1} alignItems="center" mb={1}>
           <CheckCircleOutline sx={{ color: 'success.main', fontSize: 18 }} />
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            System status: online
+            Состояние системы: онлайн
           </Typography>
         </Stack>
         <Typography variant="caption" color="text.secondary" display="block">
-          Gateway and core services are reachable.
+          Шлюз и основные сервисы доступны.
         </Typography>
         <Chip
           size="small"
@@ -394,7 +448,7 @@ const Layout = () => {
         />
         <Chip
           size="small"
-          label={liveConnected ? 'LIVE' : 'POLLING'}
+          label={liveConnected ? 'Онлайн' : 'Опрос'}
           color={liveConnected ? 'success' : 'default'}
           variant={liveConnected ? 'filled' : 'outlined'}
           sx={{ mt: 1.25, ml: 1 }}
@@ -419,7 +473,7 @@ const Layout = () => {
         <Toolbar sx={{ minHeight: 74, px: { xs: 2, md: 3 } }}>
           <IconButton
             color="inherit"
-            aria-label="open navigation"
+            aria-label="открыть навигацию"
             edge="start"
             onClick={handleDrawerToggle}
             sx={{ mr: 1.5, display: { sm: 'none' } }}
@@ -443,7 +497,7 @@ const Layout = () => {
               </IconButton>
             </Tooltip>
 
-            <Tooltip title="Refresh notifications">
+            <Tooltip title="Обновить уведомления">
               <span>
                 <IconButton
                   color="inherit"
@@ -456,7 +510,7 @@ const Layout = () => {
               </span>
             </Tooltip>
 
-            <Tooltip title="Notifications">
+            <Tooltip title="Уведомления">
               <IconButton color="inherit" onClick={handleNotificationMenuOpen}>
                 <Badge
                   badgeContent={unreadCount}
@@ -489,10 +543,10 @@ const Layout = () => {
             >
               <Box textAlign="left">
                 <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.1 }}>
-                  {user?.username || 'User'}
+                  {user?.username || 'Пользователь'}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.1 }}>
-                  {user?.role || 'operator'}
+                  {user?.role || 'оператор'}
                 </Typography>
               </Box>
             </Button>
@@ -575,21 +629,21 @@ const Layout = () => {
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Box>
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                Notifications
+                Уведомления
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
+                {unreadCount > 0 ? `${unreadCount} непрочитанных` : 'Новых уведомлений нет'}
               </Typography>
             </Box>
             <Button size="small" onClick={markAllAsRead} disabled={!unreadCount}>
-              Mark all read
+              Отметить все прочитанными
             </Button>
           </Stack>
           <Stack direction="row" spacing={0.75} sx={{ mt: 1.25 }}>
             {[
-              { key: 'all', label: 'All' },
-              { key: 'unread', label: 'Unread' },
-              { key: 'high', label: 'High risk' },
+              { key: 'all', label: 'Все' },
+              { key: 'unread', label: 'Непрочитанные' },
+              { key: 'high', label: 'Высокий риск' },
             ].map((item) => (
               <MuiChip
                 key={item.key}
@@ -612,7 +666,7 @@ const Layout = () => {
         ) : visibleNotifications.length === 0 ? (
           <Box sx={{ p: 2.5 }}>
             <Typography variant="body2" color="text.secondary" align="center">
-              No notifications for selected filter
+              Нет уведомлений для выбранного фильтра
             </Typography>
           </Box>
         ) : (
@@ -659,7 +713,7 @@ const Layout = () => {
                         {severity !== 'low' && (
                           <MuiChip
                             size="small"
-                            label={severity === 'high' ? 'HIGH' : 'MED'}
+                            label={severity === 'high' ? 'Высокий' : 'Средний'}
                             color={severity === 'high' ? 'error' : 'warning'}
                             sx={{ height: 20 }}
                           />
@@ -692,17 +746,17 @@ const Layout = () => {
                             markAsRead(notification.id);
                           }}
                         >
-                          Ack
+                          Подтв.
                         </Button>
                       )}
-                      <Tooltip title="Snooze for 15 minutes">
+                      <Tooltip title="Отложить на 15 минут">
                         <span>
                           <IconButton size="small" onClick={(event) => handleSnoozeClick(event, notification.id)}>
                             <AccessTime fontSize="inherit" />
                           </IconButton>
                         </span>
                       </Tooltip>
-                      <Tooltip title="Delete">
+                      <Tooltip title="Удалить">
                         <span>
                           <IconButton size="small" onClick={(event) => handleDeleteNotification(event, notification.id)}>
                             <DeleteOutline fontSize="inherit" />
@@ -737,10 +791,10 @@ const Layout = () => {
       >
         <Box sx={{ px: 1.5, py: 1.25 }}>
           <Typography variant="body2" sx={{ fontWeight: 700 }}>
-            {user?.username || 'User'}
+            {user?.username || 'Пользователь'}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {user?.email || 'Authenticated session'}
+            {user?.email || 'Авторизованная сессия'}
           </Typography>
         </Box>
         <Divider />
@@ -753,15 +807,22 @@ const Layout = () => {
           <ListItemIcon>
             <Settings fontSize="small" />
           </ListItemIcon>
-          Settings
+          Настройки
         </MenuItem>
         <MenuItem onClick={handleLogout}>
           <ListItemIcon>
             <Logout fontSize="small" />
           </ListItemIcon>
-          Logout
+          Выйти
         </MenuItem>
       </Menu>
+
+      <AlertDetailsDialog
+        open={alertDetailsOpen}
+        onClose={() => setAlertDetailsOpen(false)}
+        alertItem={selectedAlert}
+        activityItem={selectedActivity}
+      />
     </Box>
   );
 };

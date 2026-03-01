@@ -176,7 +176,11 @@ public partial class AgentManagementServiceImpl
             AutoLockEnabled = policy.AutoLockEnabled,
             AdminBlocked = policy.AdminBlocked,
             BlockedReason = policy.BlockedReason,
-            Browsers = ParseBrowsers(policy.BrowsersJson).ToList()
+            Browsers = ParseBrowsers(policy.BrowsersJson).ToList(),
+            EnableWhitelist = policy.EnableWhitelist,
+            EnableBlacklist = policy.EnableBlacklist,
+            WhitelistApps = ParseAppList(policy.WhitelistJson).ToList(),
+            BlacklistApps = ParseAppList(policy.BlacklistJson).ToList()
         };
     }
 
@@ -191,6 +195,8 @@ public partial class AgentManagementServiceImpl
             parsed.Browsers ??= ["chrome", "edge", "firefox"];
             if (parsed.Browsers.Count == 0)
                 parsed.Browsers = ["chrome", "edge", "firefox"];
+            parsed.WhitelistApps ??= [];
+            parsed.BlacklistApps ??= [];
             return parsed;
         }
         catch
@@ -221,9 +227,13 @@ public partial class AgentManagementServiceImpl
             HighRiskThreshold = snapshot.HighRiskThreshold,
             AutoLockEnabled = snapshot.AutoLockEnabled,
             AdminBlocked = snapshot.AdminBlocked,
-            BlockedReason = snapshot.BlockedReason ?? string.Empty
+            BlockedReason = snapshot.BlockedReason ?? string.Empty,
+            EnableWhitelist = snapshot.EnableWhitelist,
+            EnableBlacklist = snapshot.EnableBlacklist
         };
         proto.Browsers.AddRange((snapshot.Browsers ?? []).Where(x => !string.IsNullOrWhiteSpace(x)));
+        proto.WhitelistApps.AddRange((snapshot.WhitelistApps ?? []).Where(x => !string.IsNullOrWhiteSpace(x)));
+        proto.BlacklistApps.AddRange((snapshot.BlacklistApps ?? []).Where(x => !string.IsNullOrWhiteSpace(x)));
         return proto;
     }
 
@@ -246,5 +256,9 @@ public partial class AgentManagementServiceImpl
         public bool AdminBlocked { get; set; }
         public string? BlockedReason { get; set; }
         public List<string> Browsers { get; set; } = [];
+        public bool EnableWhitelist { get; set; } = true;
+        public bool EnableBlacklist { get; set; } = true;
+        public List<string> WhitelistApps { get; set; } = [];
+        public List<string> BlacklistApps { get; set; } = [];
     }
 }

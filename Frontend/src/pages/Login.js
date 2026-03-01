@@ -161,9 +161,9 @@ const Login = () => {
               </Stack>
 
               <Stack direction="row" spacing={1} mb={3} flexWrap="wrap">
-                <Chip size="small" label="JWT authentication" color="primary" variant="outlined" />
-                <Chip size="small" label="Gateway routing" color="default" variant="outlined" />
-                <Chip size="small" label="Audit ready" color="default" variant="outlined" />
+                <Chip size="small" label="JWT-аутентификация" color="primary" variant="outlined" />
+                <Chip size="small" label="Маршрутизация через шлюз" color="default" variant="outlined" />
+                <Chip size="small" label="Готово к аудиту" color="default" variant="outlined" />
               </Stack>
 
               {error && (
@@ -200,7 +200,7 @@ const Login = () => {
                     endAdornment: (
                       <InputAdornment position="end">
                         <IconButton
-                          aria-label="toggle password visibility"
+                          aria-label="показать/скрыть пароль"
                           onClick={() => setShowPassword((prev) => !prev)}
                           edge="end"
                           disabled={loading}
@@ -276,9 +276,9 @@ const Login = () => {
 
               <Stack spacing={1.5}>
                 {[
-                  ['Gateway-first API', 'Все запросы проходят через единый gateway и JWT-проверку.'],
-                  ['Anomaly feed', 'Выделение подозрительных действий и быстрый просмотр свежих инцидентов.'],
-                  ['Reports & analytics', 'Экспорт и визуализация статистики по активности и рискам.'],
+                  ['API через единый шлюз', 'Все запросы проходят через единый шлюз и JWT-проверку.'],
+                  ['Поток аномалий', 'Выделение подозрительных действий и быстрый просмотр свежих инцидентов.'],
+                  ['Отчеты и аналитика', 'Экспорт и визуализация статистики по активности и рискам.'],
                 ].map(([title, description]) => (
                   <Box
                     key={title}

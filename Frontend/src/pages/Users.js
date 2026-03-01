@@ -56,14 +56,14 @@ const emptyForm = {
 const formatDateTime = (value) => {
   if (!value) return '-';
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('ru-RU');
 };
 
 const normalizeUsers = (rows) => (rows || []).map((u) => ({
   id: u.id,
   authUserId: u.authUserId,
-  fullName: u.fullName || 'Unnamed user',
-  department: u.department || 'Unassigned',
+  fullName: u.fullName || 'Без имени',
+  department: u.department || 'Не назначен',
   createdAt: u.createdAt,
   computer: u.computer || null,
 }));
@@ -91,8 +91,8 @@ const Users = () => {
       const response = await userAPI.getUsers({ page: 1, pageSize: FETCH_PAGE_SIZE });
       setUsers(normalizeUsers(response?.users || []));
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Failed to load users');
-      console.error('Users fetch error:', err);
+      setError(err?.response?.data?.message || err?.message || 'Не удалось загрузить пользователей');
+      console.error('Ошибка загрузки пользователей:', err);
     } finally {
       setLoading(false);
     }
@@ -186,11 +186,11 @@ const Users = () => {
       const department = String(formData.department || '').trim();
 
       if (!fullName) {
-        setError('Full Name is required');
+        setError('Поле «ФИО» обязательно');
         return;
       }
       if (!department) {
-        setError('Department is required');
+        setError('Поле «Отдел» обязательно');
         return;
       }
 
@@ -199,11 +199,11 @@ const Users = () => {
           fullName,
           department,
         });
-        setSuccess('User updated successfully');
+        setSuccess('Пользователь успешно обновлен');
       } else {
         const authUserId = Number(formData.authUserId);
         if (!Number.isFinite(authUserId) || authUserId <= 0) {
-          setError('Auth User ID must be a positive number');
+          setError('ID пользователя авторизации должен быть положительным числом');
           return;
         }
 
@@ -216,7 +216,7 @@ const Users = () => {
           ipAddress: String(formData.ipAddress || '').trim(),
           macAddress: String(formData.macAddress || '').trim(),
         });
-        setSuccess('User created successfully');
+        setSuccess('Пользователь успешно создан');
       }
 
       setDialogOpen(false);
@@ -225,8 +225,8 @@ const Users = () => {
       await fetchUsers({ silent: true });
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Failed to save user');
-      console.error('Save user error:', err);
+      setError(err?.response?.data?.message || err?.message || 'Не удалось сохранить пользователя');
+      console.error('Ошибка сохранения пользователя:', err);
     } finally {
       setSaving(false);
     }
@@ -241,14 +241,14 @@ const Users = () => {
       setSuccess(null);
 
       await userAPI.deleteUser(selectedUser.id);
-      setSuccess(`User "${selectedUser.fullName}" deleted`);
+      setSuccess(`Пользователь «${selectedUser.fullName}» удален`);
       setDeleteDialogOpen(false);
       setSelectedUser(null);
       await fetchUsers({ silent: true });
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Failed to delete user');
-      console.error('Delete user error:', err);
+      setError(err?.response?.data?.message || err?.message || 'Не удалось удалить пользователя');
+      console.error('Ошибка удаления пользователя:', err);
     } finally {
       setSaving(false);
     }
@@ -273,13 +273,13 @@ const Users = () => {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} gap={2} flexWrap="wrap">
         <Box>
-          <Typography variant="h4">User Management</Typography>
+          <Typography variant="h4">Пользователи</Typography>
           <Typography variant="body2" color="text.secondary">
-            Real CRUD via UserService (gateway `/api/user/users`)
+            Полное управление пользователями через сервис пользователей (шлюз `/api/user/users`)
           </Typography>
         </Box>
         <Button variant="contained" startIcon={<Add />} onClick={handleAddUser}>
-          Add User
+          Добавить пользователя
         </Button>
       </Box>
 
@@ -299,7 +299,7 @@ const Users = () => {
         <CardContent>
           <TextField
             fullWidth
-            placeholder="Search by name, department, computer, IP, MAC, auth ID..."
+            placeholder="Поиск по ФИО, отделу, компьютеру, IP, MAC, ID авторизации..."
             value={searchTerm}
             onChange={handleSearch}
             InputProps={{
@@ -318,19 +318,19 @@ const Users = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>User</TableCell>
-                <TableCell>Department</TableCell>
-                <TableCell>Computer</TableCell>
-                <TableCell>Network</TableCell>
-                <TableCell>Created</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell>Пользователь</TableCell>
+                <TableCell>Отдел</TableCell>
+                <TableCell>Компьютер</TableCell>
+                <TableCell>Сеть</TableCell>
+                <TableCell>Создан</TableCell>
+                <TableCell align="right">Действия</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {pagedUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} align="center">
-                    No users found
+                    Пользователи не найдены
                   </TableCell>
                 </TableRow>
               ) : pagedUsers.map((row) => (
@@ -341,7 +341,7 @@ const Users = () => {
                       <Box>
                         <Typography variant="subtitle2">{row.fullName}</Typography>
                         <Typography variant="body2" color="text.secondary">
-                          User #{row.id} · Auth #{row.authUserId || '-'}
+                          Пользователь #{row.id} · ID авторизации #{row.authUserId || '-'}
                         </Typography>
                       </Box>
                     </Box>
@@ -356,13 +356,18 @@ const Users = () => {
                         </Box>
                         <Chip
                           size="small"
-                          label={(row.computer.status || 'unknown').toUpperCase()}
+                          label={(() => {
+                            const status = String(row.computer.status || '').toLowerCase();
+                            if (status.includes('online') || status.includes('active')) return 'Онлайн';
+                            if (status.includes('offline')) return 'Оффлайн';
+                            return 'Неизвестно';
+                          })()}
                           color={getComputerStatusColor(row.computer.status)}
                           sx={{ width: 'fit-content' }}
                         />
                       </Stack>
                     ) : (
-                      <Typography variant="body2" color="text.secondary">No computer</Typography>
+                      <Typography variant="body2" color="text.secondary">Нет компьютера</Typography>
                     )}
                   </TableCell>
                   <TableCell>
@@ -382,7 +387,7 @@ const Users = () => {
                     <Typography variant="body2">{formatDateTime(row.createdAt)}</Typography>
                     {row.computer?.lastSeen && (
                       <Typography variant="caption" color="text.secondary" display="block">
-                        Last seen: {formatDateTime(row.computer.lastSeen)}
+                        Последняя активность: {formatDateTime(row.computer.lastSeen)}
                       </Typography>
                     )}
                   </TableCell>
@@ -399,7 +404,7 @@ const Users = () => {
 
         <Box display="flex" justifyContent="space-between" alignItems="center" p={2} flexWrap="wrap" gap={1}>
           <Typography variant="body2" color="text.secondary">
-            Showing {pagedUsers.length} of {filteredUsers.length} loaded users
+            Показано {pagedUsers.length} из {filteredUsers.length} загруженных пользователей
           </Typography>
           <Pagination
             count={totalPages}
@@ -411,24 +416,24 @@ const Users = () => {
       </Paper>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>{selectedUser ? 'Edit User' : 'Add New User'}</DialogTitle>
+        <DialogTitle>{selectedUser ? 'Редактировать пользователя' : 'Добавить пользователя'}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="Auth User ID"
+                label="ID пользователя авторизации"
                 type="number"
                 value={formData.authUserId}
                 onChange={(e) => setFormData((prev) => ({ ...prev, authUserId: e.target.value }))}
                 disabled={Boolean(selectedUser)}
-                helperText={selectedUser ? 'Auth user link is immutable in current API' : 'Required'}
+                helperText={selectedUser ? 'Связь с пользователем авторизации нельзя изменить через текущий интерфейс' : 'Обязательно'}
               />
             </Grid>
             <Grid item xs={12} md={8}>
               <TextField
                 fullWidth
-                label="Full Name"
+                label="ФИО"
                 value={formData.fullName}
                 onChange={(e) => setFormData((prev) => ({ ...prev, fullName: e.target.value }))}
               />
@@ -436,7 +441,7 @@ const Users = () => {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Department"
+                label="Отдел"
                 value={formData.department}
                 onChange={(e) => setFormData((prev) => ({ ...prev, department: e.target.value }))}
               />
@@ -444,17 +449,17 @@ const Users = () => {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Hostname"
+                label="Имя хоста"
                 value={formData.hostname}
                 onChange={(e) => setFormData((prev) => ({ ...prev, hostname: e.target.value }))}
                 disabled={Boolean(selectedUser)}
-                helperText={selectedUser ? 'Computer details are managed by current backend separately' : ''}
+                helperText={selectedUser ? 'Параметры компьютера управляются backend отдельно' : ''}
               />
             </Grid>
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="OS Version"
+                label="Версия ОС"
                 value={formData.osVersion}
                 onChange={(e) => setFormData((prev) => ({ ...prev, osVersion: e.target.value }))}
                 disabled={Boolean(selectedUser)}
@@ -463,7 +468,7 @@ const Users = () => {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="IP Address"
+                label="IP-адрес"
                 value={formData.ipAddress}
                 onChange={(e) => setFormData((prev) => ({ ...prev, ipAddress: e.target.value }))}
                 disabled={Boolean(selectedUser)}
@@ -472,7 +477,7 @@ const Users = () => {
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="MAC Address"
+                label="MAC-адрес"
                 value={formData.macAddress}
                 onChange={(e) => setFormData((prev) => ({ ...prev, macAddress: e.target.value }))}
                 disabled={Boolean(selectedUser)}
@@ -481,24 +486,24 @@ const Users = () => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button>
+          <Button onClick={() => setDialogOpen(false)} disabled={saving}>Отмена</Button>
           <Button onClick={handleSaveUser} variant="contained" disabled={saving}>
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? 'Сохранение...' : 'Сохранить'}
           </Button>
         </DialogActions>
       </Dialog>
 
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogTitle>Подтвердите удаление</DialogTitle>
         <DialogContent>
           <Typography>
-            Delete user "{selectedUser?.fullName}" (ID {selectedUser?.id})? This action cannot be undone.
+            Удалить пользователя «{selectedUser?.fullName}» (ID {selectedUser?.id})? Действие необратимо.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)} disabled={saving}>Cancel</Button>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={saving}>Отмена</Button>
           <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={saving}>
-            {saving ? 'Deleting...' : 'Delete'}
+            {saving ? 'Удаление...' : 'Удалить'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -506,11 +511,11 @@ const Users = () => {
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
         <MenuItem onClick={handleEdit}>
           <Edit sx={{ mr: 1 }} fontSize="small" />
-          Edit
+          Редактировать
         </MenuItem>
         <MenuItem onClick={handleDelete}>
           <Delete sx={{ mr: 1 }} fontSize="small" />
-          Delete
+          Удалить
         </MenuItem>
       </Menu>
     </Box>

@@ -1,0 +1,94 @@
+name: Local Endpoint Agent Packages
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "LocalEndpointAgent/**"
+      - ".github/workflows/local-endpoint-agent-packages.yml"
+  pull_request:
+    paths:
+      - "LocalEndpointAgent/**"
+      - ".github/workflows/local-endpoint-agent-packages.yml"
+
+jobs:
+  build-linux-deb:
+    name: Build Linux (.deb)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build .deb package
+        run: |
+          chmod +x LocalEndpointAgent/scripts/build_linux_deb.sh
+          bash LocalEndpointAgent/scripts/build_linux_deb.sh
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-endpoint-agent-linux
+          path: |
+            LocalEndpointAgent/dist/linux/local-endpoint-agent_*_amd64.deb
+            LocalEndpointAgent/dist/linux/endpoint-agent-linux
+          if-no-files-found: error
+          retention-days: 14
+
+  build-macos:
+    name: Build macOS (bin + dmg)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build macOS binary and dmg
+        run: |
+          chmod +x LocalEndpointAgent/scripts/build_macos_bin.sh
+          chmod +x LocalEndpointAgent/scripts/build_macos_dmg.sh
+          bash LocalEndpointAgent/scripts/build_macos_dmg.sh
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-endpoint-agent-macos
+          path: |
+            LocalEndpointAgent/dist/macos/endpoint-agent-macos
+            LocalEndpointAgent/dist/macos/endpoint-agent-macos.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+  build-windows-exe:
+    name: Build Windows (.exe)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build .exe package
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+          ./LocalEndpointAgent/scripts/build_windows_exe.ps1
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-endpoint-agent-windows
+          path: LocalEndpointAgent/dist/windows/endpoint-agent-windows.exe
+          if-no-files-found: error
+          retention-days: 14

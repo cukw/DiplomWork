@@ -54,7 +54,7 @@ const formatDateTime = (value) => {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleString();
+  return date.toLocaleString('ru-RU');
 };
 
 const formatRelative = (value) => {
@@ -63,12 +63,12 @@ const formatRelative = (value) => {
   if (Number.isNaN(date.getTime())) return '—';
   const diffMs = Date.now() - date.getTime();
   const diffSec = Math.floor(diffMs / 1000);
-  if (diffSec < 60) return `${diffSec}s ago`;
+  if (diffSec < 60) return `${diffSec} сек назад`;
   const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffMin < 60) return `${diffMin} мин назад`;
   const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}h ago`;
-  return `${Math.floor(diffHour / 24)}d ago`;
+  if (diffHour < 24) return `${diffHour} ч назад`;
+  return `${Math.floor(diffHour / 24)} дн назад`;
 };
 
 const getStatusColor = (status) => {
@@ -94,33 +94,33 @@ const buildEffectiveCapabilities = (policy) => {
   return [
     {
       key: 'processes',
-      label: 'Process collection',
+      label: 'Сбор процессов',
       enabled: toBool(policy.enableProcessCollection),
-      detail: policy.processSnapshotLimit ? `Limit ${policy.processSnapshotLimit}` : null,
+      detail: policy.processSnapshotLimit ? `Лимит ${policy.processSnapshotLimit}` : null,
     },
     {
       key: 'browser',
-      label: 'Browser history',
+      label: 'История браузера',
       enabled: toBool(policy.enableBrowserCollection),
       detail: Array.isArray(policy.browsers) && policy.browsers.length > 0 ? policy.browsers.join(', ') : null,
     },
     {
       key: 'window',
-      label: 'Active window tracking',
+      label: 'Отслеживание активного окна',
       enabled: toBool(policy.enableActiveWindowCollection),
       detail: null,
     },
     {
       key: 'idle',
-      label: 'Idle time tracking',
+      label: 'Отслеживание бездействия',
       enabled: toBool(policy.enableIdleCollection),
-      detail: policy.idleThresholdSec ? `Threshold ${policy.idleThresholdSec}s` : null,
+      detail: policy.idleThresholdSec ? `Порог ${policy.idleThresholdSec}с` : null,
     },
     {
       key: 'autolock',
-      label: 'Auto lock on high risk',
+      label: 'Автоблокировка при высоком риске',
       enabled: toBool(policy.autoLockEnabled),
-      detail: policy.highRiskThreshold != null ? `Risk ≥ ${policy.highRiskThreshold}` : null,
+      detail: policy.highRiskThreshold != null ? `Риск ≥ ${policy.highRiskThreshold}` : null,
     },
   ];
 };
@@ -209,7 +209,7 @@ const Agents = () => {
 
   const [customCommandType, setCustomCommandType] = useState('PING');
   const [customCommandPayload, setCustomCommandPayload] = useState('{}');
-  const [adminReason, setAdminReason] = useState('Blocked by admin');
+  const [adminReason, setAdminReason] = useState('Заблокировано администратором');
 
   useEffect(() => {
     let alive = true;
@@ -234,7 +234,7 @@ const Agents = () => {
         });
       } catch (err) {
         if (!alive) return;
-        setError(err?.response?.data?.message || err?.message || 'Failed to load agents');
+        setError(err?.response?.data?.message || err?.message || 'Не удалось загрузить агентов');
       } finally {
         if (alive) setLoadingList(false);
       }
@@ -290,7 +290,7 @@ const Agents = () => {
         setCommandsTotal(commandsResp?.totalCount || 0);
       } catch (err) {
         if (!alive) return;
-        setError(err?.response?.data?.message || err?.message || 'Failed to load agent details');
+        setError(err?.response?.data?.message || err?.message || 'Не удалось загрузить данные агента');
       } finally {
         if (alive) setLoadingDetails(false);
       }
@@ -355,10 +355,10 @@ const Agents = () => {
         setCommands(commandsResp?.commands || []);
         setCommandsTotal(commandsResp?.totalCount || 0);
       }
-      setSuccess('Agent inventory refreshed');
+      setSuccess('Список агентов обновлен');
       clearSuccessLater();
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Refresh failed');
+      setError(err?.response?.data?.message || err?.message || 'Не удалось обновить данные');
     } finally {
       setActionLoading(false);
     }
@@ -370,11 +370,11 @@ const Agents = () => {
       setActionLoading(true);
       setError(null);
       if (shouldBlock) {
-        await agentAPI.blockWorkstation(selectedAgentId, adminReason || 'Blocked by admin');
-        setSuccess('Block command queued');
+        await agentAPI.blockWorkstation(selectedAgentId, adminReason || 'Заблокировано администратором');
+        setSuccess('Команда блокировки поставлена в очередь');
       } else {
-        await agentAPI.unblockWorkstation(selectedAgentId, adminReason || 'Unblocked by admin');
-        setSuccess('Unblock command queued');
+        await agentAPI.unblockWorkstation(selectedAgentId, adminReason || 'Разблокировано администратором');
+        setSuccess('Команда разблокировки поставлена в очередь');
       }
       clearSuccessLater();
       setCommandPage(1);
@@ -399,7 +399,7 @@ const Agents = () => {
       setCommands(commandsResp?.commands || []);
       setCommandsTotal(commandsResp?.totalCount || 0);
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Failed to queue command');
+      setError(err?.response?.data?.message || err?.message || 'Не удалось поставить команду в очередь');
     } finally {
       setActionLoading(false);
     }
@@ -411,7 +411,7 @@ const Agents = () => {
     try {
       JSON.parse(customCommandPayload || '{}');
     } catch {
-      setError('Payload JSON is invalid');
+      setError('Некорректный JSON полезной нагрузки');
       return;
     }
 
@@ -422,7 +422,7 @@ const Agents = () => {
         type: String(customCommandType || '').trim().toUpperCase(),
         payloadJson: customCommandPayload || '{}',
       });
-      setSuccess(`Command queued: ${command?.type || customCommandType}`);
+      setSuccess(`Команда поставлена в очередь: ${command?.type || customCommandType}`);
       clearSuccessLater();
       setCommandPage(1);
       const commandsResp = await agentAPI.getAgentCommands(selectedAgentId, {
@@ -433,7 +433,7 @@ const Agents = () => {
       setCommands(commandsResp?.commands || []);
       setCommandsTotal(commandsResp?.totalCount || 0);
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Failed to create command');
+      setError(err?.response?.data?.message || err?.message || 'Не удалось создать команду');
     } finally {
       setActionLoading(false);
     }
@@ -441,20 +441,20 @@ const Agents = () => {
 
   const handleDeleteAgent = async () => {
     if (!selectedAgentId) return;
-    const confirmed = window.confirm(`Delete agent #${selectedAgentId}? This action cannot be undone.`);
+    const confirmed = window.confirm(`Удалить агента #${selectedAgentId}? Действие необратимо.`);
     if (!confirmed) return;
 
     try {
       setActionLoading(true);
       setError(null);
       await agentAPI.deleteAgent(selectedAgentId);
-      setSuccess(`Agent #${selectedAgentId} deleted`);
+      setSuccess(`Агент #${selectedAgentId} удален`);
       clearSuccessLater();
       const nextAgents = agents.filter((a) => a.id !== selectedAgentId);
       setAgents(nextAgents);
       setSelectedAgentId(nextAgents[0]?.id ?? null);
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Failed to delete agent');
+      setError(err?.response?.data?.message || err?.message || 'Не удалось удалить агента');
     } finally {
       setActionLoading(false);
     }
@@ -462,7 +462,7 @@ const Agents = () => {
 
   const handleRestorePolicyVersion = async (versionId) => {
     if (!selectedAgentId || !versionId) return;
-    const confirmed = window.confirm(`Restore policy version #${versionId} for agent #${selectedAgentId}?`);
+    const confirmed = window.confirm(`Восстановить версию политики #${versionId} для агента #${selectedAgentId}?`);
     if (!confirmed) return;
 
     try {
@@ -470,7 +470,7 @@ const Agents = () => {
       setError(null);
       const result = await agentAPI.restoreAgentPolicyVersion(selectedAgentId, versionId, {});
       setPolicy(result?.policy || null);
-      setSuccess(result?.message || `Policy version #${versionId} restored`);
+      setSuccess(result?.message || `Версия политики #${versionId} восстановлена`);
       clearSuccessLater();
 
       const versionsResp = await agentAPI.getAgentPolicyVersions(selectedAgentId, {
@@ -480,7 +480,7 @@ const Agents = () => {
       setPolicyVersions(versionsResp?.versions || []);
       setPolicyVersionsTotal(versionsResp?.totalCount || 0);
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Failed to restore policy version');
+      setError(err?.response?.data?.message || err?.message || 'Не удалось восстановить версию политики');
     } finally {
       setActionLoading(false);
     }
@@ -493,9 +493,9 @@ const Agents = () => {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} gap={2} flexWrap="wrap">
         <Box>
-          <Typography variant="h4">Agents</Typography>
+          <Typography variant="h4">Агенты</Typography>
           <Typography variant="body2" color="text.secondary">
-            Agent inventory, effective capabilities and command history
+            Реестр агентов, эффективные возможности и история команд
           </Typography>
         </Box>
         <Button
@@ -504,7 +504,7 @@ const Agents = () => {
           onClick={hardRefresh}
           disabled={actionLoading}
         >
-          Refresh
+          Обновить
         </Button>
       </Box>
 
@@ -527,7 +527,7 @@ const Agents = () => {
                 <TextField
                   fullWidth
                   size="small"
-                  placeholder="Search agents"
+                  placeholder="Поиск агентов"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   InputProps={{
@@ -540,17 +540,17 @@ const Agents = () => {
                 />
 
                 <FormControl fullWidth size="small">
-                  <InputLabel>Status</InputLabel>
+                  <InputLabel>Статус</InputLabel>
                   <Select
-                    label="Status"
+                    label="Статус"
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                   >
-                    <MenuItem value="all">All</MenuItem>
-                    <MenuItem value="online">Online</MenuItem>
-                    <MenuItem value="offline">Offline</MenuItem>
-                    <MenuItem value="active">Active</MenuItem>
-                    <MenuItem value="error">Error</MenuItem>
+                    <MenuItem value="all">Все</MenuItem>
+                    <MenuItem value="online">Онлайн</MenuItem>
+                    <MenuItem value="offline">Оффлайн</MenuItem>
+                    <MenuItem value="active">Активен</MenuItem>
+                    <MenuItem value="error">Ошибка</MenuItem>
                   </Select>
                 </FormControl>
 
@@ -559,7 +559,7 @@ const Agents = () => {
                 {loadingList ? (
                   <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
                 ) : filteredAgents.length === 0 ? (
-                  <Alert severity="info">No agents found</Alert>
+                  <Alert severity="info">Агенты не найдены</Alert>
                 ) : (
                   <List disablePadding sx={{ maxHeight: 640, overflowY: 'auto' }}>
                     {filteredAgents.map((agent) => {
@@ -584,17 +584,17 @@ const Agents = () => {
                           <ListItemText
                             primary={
                               <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                                <Typography variant="subtitle2">Agent #{agent.id}</Typography>
-                                <Chip size="small" label={agent.status || 'unknown'} color={getStatusColor(agent.status)} />
+                                <Typography variant="subtitle2">Агент #{agent.id}</Typography>
+                                <Chip size="small" label={agent.status || 'неизвестно'} color={getStatusColor(agent.status)} />
                               </Stack>
                             }
                             secondary={
                               <Box mt={0.5}>
                                 <Typography variant="caption" display="block" color="text.secondary">
-                                  Computer #{agent.computerId} • v{agent.version}
+                                  Компьютер #{agent.computerId} • v{agent.version}
                                 </Typography>
                                 <Typography variant="caption" display="block" color="text.secondary">
-                                  Last heartbeat: {formatRelative(agent.lastHeartbeat)}
+                                  Последний сигнал: {formatRelative(agent.lastHeartbeat)}
                                 </Typography>
                               </Box>
                             }
@@ -611,7 +611,7 @@ const Agents = () => {
 
         <Grid item xs={12} lg={8}>
           {!selectedAgentId ? (
-            <Alert severity="info">Select an agent to view details.</Alert>
+            <Alert severity="info">Выберите агента для просмотра деталей.</Alert>
           ) : loadingDetails && !selectedAgent ? (
             <Box display="flex" justifyContent="center" py={8}><CircularProgress /></Box>
           ) : (
@@ -620,17 +620,17 @@ const Agents = () => {
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2} flexWrap="wrap">
                     <Box>
-                      <Typography variant="h5">Agent #{selectedAgent?.id}</Typography>
+                      <Typography variant="h5">Агент #{selectedAgent?.id}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Computer #{selectedAgent?.computerId} • Version {selectedAgent?.version || '—'} • Config {selectedAgent?.configVersion || '—'}
+                        Компьютер #{selectedAgent?.computerId} • Версия {selectedAgent?.version || '—'} • Конфиг {selectedAgent?.configVersion || '—'}
                       </Typography>
                     </Box>
                     <Stack direction="row" spacing={1} flexWrap="wrap">
-                      <Chip label={selectedAgent?.status || 'unknown'} color={getStatusColor(selectedAgent?.status)} />
+                      <Chip label={selectedAgent?.status || 'неизвестно'} color={getStatusColor(selectedAgent?.status)} />
                       {policy?.adminBlocked ? (
-                        <Chip label="Admin blocked" color="error" variant="filled" />
+                        <Chip label="Заблокирован администратором" color="error" variant="filled" />
                       ) : (
-                        <Chip label="Not blocked" color="success" variant="outlined" />
+                        <Chip label="Не заблокирован" color="success" variant="outlined" />
                       )}
                     </Stack>
                   </Box>
@@ -638,25 +638,25 @@ const Agents = () => {
                   <Grid container spacing={2} sx={{ mt: 1 }}>
                     <Grid item xs={12} sm={6} md={3}>
                       <Paper variant="outlined" sx={{ p: 1.5 }}>
-                        <Typography variant="caption" color="text.secondary">Last heartbeat</Typography>
+                        <Typography variant="caption" color="text.secondary">Последний сигнал</Typography>
                         <Typography variant="body2">{formatDateTime(selectedAgent?.lastHeartbeat)}</Typography>
                       </Paper>
                     </Grid>
                     <Grid item xs={12} sm={6} md={3}>
                       <Paper variant="outlined" sx={{ p: 1.5 }}>
-                        <Typography variant="caption" color="text.secondary">Offline since</Typography>
+                        <Typography variant="caption" color="text.secondary">Оффлайн с</Typography>
                         <Typography variant="body2">{formatDateTime(selectedAgent?.offlineSince)}</Typography>
                       </Paper>
                     </Grid>
                     <Grid item xs={12} sm={6} md={3}>
                       <Paper variant="outlined" sx={{ p: 1.5 }}>
-                        <Typography variant="caption" color="text.secondary">Policy version</Typography>
+                        <Typography variant="caption" color="text.secondary">Версия политики</Typography>
                         <Typography variant="body2">{policy?.policyVersion || '—'}</Typography>
                       </Paper>
                     </Grid>
                     <Grid item xs={12} sm={6} md={3}>
                       <Paper variant="outlined" sx={{ p: 1.5 }}>
-                        <Typography variant="caption" color="text.secondary">Policy updated</Typography>
+                        <Typography variant="caption" color="text.secondary">Политика обновлена</Typography>
                         <Typography variant="body2">{formatDateTime(policy?.updatedAt)}</Typography>
                       </Paper>
                     </Grid>
@@ -674,11 +674,11 @@ const Agents = () => {
                     <CardContent>
                       <Stack direction="row" spacing={1} alignItems="center" mb={2}>
                         <Policy color="primary" fontSize="small" />
-                        <Typography variant="h6">Effective Capabilities (Policy)</Typography>
+                        <Typography variant="h6">Эффективные возможности (политика)</Typography>
                       </Stack>
                       <Stack spacing={1.25}>
                         {effectiveCapabilities.length === 0 ? (
-                          <Alert severity="info">No policy loaded yet.</Alert>
+                          <Alert severity="info">Политика еще не загружена.</Alert>
                         ) : effectiveCapabilities.map((cap) => (
                           <Paper key={cap.key} variant="outlined" sx={{ p: 1.25 }}>
                             <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}>
@@ -691,7 +691,7 @@ const Agents = () => {
                               <Chip
                                 size="small"
                                 color={cap.enabled ? 'success' : 'default'}
-                                label={cap.enabled ? 'Enabled' : 'Disabled'}
+                                label={cap.enabled ? 'Включено' : 'Отключено'}
                                 variant={cap.enabled ? 'filled' : 'outlined'}
                               />
                             </Stack>
@@ -707,12 +707,12 @@ const Agents = () => {
                     <CardContent>
                       <Stack direction="row" spacing={1} alignItems="center" mb={2}>
                         <Memory color="primary" fontSize="small" />
-                        <Typography variant="h6">Reported Capabilities</Typography>
+                        <Typography variant="h6">Заявленные возможности</Typography>
                       </Stack>
 
                       {reportedCapabilities.length === 0 ? (
                         <Alert severity="info">
-                          Agent API does not yet return runtime capabilities for this agent. This panel will populate automatically when the backend exposes them.
+                          API агента пока не возвращает runtime-возможности для этого агента. Панель заполнится автоматически после публикации этих данных в серверной части.
                         </Alert>
                       ) : (
                         <Stack spacing={1.25}>
@@ -728,7 +728,7 @@ const Agents = () => {
                                 <Chip
                                   size="small"
                                   color={cap.enabled ? 'success' : 'default'}
-                                  label={cap.enabled ? 'Available' : 'Unavailable'}
+                                  label={cap.enabled ? 'Доступно' : 'Недоступно'}
                                   variant={cap.enabled ? 'filled' : 'outlined'}
                                 />
                               </Stack>
@@ -744,13 +744,13 @@ const Agents = () => {
               <Card>
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap" mb={2}>
-                    <Typography variant="h6">Policy Versions</Typography>
+                    <Typography variant="h6">Версии политики</Typography>
                     <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                       <Typography variant="body2" color="text.secondary">
-                        {policyVersionsTotal} version(s)
+                        {policyVersionsTotal} версий
                       </Typography>
                       <Button variant="outlined" size="small" startIcon={<Refresh />} onClick={hardRefresh} disabled={actionLoading}>
-                        Refresh
+                        Обновить
                       </Button>
                     </Stack>
                   </Box>
@@ -760,18 +760,18 @@ const Agents = () => {
                       <TableHead>
                         <TableRow>
                           <TableCell>ID</TableCell>
-                          <TableCell>Policy Version</TableCell>
-                          <TableCell>Change</TableCell>
-                          <TableCell>Changed By</TableCell>
-                          <TableCell>Created</TableCell>
-                          <TableCell align="right">Action</TableCell>
+                          <TableCell>Версия политики</TableCell>
+                          <TableCell>Изменение</TableCell>
+                          <TableCell>Кем изменено</TableCell>
+                          <TableCell>Создано</TableCell>
+                          <TableCell align="right">Действие</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {policyVersions.length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={6}>
-                              <Alert severity="info">No policy versions recorded yet.</Alert>
+                              <Alert severity="info">Версии политики пока не зафиксированы.</Alert>
                             </TableCell>
                           </TableRow>
                         ) : policyVersions.map((version) => (
@@ -794,10 +794,10 @@ const Agents = () => {
                                 variant={version.changeType === 'update' ? 'outlined' : 'filled'}
                               />
                             </TableCell>
-                            <TableCell>{version.changedBy || 'system'}</TableCell>
+                            <TableCell>{version.changedBy || 'система'}</TableCell>
                             <TableCell>{formatDateTime(version.createdAt)}</TableCell>
                             <TableCell align="right">
-                              <Tooltip title="Restore this policy snapshot as the current policy">
+                              <Tooltip title="Сделать этот снимок политики текущим">
                                 <span>
                                   <Button
                                     size="small"
@@ -805,7 +805,7 @@ const Agents = () => {
                                     onClick={() => handleRestorePolicyVersion(version.id)}
                                     disabled={actionLoading || !selectedAgentId}
                                   >
-                                    Restore
+                                    Восстановить
                                   </Button>
                                 </span>
                               </Tooltip>
@@ -818,7 +818,7 @@ const Agents = () => {
 
                   <Box mt={2} display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap">
                     <Typography variant="caption" color="text.secondary">
-                      Rollback creates a new policy version entry to preserve audit history.
+                      Откат создает новую запись версии политики для сохранения аудита.
                     </Typography>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Button
@@ -827,16 +827,16 @@ const Agents = () => {
                         onClick={() => setPolicyVersionsPage((p) => Math.max(1, p - 1))}
                         disabled={policyVersionsPage <= 1 || loadingDetails}
                       >
-                        Prev
+                        Назад
                       </Button>
-                      <Chip size="small" label={`Page ${policyVersionsPage} / ${policyVersionPages}`} />
+                      <Chip size="small" label={`Страница ${policyVersionsPage} / ${policyVersionPages}`} />
                       <Button
                         size="small"
                         variant="outlined"
                         onClick={() => setPolicyVersionsPage((p) => Math.min(policyVersionPages, p + 1))}
                         disabled={policyVersionsPage >= policyVersionPages || loadingDetails}
                       >
-                        Next
+                        Вперед
                       </Button>
                     </Stack>
                   </Box>
@@ -846,7 +846,7 @@ const Agents = () => {
               <Card>
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} gap={2} flexWrap="wrap">
-                    <Typography variant="h6">Control Plane</Typography>
+                    <Typography variant="h6">Управление</Typography>
                     <Stack direction="row" spacing={1} flexWrap="wrap">
                       <Button
                         variant="outlined"
@@ -855,7 +855,7 @@ const Agents = () => {
                         onClick={() => handleQuickBlock(true)}
                         disabled={actionLoading || !selectedAgentId}
                       >
-                        Block PC
+                        Заблокировать ПК
                       </Button>
                       <Button
                         variant="outlined"
@@ -864,9 +864,9 @@ const Agents = () => {
                         onClick={() => handleQuickBlock(false)}
                         disabled={actionLoading || !selectedAgentId}
                       >
-                        Unblock PC
+                        Разблокировать ПК
                       </Button>
-                      <Tooltip title="Delete agent registration (does not uninstall endpoint software)">
+                      <Tooltip title="Удалить регистрацию агента (не удаляет ПО на endpoint)">
                         <span>
                           <Button
                             variant="text"
@@ -874,7 +874,7 @@ const Agents = () => {
                             onClick={handleDeleteAgent}
                             disabled={actionLoading || !selectedAgentId}
                           >
-                            Delete Agent
+                            Удалить агента
                           </Button>
                         </span>
                       </Tooltip>
@@ -885,19 +885,19 @@ const Agents = () => {
                     <Grid item xs={12} md={4}>
                       <TextField
                         fullWidth
-                        label="Admin reason"
+                        label="Причина администратора"
                         value={adminReason}
                         onChange={(e) => setAdminReason(e.target.value)}
-                        placeholder="Blocked by admin"
+                        placeholder="Заблокировано администратором"
                       />
                     </Grid>
                     <Grid item xs={12} md={4}>
                       <TextField
                         fullWidth
-                        label="Command type"
+                        label="Тип команды"
                         value={customCommandType}
                         onChange={(e) => setCustomCommandType(e.target.value)}
-                        placeholder="PING"
+                        placeholder="Например: PING"
                       />
                     </Grid>
                     <Grid item xs={12} md={4}>
@@ -909,13 +909,13 @@ const Agents = () => {
                         onClick={handleSendCustomCommand}
                         disabled={actionLoading || !selectedAgentId}
                       >
-                        Send Command
+                        Отправить команду
                       </Button>
                     </Grid>
                     <Grid item xs={12}>
                       <TextField
                         fullWidth
-                        label="Command payload JSON"
+                        label="JSON полезной нагрузки команды"
                         value={customCommandPayload}
                         onChange={(e) => setCustomCommandPayload(e.target.value)}
                         multiline
@@ -931,24 +931,24 @@ const Agents = () => {
               <Card>
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap" mb={2}>
-                    <Typography variant="h6">Command History</Typography>
+                    <Typography variant="h6">История команд</Typography>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <FormControl size="small" sx={{ minWidth: 170 }}>
-                        <InputLabel>Status</InputLabel>
+                        <InputLabel>Статус</InputLabel>
                         <Select
-                          label="Status"
+                          label="Статус"
                           value={commandStatusFilter}
                           onChange={(e) => setCommandStatusFilter(e.target.value)}
                         >
-                          <MenuItem value="all">All statuses</MenuItem>
-                          <MenuItem value="pending">Pending</MenuItem>
-                          <MenuItem value="running">Running</MenuItem>
-                          <MenuItem value="success">Success</MenuItem>
-                          <MenuItem value="failed">Failed</MenuItem>
-                          <MenuItem value="ignored">Ignored</MenuItem>
+                          <MenuItem value="all">Все статусы</MenuItem>
+                          <MenuItem value="pending">В очереди</MenuItem>
+                          <MenuItem value="running">Выполняется</MenuItem>
+                          <MenuItem value="success">Успешно</MenuItem>
+                          <MenuItem value="failed">Ошибка</MenuItem>
+                          <MenuItem value="ignored">Игнорировано</MenuItem>
                         </Select>
                       </FormControl>
-                      <Button variant="outlined" startIcon={<Refresh />} onClick={hardRefresh} disabled={actionLoading}>Refresh</Button>
+                      <Button variant="outlined" startIcon={<Refresh />} onClick={hardRefresh} disabled={actionLoading}>Обновить</Button>
                     </Stack>
                   </Box>
 
@@ -957,19 +957,19 @@ const Agents = () => {
                       <TableHead>
                         <TableRow>
                           <TableCell>ID</TableCell>
-                          <TableCell>Type</TableCell>
-                          <TableCell>Status</TableCell>
-                          <TableCell>Requested By</TableCell>
-                          <TableCell>Created</TableCell>
-                          <TableCell>Acked</TableCell>
-                          <TableCell>Result</TableCell>
+                          <TableCell>Тип</TableCell>
+                          <TableCell>Статус</TableCell>
+                          <TableCell>Кем запрошено</TableCell>
+                          <TableCell>Создано</TableCell>
+                          <TableCell>Подтверждено</TableCell>
+                          <TableCell>Результат</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {commands.length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={7}>
-                              <Alert severity="info">No commands found for current filter.</Alert>
+                              <Alert severity="info">Для выбранного фильтра команды не найдены.</Alert>
                             </TableCell>
                           </TableRow>
                         ) : commands.map((cmd) => (
@@ -981,7 +981,7 @@ const Agents = () => {
                                 <Box>
                                   <Typography variant="body2" sx={{ fontWeight: 600 }}>{cmd.type}</Typography>
                                   <Typography variant="caption" color="text.secondary">
-                                    {cmd.payloadJson ? prettyJson(cmd.payloadJson).slice(0, 80) : '{}'}
+                                    {cmd.payloadJson ? prettyJson(cmd.payloadJson).slice(0, 80) : '—'}
                                   </Typography>
                                 </Box>
                               </Stack>
@@ -989,7 +989,7 @@ const Agents = () => {
                             <TableCell>
                               <Stack direction="row" spacing={0.75} alignItems="center">
                                 {getCommandStatusIcon(cmd.status)}
-                                <Chip size="small" label={cmd.status || 'unknown'} color={getStatusColor(cmd.status)} />
+                                <Chip size="small" label={cmd.status || 'неизвестно'} color={getStatusColor(cmd.status)} />
                               </Stack>
                             </TableCell>
                             <TableCell>{cmd.requestedBy || '—'}</TableCell>
@@ -1008,7 +1008,7 @@ const Agents = () => {
 
                   <Box mt={2} display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap">
                     <Typography variant="body2" color="text.secondary">
-                      {commandsTotal} command(s) total
+                      {commandsTotal} команд всего
                     </Typography>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Button
@@ -1017,16 +1017,16 @@ const Agents = () => {
                         onClick={() => setCommandPage((p) => Math.max(1, p - 1))}
                         disabled={commandPage <= 1 || loadingDetails}
                       >
-                        Prev
+                        Назад
                       </Button>
-                      <Chip size="small" label={`Page ${commandPage} / ${commandPages}`} />
+                      <Chip size="small" label={`Страница ${commandPage} / ${commandPages}`} />
                       <Button
                         size="small"
                         variant="outlined"
                         onClick={() => setCommandPage((p) => Math.min(commandPages, p + 1))}
                         disabled={commandPage >= commandPages || loadingDetails}
                       >
-                        Next
+                        Вперед
                       </Button>
                     </Stack>
                   </Box>

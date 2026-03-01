@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using NotificationService.Models;
+using NotificationEntity = NotificationService.Models.Notification;
+using NotificationTemplateEntity = NotificationService.Models.NotificationTemplate;
+using ProcessedEventInboxEntryEntity = NotificationService.Models.ProcessedEventInboxEntry;
 
 namespace NotificationService.Data;
 
@@ -9,20 +11,20 @@ public class NotificationDbContext : DbContext
     {
     }
 
-    public DbSet<Notification> Notifications { get; set; }
-    public DbSet<NotificationTemplate> NotificationTemplates { get; set; }
-    public DbSet<ProcessedEventInboxEntry> ProcessedEventInboxEntries { get; set; }
+    public DbSet<NotificationEntity> Notifications { get; set; }
+    public DbSet<NotificationTemplateEntity> NotificationTemplates { get; set; }
+    public DbSet<ProcessedEventInboxEntryEntity> ProcessedEventInboxEntries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         // Указываем явные имена таблиц (в нижнем регистре как в SQL)
-        modelBuilder.Entity<Notification>().ToTable("notifications");
-        modelBuilder.Entity<NotificationTemplate>().ToTable("notification_templates");
+        modelBuilder.Entity<NotificationEntity>().ToTable("notifications");
+        modelBuilder.Entity<NotificationTemplateEntity>().ToTable("notification_templates");
 
         // Configure Notification entity (явное указание всех свойств)
-        modelBuilder.Entity<Notification>(entity =>
+        modelBuilder.Entity<NotificationEntity>(entity =>
         {
             entity.ToTable("notifications");
             entity.HasKey(e => e.Id);
@@ -42,13 +44,13 @@ public class NotificationDbContext : DbContext
         });
 
         // Configure NotificationTemplate entity (только индексы)
-        modelBuilder.Entity<NotificationTemplate>(entity =>
+        modelBuilder.Entity<NotificationTemplateEntity>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Type).IsUnique().HasDatabaseName("uq_notification_templates_type");
         });
 
-        modelBuilder.Entity<ProcessedEventInboxEntry>(entity =>
+        modelBuilder.Entity<ProcessedEventInboxEntryEntity>(entity =>
         {
             entity.ToTable("processed_event_inbox");
             entity.HasKey(e => e.Id);
@@ -65,22 +67,22 @@ public class NotificationDbContext : DbContext
         });
 
         // Seed default notification templates
-        modelBuilder.Entity<NotificationTemplate>().HasData(
-            new NotificationTemplate 
+        modelBuilder.Entity<NotificationTemplateEntity>().HasData(
+            new NotificationTemplateEntity 
             { 
                 Id = 1, 
                 Type = "anomaly", 
                 Subject = "Activity Anomaly Detected", 
                 BodyTemplate = "An anomaly has been detected in user activity. Please review the details and take appropriate action." 
             },
-            new NotificationTemplate 
+            new NotificationTemplateEntity 
             { 
                 Id = 2, 
                 Type = "report_ready", 
                 Subject = "Activity Report Ready", 
                 BodyTemplate = "Your activity report is ready for download. Please check your dashboard to access the report." 
             },
-            new NotificationTemplate 
+            new NotificationTemplateEntity 
             { 
                 Id = 3, 
                 Type = "system_alert", 

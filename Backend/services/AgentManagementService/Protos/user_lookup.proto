@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+option csharp_namespace = "AgentManagementService.UserLookup";
+
+package user;
+
+service UserService {
+  rpc GetComputerInfo (GetComputerInfoRequest) returns (GetComputerInfoResponse);
+}
+
+message GetComputerInfoRequest {
+  int64 computer_id = 1;
+}
+
+message GetComputerInfoResponse {
+  bool success = 1;
+  string message = 2;
+  ComputerInfo computer = 3;
+}
+
+message ComputerInfo {
+  int64 id = 1;
+  int64 user_id = 2;
+}

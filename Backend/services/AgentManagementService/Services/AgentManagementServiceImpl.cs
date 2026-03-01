@@ -3,6 +3,8 @@ using AgentManagementService.Data;
 using AgentManagementService.Models;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using UserLookup = AgentManagementService.UserLookup;
 using ProtoAgent = global::AgentManagementService.Agent;
 using ProtoSyncBatch = global::AgentManagementService.SyncBatch;
 
@@ -13,15 +15,21 @@ public partial class AgentManagementServiceImpl : AgentManagementService.AgentMa
     private readonly AgentDbContext _db;
     private readonly ILogger<AgentManagementServiceImpl> _logger;
     private readonly ControlPlaneSigningService _controlPlaneSigning;
+    private readonly UserLookup.UserService.UserServiceClient _userServiceClient;
+    private readonly CommandDeliveryOptions _commandDeliveryOptions;
 
     public AgentManagementServiceImpl(
         AgentDbContext db,
         ILogger<AgentManagementServiceImpl> logger,
-        ControlPlaneSigningService controlPlaneSigning)
+        ControlPlaneSigningService controlPlaneSigning,
+        UserLookup.UserService.UserServiceClient userServiceClient,
+        IOptions<CommandDeliveryOptions> commandDeliveryOptions)
     {
         _db = db;
         _logger = logger;
         _controlPlaneSigning = controlPlaneSigning;
+        _userServiceClient = userServiceClient;
+        _commandDeliveryOptions = commandDeliveryOptions?.Value ?? new CommandDeliveryOptions();
     }
 
     public override async Task<RegisterAgentResponse> RegisterAgent(RegisterAgentRequest request, ServerCallContext context)
@@ -30,6 +38,50 @@ public partial class AgentManagementServiceImpl : AgentManagementService.AgentMa
 
         try
         {
+            if (request.ComputerId <= 0)
+            {
+                return new RegisterAgentResponse
+                {
+                    Success = false,
+                    Message = "Computer ID must be greater than zero"
+                };
+            }
+
+            if (request.ComputerId > int.MaxValue)
+            {
+                return new RegisterAgentResponse
+                {
+                    Success = false,
+                    Message = "Computer ID is out of supported range"
+                };
+            }
+
+            UserLookup.GetComputerInfoResponse computerInfoResponse;
+            try
+            {
+                computerInfoResponse = await _userServiceClient.GetComputerInfoAsync(
+                    new UserLookup.GetComputerInfoRequest { ComputerId = request.ComputerId },
+                    cancellationToken: context.CancellationToken);
+            }
+            catch (RpcException ex)
+            {
+                _logger.LogWarning(ex, "UserService GetComputerInfo failed for computer ID: {ComputerId}", request.ComputerId);
+                return new RegisterAgentResponse
+                {
+                    Success = false,
+                    Message = "Cannot validate computer in UserService"
+                };
+            }
+
+            if (!computerInfoResponse.Success || computerInfoResponse.Computer == null || computerInfoResponse.Computer.Id <= 0)
+            {
+                return new RegisterAgentResponse
+                {
+                    Success = false,
+                    Message = $"Computer {request.ComputerId} is not registered in UserService"
+                };
+            }
+
             // Check if agent already exists for this computer
             var existingAgent = await _db.Agents
                 .FirstOrDefaultAsync(a => a.ComputerId == request.ComputerId);

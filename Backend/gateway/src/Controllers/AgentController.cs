@@ -173,6 +173,8 @@ public class AgentController : ControllerBase
                     ProcessSnapshotLimit = 50,
                     HighRiskThreshold = 85,
                     AutoLockEnabled = true,
+                    EnableWhitelist = true,
+                    EnableBlacklist = true,
                     AdminBlocked = false,
                     BlockedReason = ""
                 };
@@ -277,7 +279,8 @@ public class AgentController : ControllerBase
                 AgentId = id,
                 Type = dto.Type ?? "",
                 PayloadJson = payloadJson ?? "{}",
-                RequestedBy = dto.RequestedBy ?? User.Identity?.Name ?? "panel"
+                RequestedBy = dto.RequestedBy ?? User.Identity?.Name ?? "panel",
+                CommandKey = dto.CommandKey ?? GetIdempotencyKeyFromHeaders()
             });
             if (!resp.Success) return BadRequest(new { message = resp.Message });
             return Ok(MapCommand(resp.Command));
@@ -319,7 +322,8 @@ public class AgentController : ControllerBase
                 AgentId = agentId,
                 Type = blocked ? "BLOCK_WORKSTATION" : "UNBLOCK_WORKSTATION",
                 PayloadJson = JsonSerializer.Serialize(new { reason }),
-                RequestedBy = User.Identity?.Name ?? "panel"
+                RequestedBy = User.Identity?.Name ?? "panel",
+                CommandKey = GetIdempotencyKeyFromHeaders()
             });
 
             if (!commandResponse.Success) return BadRequest(new { message = commandResponse.Message });
@@ -371,9 +375,13 @@ public class AgentController : ControllerBase
         processSnapshotLimit = p.ProcessSnapshotLimit,
         highRiskThreshold = p.HighRiskThreshold,
         autoLockEnabled = p.AutoLockEnabled,
+        enableWhitelist = p.EnableWhitelist,
+        enableBlacklist = p.EnableBlacklist,
         adminBlocked = p.AdminBlocked,
         blockedReason = p.BlockedReason,
         browsers = p.Browsers.ToArray(),
+        whitelistApps = p.WhitelistApps.ToArray(),
+        blacklistApps = p.BlacklistApps.ToArray(),
         updatedAt = p.UpdatedAt,
         signature = p.Signature,
         signatureKeyId = p.SignatureKeyId,
@@ -387,6 +395,13 @@ public class AgentController : ControllerBase
         type = c.Type,
         payloadJson = c.PayloadJson,
         status = c.Status,
+        commandKey = c.CommandKey,
+        deliveryAttempts = c.DeliveryAttempts,
+        maxDeliveryAttempts = c.MaxDeliveryAttempts,
+        lastDispatchAt = c.LastDispatchAt,
+        nextRetryAt = c.NextRetryAt,
+        timeoutAt = c.TimeoutAt,
+        deadLetterReason = c.DeadLetterReason,
         requestedBy = c.RequestedBy,
         resultMessage = c.ResultMessage,
         createdAt = c.CreatedAt,
@@ -427,6 +442,8 @@ public class AgentController : ControllerBase
             ProcessSnapshotLimit = dto.ProcessSnapshotLimit ?? current.ProcessSnapshotLimit,
             HighRiskThreshold = dto.HighRiskThreshold ?? current.HighRiskThreshold,
             AutoLockEnabled = dto.AutoLockEnabled ?? current.AutoLockEnabled,
+            EnableWhitelist = dto.EnableWhitelist ?? current.EnableWhitelist,
+            EnableBlacklist = dto.EnableBlacklist ?? current.EnableBlacklist,
             AdminBlocked = dto.AdminBlocked ?? current.AdminBlocked,
             BlockedReason = dto.BlockedReason ?? current.BlockedReason ?? "",
             UpdatedAt = current.UpdatedAt
@@ -443,13 +460,41 @@ public class AgentController : ControllerBase
         if (merged.Browsers.Count == 0)
             merged.Browsers.AddRange(["chrome", "edge", "firefox"]);
 
+        IEnumerable<string> whitelistSource = dto.WhitelistApps is { Length: > 0 }
+            ? dto.WhitelistApps
+            : current.WhitelistApps;
+
+        merged.WhitelistApps.AddRange(whitelistSource
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x.Trim().ToLowerInvariant()));
+
+        IEnumerable<string> blacklistSource = dto.BlacklistApps is { Length: > 0 }
+            ? dto.BlacklistApps
+            : current.BlacklistApps;
+
+        merged.BlacklistApps.AddRange(blacklistSource
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x.Trim().ToLowerInvariant()));
+
         return merged;
     }
 
     public record RegisterAgentDto(long ComputerId, string? Version, string? ConfigVersion);
     public record UpdateAgentDto(string? Status, string? ConfigVersion);
     public record SyncDto(string? BatchId, int RecordsCount);
-    public record CreateAgentCommandDto(string? Type, string? PayloadJson, object? Payload, string? RequestedBy);
+    private string GetIdempotencyKeyFromHeaders()
+    {
+        if (Request.Headers.TryGetValue("X-Idempotency-Key", out var values))
+        {
+            var value = values.FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(value))
+                return value.Trim();
+        }
+
+        return string.Empty;
+    }
+
+    public record CreateAgentCommandDto(string? Type, string? PayloadJson, object? Payload, string? RequestedBy, string? CommandKey);
     public record BlockCommandDto(string? Reason);
     public record RestorePolicyVersionDto(string? RequestedBy);
     public record UpsertAgentPolicyDto(
@@ -467,8 +512,12 @@ public class AgentController : ControllerBase
         int? ProcessSnapshotLimit = null,
         float? HighRiskThreshold = null,
         bool? AutoLockEnabled = null,
+        bool? EnableWhitelist = null,
+        bool? EnableBlacklist = null,
         bool? AdminBlocked = null,
         string? BlockedReason = null,
-        string[]? Browsers = null
+        string[]? Browsers = null,
+        string[]? WhitelistApps = null,
+        string[]? BlacklistApps = null
     );
 }

@@ -35,6 +35,12 @@ public class AgentPolicy
 
     // JSON array of browser names.
     public string BrowsersJson { get; set; } = "[\"chrome\",\"edge\",\"firefox\"]";
+    public bool EnableWhitelist { get; set; } = true;
+    public bool EnableBlacklist { get; set; } = true;
+
+    // JSON arrays of app patterns from admin settings.
+    public string WhitelistJson { get; set; } = "[]";
+    public string BlacklistJson { get; set; } = "[]";
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

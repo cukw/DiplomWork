@@ -1,206 +1,266 @@
 # Activity Monitoring System
 
-Система мониторинга активности пользователей для обнаружения аномалий и обеспечения безопасности.
+Корпоративная система мониторинга активности пользователей на микросервисной архитектуре:
+- веб-панель администратора (Dashboard/Analytics/Reports/Settings/Users/Agents),
+- backend из gRPC-сервисов за API Gateway,
+- событийная синхронизация через RabbitMQ,
+- раздельные Postgres базы для каждого доменного сервиса.
 
-## Архитектура
+## 1. Архитектура
 
-Система построена на микросервисной архитектуре со следующими компонентами:
+```mermaid
+flowchart LR
+    FE[Frontend React] -->|REST /api| GW[Gateway]
 
-### Backend Services
+    GW -->|gRPC| ACT[ActivityService]
+    GW -->|gRPC| AUTH[AuthService]
+    GW -->|gRPC| USER[UserService]
+    GW -->|gRPC| MET[MetricsService]
+    GW -->|gRPC| NOTIF[NotificationService]
+    GW -->|gRPC| REP[ReportService]
+    GW -->|gRPC| AGM[AgentManagementService]
 
-- **ActivityService** - Сервис сбора и анализа активности пользователей
-- **AuthService** - Сервис аутентификации и авторизации
-- **UserService** - Сервис управления пользователями и компьютерами
-- **NotificationService** - Сервис уведомлений
-- **ReportService** - Сервис генерации отчетов
-- **MetricsService** - Сервис сбора метрик
-- **AgentManagementService** - Сервис управления агентами
-- **ActivityAgent** - Агент сбора активности на компьютерах
-- **Gateway** - API Gateway для маршрутизации запросов
+    ACT -->|Outbox publish| RAB[(RabbitMQ)]
+    RAB --> MET
+    RAB --> NOTIF
+    RAB --> REP
 
-### Frontend
+    ACT --> PACT[(Postgres Activity)]
+    AUTH --> PAUTH[(Postgres Auth)]
+    USER --> PUSER[(Postgres User)]
+    MET --> PMET[(Postgres Metrics)]
+    NOTIF --> PNOT[(Postgres Notification)]
+    REP --> PREP[(Postgres Report)]
+    AGM --> PAG[(Postgres Agent)]
 
-- React-приложение с Material-UI для визуализации данных
+    AGENT[ActivityAgent C#] -->|gRPC CreateActivity| ACT
+```
 
-## Развертывание
+## 2. Состав сервисов и ответственность
+
+### Core backend
+
+1. **Gateway** (`/Backend/gateway/src`)
+- Единая REST точка входа для frontend.
+- JWT-аутентификация и авторизация.
+- gRPC-клиент ко всем backend-сервисам.
+- SSE endpoint `/api/live/stream` для live-снапшотов.
+
+2. **AuthService** (`/Backend/services/AuthService`)
+- Логин/логаут/регистрация.
+- JWT + refresh/session логика.
+- Таблицы `auth_users`, `roles`, `sessions`.
+
+3. **UserService** (`/Backend/services/UserService`)
+- CRUD пользователей и компьютеров.
+- Жестко зафиксированная связь `User ↔ Computer = 1:1` (unique + required).
+
+4. **ActivityService** (`/Backend/services/ActivityService`)
+- Прием и хранение активностей.
+- Детекция аномалий по правилам (риск, время, повторяемость, URL, процессы и т.д.).
+- Outbox-публикация событий в RabbitMQ (`activity.created`, `activity.anomaly-detected`).
+
+5. **MetricsService** (`/Backend/services/MetricsService`)
+- Потребление событий из RabbitMQ.
+- Агрегации/rollups по активности и аномалиям.
+- CRUD метрик и list management (whitelist/blacklist для метрик).
+
+6. **NotificationService** (`/Backend/services/NotificationService`)
+- Потребление событий из RabbitMQ и генерация уведомлений.
+- Каналы: `in_app`, `email`, `webhook`.
+- Inbox-дедупликация обработанных событий.
+
+7. **ReportService** (`/Backend/services/ReportService`)
+- Потребление событий из RabbitMQ и проекции для отчетов.
+- Daily/range/summary/export API.
+- Inbox-дедупликация обработанных событий.
+
+8. **AgentManagementService** (`/Backend/services/AgentManagementService`)
+- Control plane для endpoint-агентов:
+  - регистрация и статусы агентов,
+  - policy CRUD + version history + rollback,
+  - команды (pending/running/success/failed/timeout/deadletter),
+  - retry/timeout worker и DLQ,
+  - sync-batches.
+
+### Агент сбора активности
+
+9. **ActivityAgent (C#)** (`/Backend/services/ActivityAgent`)
+- Отправка событий в `ActivityService` по gRPC.
+- На текущий момент часть логики носит demo-характер (особенно network/file сбор).
+
+## 3. Текущий статус LocalEndpointAgent
+
+Папка `/LocalEndpointAgent` в текущей ветке содержит только `__pycache__`, без исходников Python/Rust.
+
+Это значит:
+- production-реализация локального Python/Rust агента в этой ветке отсутствует,
+- активный работающий агент в текущем состоянии репозитория — `ActivityAgent` (C#).
+
+## 4. Возможности веб-панели
+
+Пути SPA (`/Frontend/src/App.js`):
+- `/dashboard`
+- `/agents`
+- `/users`
+- `/reports`
+- `/analytics`
+- `/settings`
+- `/login`
+
+### Реализовано
+
+1. **Dashboard**
+- Оперативные KPI по активности/аномалиям/блокировкам.
+- Live-обновление (интервал + SSE-триггеры).
+
+2. **Analytics**
+- Аналитика по периодам (daily/weekly/monthly/custom).
+- Drill-down и фильтры.
+- Автообновление и сохранение пресетов.
+
+3. **Reports**
+- Отчеты, тренды, агрегаты по пользователям/департаментам.
+- Export через `ReportService`.
+- Адаптивные графики (`ResponsiveContainer`).
+
+4. **Users**
+- CRUD пользователей.
+- Учет связанного компьютера (1:1).
+
+5. **Agents**
+- CRUD агентов.
+- Просмотр/редактирование policy.
+- Версионирование policy + restore.
+- Отправка команд (в т.ч. block/unblock).
+
+6. **Settings**
+- General/Security/Notification/Monitoring секции.
+- CRUD whitelist/blacklist.
+- Синхронизация access-листов в policies всех агентов.
+- Alert rules CRUD.
+
+7. **Notifications**
+- Получение списка, unread count, mark read/read all, delete.
+
+8. **Theme system**
+- Light (бело-синяя) и Dark (черно-желтая) темы, переключение в UI.
+
+## 5. Data Flow (как проходят данные)
+
+1. Agent отправляет события активности в `ActivityService` (gRPC).
+2. `ActivityService` сохраняет запись в свою БД и проверяет аномалии.
+3. Событие кладется в outbox и публикуется в RabbitMQ.
+4. `MetricsService`, `NotificationService`, `ReportService` потребляют события и обновляют свои проекции.
+5. Frontend читает данные только через `Gateway`, который агрегирует ответы gRPC-сервисов.
+
+## 6. Порты и доступы (docker compose)
+
+### Публичные порты на хосте
+
+| Компонент | Порт(ы) | Назначение |
+|---|---:|---|
+| Frontend | `3000` | HTTP UI |
+| Frontend | `3443` | HTTPS UI (через Nginx/certs) |
+| Gateway | `8080` | REST API (`/api/...`) |
+| RabbitMQ UI | `127.0.0.1:15672` | Локальная админка RabbitMQ |
+
+### gRPC/REST сервисы
+
+| Сервис | gRPC | REST/HTTP |
+|---|---:|---:|
+| ActivityService | `5001` | `5002` |
+| AuthService | `5003` | `5007` |
+| UserService | `5004` | `5005` |
+| MetricsService | `5010` | `5011` |
+| NotificationService | `5012` | `5017` |
+| ReportService | `5013` | `5014` |
+| AgentManagementService | `5015` | `5016` |
+
+### Postgres базы
+
+| База | Хост-порт |
+|---|---:|
+| Activity DB | `5432` |
+| Auth DB | `5433` |
+| User DB | `5434` |
+| Metrics DB | `5435` |
+| Notification DB | `5436` |
+| Report DB | `5437` |
+| Agent DB | `5438` |
+
+## 7. Быстрый старт
 
 ### Требования
 
-- Docker
-- Docker Compose
-- .NET 10.0 SDK
-- Node.js 18+
+- Docker + Docker Compose
+- для локальной разработки (без контейнеров):
+  - .NET SDK **10.0** (для большинства сервисов)
+  - .NET SDK **8.0** (для ActivityAgent)
+  - Node.js 18+ (frontend)
 
-### Запуск системы
-
-1. Клонируйте репозиторий:
-```bash
-git clone <repository-url>
-cd FinalWork
-```
-
-2. Запустите все сервисы с помощью Docker Compose:
-```bash
-docker-compose up -d
-```
-
-3. Доступ к сервисам:
-- Frontend: http://localhost:3000
-- API Gateway: http://localhost:8080
-- RabbitMQ Management: http://localhost:15672 (guest/guest)
-
-### Структура портов
-
-| Сервис | Порт |
-|---------|------|
-| Frontend | 3000 |
-| API Gateway | 8080 |
-| ActivityService | 5001, 5002 |
-| AuthService | 5003 |
-| UserService | 5004 |
-| MetricsService | 5005 |
-| NotificationService | 5006 |
-| ReportService | 5007 |
-| AgentManagementService | 5008 |
-| PostgreSQL (Activity) | 5432 |
-| PostgreSQL (Auth) | 5433 |
-| PostgreSQL (User) | 5434 |
-| PostgreSQL (Metrics) | 5435 |
-| PostgreSQL (Notification) | 5436 |
-| PostgreSQL (Report) | 5437 |
-| PostgreSQL (Agent) | 5438 |
-| RabbitMQ | 5672, 15672 |
-
-## Функциональность
-
-### Мониторинг активности
-
-- Сбор активности процессов, сетевых подключений и доступа к файлам
-- Определение риска активности на основе различных параметров
-- Обнаружение аномалий с использованием расширенных правил
-
-### Правила обнаружения аномалий
-
-1. **Высокий уровень риска** - активности с оценкой риска ≥ 80
-2. **Подозрительные типы активности** - MALWARE, DATA_EXFILTRATION, UNAUTHORIZED_ACCESS
-3. **Необычная продолжительность** - активности дольше 24 часов
-4. **Заблокированные активности** - активности, заблокированные системой безопасности
-5. **Повторяющиеся активности** - более 10 однотипных активностей за час
-6. **Подозрительные URL** - доступ к известным вредоносным доменам
-7. **Активность в необычное время** - активности вне рабочего времени (9:00-18:00)
-8. **Процессы высокого риска** - запуск известных вредоносных программ
-9. **Доступ к чувствительным файлам** - доступ к файлам с паролями, ключами и т.д.
-10. **Чрезмерная сетевая активность** - более 20 сетевых подключений за 5 минут
-
-### Уведомления
-
-- Автоматическая отправка уведомлений при обнаружении аномалий
-- Приоритизация уведомлений в зависимости от типа аномалии
-- Поддержка различных каналов уведомлений (email, in-app)
-
-### Отчеты
-
-- Ежедневные, еженедельные и ежемесячные отчеты
-- Пользовательские отчеты за произвольный период
-- Визуализация данных с графиками и диаграммами
-
-### Поиск и фильтрация
-
-- Поиск по всем полям активности
-- Фильтрация по типу активности, компьютеру, временному периоду
-- Пагинация результатов
-
-## Разработка
-
-### Запуск бэкенда
+### Запуск всего стека
 
 ```bash
-cd Backend/services/<ServiceName>
-dotnet run
+docker compose up --build -d
 ```
 
-### Запуск фронтенда
+Проверка:
 
 ```bash
-cd Frontend
-npm install
-npm start
+docker compose ps
+docker compose logs -f gateway
 ```
 
-### Миграции баз данных
+UI/API:
+- Frontend: `http://localhost:3000`
+- Gateway health: `http://localhost:8080/health`
 
-Базы данных инициализируются автоматически при первом запуске через SQL-скрипты в папках `db/` каждого сервиса.
-
-## Конфигурация
-
-### Переменные окружения
-
-Основные переменные окружения можно настроить в `docker-compose.yml`:
-
-- `ConnectionStrings__DefaultConnection` - строки подключения к базам данных
-- `RabbitMQ__Host`, `RabbitMQ__User`, `RabbitMQ__Password` - настройки RabbitMQ
-- `Agent__ComputerId`, `Agent__CollectionInterval` - настройки агента
-
-### Настройка агентов
-
-Агенты можно настроить через переменные окружения:
-
-```yaml
-environment:
-  ActivityService__Url: "http://activityservice:5001"
-  Agent__ComputerId: "1"
-  Agent__CollectionInterval: "5000"
-  Agent__Enabled: "true"
-```
-
-## Мониторинг
-
-### Health checks
-
-Все сервисы предоставляют эндпоинт `/health` для проверки состояния:
-
-- http://localhost:8080/health/activity
-- http://localhost:8080/health/auth
-- http://localhost:8080/health/user
-- и т.д.
-
-### Логи
-
-Просмотр логов всех сервисов:
-```bash
-docker-compose logs -f
-```
-
-Просмотр логов конкретного сервиса:
-```bash
-docker-compose logs -f activityservice
-```
-
-## Безопасность
-
-- Аутентификация через JWT токены
-- Шифрование паролей
-- Ограничение доступа к API через Gateway
-- Rate limiting для предотвращения атак
-
-## Тестирование
-
-Для запуска тестов:
+### Остановка
 
 ```bash
-# Backend тесты
-cd Backend/services/<ServiceName>.Tests
-dotnet test
-
-# Frontend тесты
-cd Frontend
-npm test
+docker compose down
 ```
 
-## Вклад
+## 8. Конфигурация
 
-1. Fork репозитория
-2. Создайте ветку функции (`git checkout -b feature/AmazingFeature`)
-3. Закоммитьте изменения (`git commit -m 'Add some AmazingFeature'`)
-4. Отправьте в ветку (`git push origin feature/AmazingFeature`)
-5. Откройте Pull Request
+Ключевые переменные окружения задаются в `docker-compose.yml`:
+
+- `ConnectionStrings__DefaultConnection` для каждого сервиса.
+- RabbitMQ параметры:
+  - `RABBITMQ_USER`
+  - `RABBITMQ_PASS`
+  - `RABBITMQ_VHOST`
+- Gateway service discovery:
+  - `Services__Activity`, `Services__Auth`, `Services__User`, `Services__Metrics`, `Services__Notification`, `Services__Report`, `Services__Agent`
+
+## 9. Проверка здоровья и диагностика
+
+1. Gateway health:
+```bash
+curl http://localhost:8080/health
+```
+
+2. Логи по сервису:
+```bash
+docker compose logs -f activityservice
+```
+
+3. RabbitMQ UI:
+- `http://127.0.0.1:15672`
+- логин/пароль из `RABBITMQ_USER` / `RABBITMQ_PASS`
+
+## 10. Что важно учитывать сейчас
+
+1. `LocalEndpointAgent` (Python/Rust) в текущей ветке не представлен исходниками.
+2. `ActivityAgent` содержит demo-фрагменты сбора активности; для production endpoint agent нужна полноценная OS-native реализация для Linux/macOS/Windows.
+3. Событийный контур RabbitMQ + outbox/inbox уже реализован и является базой консистентности между сервисами.
+
+## 11. Полезные пути в репозитории
+
+- Gateway: `/Users/cukw/FinalWork/Backend/gateway/src`
+- Frontend: `/Users/cukw/FinalWork/Frontend/src`
+- ActivityService: `/Users/cukw/FinalWork/Backend/services/ActivityService`
+- AgentManagementService: `/Users/cukw/FinalWork/Backend/services/AgentManagementService`
+- Docker orchestration: `/Users/cukw/FinalWork/docker-compose.yml`
+

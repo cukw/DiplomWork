@@ -10,7 +10,7 @@ CREATE TABLE users (
 -- Компьютеры (один компьютер строго за одним пользователем)
 CREATE TABLE computers (
     id              SERIAL PRIMARY KEY,
-    user_id         INTEGER UNIQUE REFERENCES users(id), -- one-to-one
+    user_id         INTEGER NOT NULL UNIQUE REFERENCES users(id), -- one-to-one
     hostname        VARCHAR(255) NOT NULL,
     os_version      VARCHAR(100),
     ip_address      INET,

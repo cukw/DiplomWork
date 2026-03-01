@@ -14,7 +14,9 @@ import {
   FormControl,
   FormControlLabel,
   Grid,
+  IconButton,
   InputLabel,
+  LinearProgress,
   MenuItem,
   Select,
   Switch,
@@ -36,6 +38,7 @@ import {
   PieChart,
   Timeline,
   BarChart,
+  OpenInFull,
 } from '@mui/icons-material';
 import {
   Bar,
@@ -62,6 +65,7 @@ import {
   getMonthBounds,
   normalizeActivityReport,
 } from '../utils/reportTransforms';
+import ChartExpandDialog from '../components/ChartExpandDialog';
 
 const DEPARTMENT_COLORS = ['#0f766e', '#0369a1', '#d97706', '#b91c1c', '#7c3aed', '#15803d', '#475569'];
 const REPORTS_PRESETS_KEY = 'reports_presets_v1';
@@ -125,7 +129,8 @@ const readReportPresets = () => {
 };
 
 const Reports = () => {
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [tabValue, setTabValue] = useState(0);
   const [reportType, setReportType] = useState('weekly');
@@ -152,6 +157,11 @@ const Reports = () => {
     subtitle: '',
     rows: [],
   });
+  const [expandedChart, setExpandedChart] = useState({
+    open: false,
+    chartKey: null,
+    title: '',
+  });
   const [liveData, setLiveData] = useState({
     period: { startDate: null, endDate: null, label: null },
     normalizedReport: null,
@@ -163,9 +173,13 @@ const Reports = () => {
     reportSummary: null,
   });
 
-  const loadReportsData = async () => {
+  const loadReportsData = async ({ initial = false } = {}) => {
     try {
-      setLoading(true);
+      if (initial) {
+        setInitialLoading(true);
+      } else {
+        setRefreshing(true);
+      }
       setError(null);
       setExportMessage(null);
 
@@ -221,16 +235,17 @@ const Reports = () => {
       });
       setLastUpdated(new Date());
     } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Failed to load report data';
+      const message = err?.response?.data?.message || err?.message || 'Не удалось загрузить данные отчетов';
       setError(message);
-      console.error('Reports fetch error:', err);
+      console.error('Ошибка загрузки отчетов:', err);
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    loadReportsData();
+    loadReportsData({ initial: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportType, customStartDate, customEndDate]);
 
@@ -258,7 +273,7 @@ const Reports = () => {
   };
 
   const saveCurrentPreset = () => {
-    const name = window.prompt('Название пресета', `Reports ${reportType}`);
+    const name = window.prompt('Название пресета', `Отчеты ${reportType}`);
     if (!name) return;
     const preset = {
       id: `${Date.now()}`,
@@ -309,8 +324,8 @@ const Reports = () => {
       setExportMessage({
         severity: 'success',
         text: result?.fileName
-          ? `Export created: ${result.fileName}`
-          : 'Export request sent successfully',
+          ? `Экспорт создан: ${result.fileName}`
+          : 'Запрос на экспорт отправлен',
       });
 
       if (result?.downloadUrl) {
@@ -332,9 +347,9 @@ const Reports = () => {
     } catch (err) {
       setExportMessage({
         severity: 'error',
-        text: err?.response?.data?.message || err?.message || 'Failed to export report',
+        text: err?.response?.data?.message || err?.message || 'Не удалось экспортировать отчет',
       });
-      console.error('Export error:', err);
+      console.error('Ошибка экспорта:', err);
     } finally {
       setExporting(false);
     }
@@ -367,7 +382,7 @@ const Reports = () => {
     const bucket = chartState?.activePayload?.[0]?.payload;
     if (!bucket) return;
     const rows = filterActivitiesByTimelineBucket(reportActivities, bucket.date, normalizedReport?.range?.groupBy || 'day');
-    openDrilldown('Timeline Drill-down', `Bucket: ${bucket.date}`, rows);
+    openDrilldown('Детализация временного сегмента', `Интервал: ${bucket.date}`, rows);
   };
 
   const handleDepartmentChartClick = (entry) => {
@@ -375,11 +390,11 @@ const Reports = () => {
     if (!department) return;
     const computerIds = new Set(
       (liveData.users || [])
-        .filter((user) => (user?.department || 'Unassigned') === department && user?.computer?.id != null)
+        .filter((user) => (user?.department || 'Не назначен') === department && user?.computer?.id != null)
         .map((user) => user.computer.id)
     );
     const rows = reportActivities.filter((activity) => computerIds.has(activity?.computerId));
-    openDrilldown('Department Drill-down', `Department: ${department}`, rows);
+    openDrilldown('Детализация по отделу', `Отдел: ${department}`, rows);
   };
 
   const handleUserBarClick = (chartState) => {
@@ -388,7 +403,15 @@ const Reports = () => {
     const userRecord = (liveData.users || []).find((user) => user?.id === row.id);
     const computerId = userRecord?.computer?.id;
     const rows = computerId == null ? [] : reportActivities.filter((activity) => activity?.computerId === computerId);
-    openDrilldown('User Drill-down', `User: ${row.name}`, rows);
+    openDrilldown('Детализация по пользователю', `Пользователь: ${row.name}`, rows);
+  };
+
+  const openChartPreview = (chartKey, title) => {
+    setExpandedChart({ open: true, chartKey, title });
+  };
+
+  const closeChartPreview = () => {
+    setExpandedChart({ open: false, chartKey: null, title: '' });
   };
 
   const summaryCards = useMemo(() => {
@@ -398,38 +421,112 @@ const Reports = () => {
     return [
       {
         id: 'activities',
-        label: 'Total Activities',
+        label: 'Всего активностей',
         value: reportSummary?.totalActivities ?? localSummary?.totalActivities ?? 0,
       },
       {
         id: 'anomalies',
-        label: 'Anomalies',
+        label: 'Аномалии',
         value: localSummary?.totalAnomalies ?? 0,
       },
       {
         id: 'users',
-        label: 'Users (UserService)',
+        label: 'Пользователи (сервис пользователей)',
         value: reportSummary?.totalUsers ?? liveData.users.length ?? 0,
       },
       {
         id: 'computers',
-        label: 'Computers',
+        label: 'Компьютеры',
         value: reportSummary?.totalComputers ?? normalizedReport?.topComputers?.length ?? 0,
       },
       {
         id: 'blocked',
-        label: 'Blocked Actions',
+        label: 'Заблокированные действия',
         value: reportSummary?.totalBlockedActions ?? localSummary?.blockedActivities ?? 0,
       },
       {
         id: 'risk',
-        label: 'Avg Risk Score',
+        label: 'Средний риск',
         value: Number((reportSummary?.avgRiskScore ?? localSummary?.averageRiskScore ?? 0)).toFixed(1),
       },
     ];
   }, [liveData.reportSummary, normalizedReport, liveData.users.length]);
 
-  if (loading && !normalizedReport) {
+  const renderExpandedChart = () => {
+    switch (expandedChart.chartKey) {
+      case 'overviewTimeline':
+        return (
+          <ResponsiveContainer width="100%" height="100%" debounce={100}>
+            <LineChart data={activityData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }} onClick={handleTimelineClick}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fontSize: 12 }} minTickGap={20} />
+              <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="count" stroke="#0f766e" strokeWidth={2.5} name="Активности" dot={false} />
+              <Line type="monotone" dataKey="anomalies" stroke="#b91c1c" strokeWidth={2} name="Аномалии" dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        );
+      case 'departmentPie':
+        return (
+          <ResponsiveContainer width="100%" height="100%" debounce={100}>
+            <RePieChart>
+              <Pie
+                data={departmentChartData}
+                cx="50%"
+                cy="50%"
+                outerRadius="72%"
+                dataKey="value"
+                nameKey="name"
+                labelLine={false}
+                onClick={handleDepartmentChartClick}
+              >
+                {departmentChartData.map((entry) => (
+                  <Cell key={`expanded-dept-${entry.name}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </RePieChart>
+          </ResponsiveContainer>
+        );
+      case 'trendTimeline':
+        return (
+          <ResponsiveContainer width="100%" height="100%" debounce={100}>
+            <LineChart data={activityData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }} onClick={handleTimelineClick}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fontSize: 12 }} minTickGap={20} />
+              <YAxis yAxisId="left" tick={{ fontSize: 12 }} allowDecimals={false} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Legend />
+              <Line yAxisId="left" type="monotone" dataKey="count" stroke="#0f766e" strokeWidth={2.5} name="Активности" dot={false} />
+              <Line yAxisId="left" type="monotone" dataKey="blocked" stroke="#d97706" strokeWidth={2} name="Заблокировано" dot={false} />
+              <Line yAxisId="right" type="monotone" dataKey="riskScore" stroke="#0369a1" strokeWidth={2} name="Средний риск" dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        );
+      case 'usersBar':
+        return (
+          <ResponsiveContainer width="100%" height="100%" debounce={100}>
+            <ReBarChart data={liveData.userRows} layout="vertical" margin={{ top: 8, right: 16, left: 28, bottom: 0 }} onClick={handleUserBarClick}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+              <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="activities" name="Активности" fill="#0f766e" radius={[0, 6, 6, 0]} />
+              <Bar dataKey="blocked" name="Заблокировано" fill="#d97706" radius={[0, 6, 6, 0]} />
+            </ReBarChart>
+          </ResponsiveContainer>
+        );
+      default:
+        return null;
+    }
+  };
+
+  if (initialLoading && !normalizedReport) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
         <CircularProgress />
@@ -438,44 +535,53 @@ const Reports = () => {
   }
 
   return (
-    <Box className="mui-page-shell">
+    <Box
+      className="mui-page-shell"
+      sx={{
+        transition: 'opacity 160ms ease, transform 160ms ease',
+        opacity: refreshing ? 0.95 : 1,
+        transform: refreshing ? 'translateY(1px)' : 'translateY(0)',
+      }}
+    >
       <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2} mb={3} flexWrap="wrap">
         <Box>
-          <Typography variant="h4">Reports & Analytics</Typography>
+          <Typography variant="h4">Отчеты и аналитика</Typography>
           <Typography variant="body2" color="text.secondary">
-            Live data from ActivityService, UserService and ReportService via gateway
+            Данные в реальном времени из сервисов активности, пользователей и отчетов через шлюз
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            Period: {liveData.period?.label || '-'} | Updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : '-'}
+            Период: {liveData.period?.label || '-'} | Обновлено: {lastUpdated ? lastUpdated.toLocaleTimeString('ru-RU') : '-'}
           </Typography>
         </Box>
         <Box display="flex" gap={1} flexWrap="wrap">
           <FormControl size="small" sx={{ minWidth: 112 }}>
-            <InputLabel>Interval</InputLabel>
+            <InputLabel>Интервал</InputLabel>
             <Select
-              label="Interval"
+              label="Интервал"
               value={refreshIntervalSec}
               onChange={(e) => setRefreshIntervalSec(Number(e.target.value))}
               disabled={!autoRefresh}
             >
               {[10, 15, 30, 60].map((seconds) => (
-                <MenuItem key={seconds} value={seconds}>{seconds}s</MenuItem>
+                <MenuItem key={seconds} value={seconds}>{seconds} сек</MenuItem>
               ))}
             </Select>
           </FormControl>
           <FormControlLabel
             sx={{ ml: 0 }}
             control={<Switch checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} />}
-            label="Live"
+            label="Онлайн"
           />
-          <Button variant="outlined" onClick={loadReportsData} disabled={loading}>
-            {loading ? 'Refreshing...' : 'Refresh'}
+          <Button variant="outlined" onClick={() => loadReportsData()} disabled={refreshing}>
+            {refreshing ? 'Обновление...' : 'Обновить'}
           </Button>
           <Button variant="contained" startIcon={<Download />} onClick={() => setExportDialogOpen(true)}>
-            Export Report
+            Экспорт отчета
           </Button>
         </Box>
       </Box>
+
+      {refreshing && <LinearProgress sx={{ mb: 2, borderRadius: 999 }} />}
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -492,12 +598,12 @@ const Reports = () => {
       <Grid container spacing={2} mb={3}>
         <Grid item xs={12} md={3} sx={{ minWidth: 0 }}>
           <FormControl fullWidth>
-            <InputLabel>Period</InputLabel>
-            <Select value={reportType} label="Period" onChange={(e) => setReportType(e.target.value)}>
-              <MenuItem value="daily">Daily (today)</MenuItem>
-              <MenuItem value="weekly">Weekly (7 days)</MenuItem>
-              <MenuItem value="monthly">Monthly (current month)</MenuItem>
-              <MenuItem value="custom">Custom range</MenuItem>
+            <InputLabel>Период</InputLabel>
+            <Select value={reportType} label="Период" onChange={(e) => setReportType(e.target.value)}>
+              <MenuItem value="daily">День (сегодня)</MenuItem>
+              <MenuItem value="weekly">Неделя (7 дней)</MenuItem>
+              <MenuItem value="monthly">Месяц (текущий)</MenuItem>
+              <MenuItem value="custom">Произвольный период</MenuItem>
             </Select>
           </FormControl>
         </Grid>
@@ -507,7 +613,7 @@ const Reports = () => {
             <TextField
               fullWidth
               type="date"
-              label={reportType === 'weekly' ? 'Week Start' : 'Start Date'}
+              label={reportType === 'weekly' ? 'Начало недели' : 'Дата начала'}
               value={customStartDate}
               onChange={(e) => setCustomStartDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
@@ -520,7 +626,7 @@ const Reports = () => {
             <TextField
               fullWidth
               type="date"
-              label="End Date"
+              label="Дата окончания"
               value={customEndDate}
               onChange={(e) => setCustomEndDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
@@ -533,21 +639,21 @@ const Reports = () => {
             <CardContent sx={{ py: 1.5 }}>
               <Box display="flex" gap={1} flexWrap="wrap" alignItems="center">
                 <FormControl size="small" sx={{ minWidth: 220, flex: '1 1 220px' }}>
-                  <InputLabel>Preset</InputLabel>
+                  <InputLabel>Пресет</InputLabel>
                   <Select
                     value={selectedPresetId}
-                    label="Preset"
+                    label="Пресет"
                     onChange={(e) => applyPreset(e.target.value)}
                   >
-                    <MenuItem value="">No preset</MenuItem>
+                    <MenuItem value="">Без пресета</MenuItem>
                     {presets.map((preset) => (
                       <MenuItem key={preset.id} value={preset.id}>{preset.name}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
-                <Button size="small" variant="outlined" onClick={saveCurrentPreset}>Save</Button>
+                <Button size="small" variant="outlined" onClick={saveCurrentPreset}>Сохранить</Button>
                 <Button size="small" color="error" onClick={deleteSelectedPreset} disabled={!selectedPresetId}>
-                  Delete
+                  Удалить
                 </Button>
               </Box>
             </CardContent>
@@ -575,11 +681,11 @@ const Reports = () => {
         variant="scrollable"
         allowScrollButtonsMobile
       >
-        <Tab label="Overview" icon={<Assessment />} iconPosition="start" />
-        <Tab label="Activity Trends" icon={<Timeline />} iconPosition="start" />
-        <Tab label="Department Analysis" icon={<PieChart />} iconPosition="start" />
-        <Tab label="User Statistics" icon={<BarChart />} iconPosition="start" />
-        <Tab label="Generated Reports" icon={<FileDownload />} iconPosition="start" />
+        <Tab label="Обзор" icon={<Assessment />} iconPosition="start" />
+        <Tab label="Тренды активности" icon={<Timeline />} iconPosition="start" />
+        <Tab label="Анализ отделов" icon={<PieChart />} iconPosition="start" />
+        <Tab label="Статистика пользователей" icon={<BarChart />} iconPosition="start" />
+        <Tab label="Сформированные отчеты" icon={<FileDownload />} iconPosition="start" />
       </Tabs>
 
       {tabValue === 0 && (
@@ -587,7 +693,12 @@ const Reports = () => {
           <Grid item xs={12} xl={7} sx={{ minWidth: 0 }}>
             <Card sx={{ height: '100%' }}>
               <CardContent sx={{ minWidth: 0 }}>
-                <Typography variant="h6" gutterBottom>Activity Overview (live)</Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                  <Typography variant="h6">Обзор активности (онлайн)</Typography>
+                  <IconButton size="small" onClick={() => openChartPreview('overviewTimeline', 'Обзор активности')}>
+                    <OpenInFull fontSize="small" />
+                  </IconButton>
+                </Box>
                 <ChartBox>
                   <ResponsiveContainer width="100%" height="100%" debounce={100}>
                     <LineChart data={activityData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }} onClick={handleTimelineClick}>
@@ -596,8 +707,8 @@ const Reports = () => {
                       <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
                       <Tooltip />
                       <Legend />
-                      <Line type="monotone" dataKey="count" stroke="#0f766e" strokeWidth={2.5} name="Activities" dot={false} />
-                      <Line type="monotone" dataKey="anomalies" stroke="#b91c1c" strokeWidth={2} name="Anomalies" dot={false} />
+                      <Line type="monotone" dataKey="count" stroke="#0f766e" strokeWidth={2.5} name="Активности" dot={false} />
+                      <Line type="monotone" dataKey="anomalies" stroke="#b91c1c" strokeWidth={2} name="Аномалии" dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </ChartBox>
@@ -608,7 +719,12 @@ const Reports = () => {
           <Grid item xs={12} xl={5} sx={{ minWidth: 0 }}>
             <Card sx={{ height: '100%' }}>
               <CardContent sx={{ minWidth: 0 }}>
-                <Typography variant="h6" gutterBottom>Department Distribution (live)</Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                  <Typography variant="h6">Распределение по отделам (онлайн)</Typography>
+                  <IconButton size="small" onClick={() => openChartPreview('departmentPie', 'Распределение по отделам')}>
+                    <OpenInFull fontSize="small" />
+                  </IconButton>
+                </Box>
                 <ChartBox>
                   <ResponsiveContainer width="100%" height="100%" debounce={100}>
                     <RePieChart>
@@ -640,7 +756,12 @@ const Reports = () => {
       {tabValue === 1 && (
         <Card>
           <CardContent sx={{ minWidth: 0 }}>
-            <Typography variant="h6" gutterBottom>Activity Trends (ActivityService)</Typography>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+              <Typography variant="h6">Тренды активности</Typography>
+              <IconButton size="small" onClick={() => openChartPreview('trendTimeline', 'Тренды активности')}>
+                <OpenInFull fontSize="small" />
+              </IconButton>
+            </Box>
             <ChartBox height={{ xs: 300, md: 420 }}>
               <ResponsiveContainer width="100%" height="100%" debounce={100}>
                 <LineChart data={activityData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }} onClick={handleTimelineClick}>
@@ -650,9 +771,9 @@ const Reports = () => {
                   <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
                   <Tooltip />
                   <Legend />
-                  <Line yAxisId="left" type="monotone" dataKey="count" stroke="#0f766e" strokeWidth={2.5} name="Activities" dot={false} />
-                  <Line yAxisId="left" type="monotone" dataKey="blocked" stroke="#d97706" strokeWidth={2} name="Blocked" dot={false} />
-                  <Line yAxisId="right" type="monotone" dataKey="riskScore" stroke="#0369a1" strokeWidth={2} name="Avg Risk Score" dot={false} />
+                  <Line yAxisId="left" type="monotone" dataKey="count" stroke="#0f766e" strokeWidth={2.5} name="Активности" dot={false} />
+                  <Line yAxisId="left" type="monotone" dataKey="blocked" stroke="#d97706" strokeWidth={2} name="Заблокировано" dot={false} />
+                  <Line yAxisId="right" type="monotone" dataKey="riskScore" stroke="#0369a1" strokeWidth={2} name="Средний риск" dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </ChartBox>
@@ -665,7 +786,12 @@ const Reports = () => {
           <Grid item xs={12} lg={6} sx={{ minWidth: 0 }}>
             <Card sx={{ height: '100%' }}>
               <CardContent sx={{ minWidth: 0 }}>
-                <Typography variant="h6" gutterBottom>Department Activity Distribution</Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                  <Typography variant="h6">Распределение активности по отделам</Typography>
+                  <IconButton size="small" onClick={() => openChartPreview('departmentPie', 'Распределение активности по отделам')}>
+                    <OpenInFull fontSize="small" />
+                  </IconButton>
+                </Box>
                 <ChartBox>
                   <ResponsiveContainer width="100%" height="100%" debounce={100}>
                     <RePieChart>
@@ -695,21 +821,21 @@ const Reports = () => {
           <Grid item xs={12} lg={6} sx={{ minWidth: 0 }}>
             <Card sx={{ height: '100%' }}>
               <CardContent sx={{ minWidth: 0 }}>
-                <Typography variant="h6" gutterBottom>Department Statistics</Typography>
+                <Typography variant="h6" gutterBottom>Статистика отделов</Typography>
                 <TableContainer sx={{ maxHeight: 420 }}>
                   <Table stickyHeader size="small">
                     <TableHead>
                       <TableRow>
-                        <TableCell>Department</TableCell>
-                        <TableCell align="right">Activities</TableCell>
-                        <TableCell align="right">Users</TableCell>
-                        <TableCell align="right">Anomalies</TableCell>
+                        <TableCell>Отдел</TableCell>
+                        <TableCell align="right">Активности</TableCell>
+                        <TableCell align="right">Пользователи</TableCell>
+                        <TableCell align="right">Аномалии</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {liveData.departmentRows.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={4} align="center">No department data</TableCell>
+                          <TableCell colSpan={4} align="center">Нет данных по отделам</TableCell>
                         </TableRow>
                       )}
                       {liveData.departmentRows.map((dept, index) => (
@@ -743,7 +869,12 @@ const Reports = () => {
           <Grid item xs={12} lg={7} sx={{ minWidth: 0 }}>
             <Card>
               <CardContent sx={{ minWidth: 0 }}>
-                <Typography variant="h6" gutterBottom>User Activity Statistics (live)</Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                  <Typography variant="h6">Статистика активности пользователей (онлайн)</Typography>
+                  <IconButton size="small" onClick={() => openChartPreview('usersBar', 'Статистика активности пользователей')}>
+                    <OpenInFull fontSize="small" />
+                  </IconButton>
+                </Box>
                 <ChartBox height={{ xs: 300, md: 420 }}>
                   <ResponsiveContainer width="100%" height="100%" debounce={100}>
                     <ReBarChart data={liveData.userRows} layout="vertical" margin={{ top: 8, right: 16, left: 28, bottom: 0 }} onClick={handleUserBarClick}>
@@ -752,8 +883,8 @@ const Reports = () => {
                       <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 12 }} />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="activities" fill="#0f766e" radius={[0, 6, 6, 0]} />
-                      <Bar dataKey="blocked" fill="#d97706" radius={[0, 6, 6, 0]} />
+                      <Bar dataKey="activities" name="Активности" fill="#0f766e" radius={[0, 6, 6, 0]} />
+                      <Bar dataKey="blocked" name="Заблокировано" fill="#d97706" radius={[0, 6, 6, 0]} />
                     </ReBarChart>
                   </ResponsiveContainer>
                 </ChartBox>
@@ -764,21 +895,21 @@ const Reports = () => {
           <Grid item xs={12} lg={5} sx={{ minWidth: 0 }}>
             <Card>
               <CardContent sx={{ minWidth: 0 }}>
-                <Typography variant="h6" gutterBottom>Top Users</Typography>
+                <Typography variant="h6" gutterBottom>Топ пользователей</Typography>
                 <TableContainer sx={{ maxHeight: 420 }}>
                   <Table stickyHeader size="small">
                     <TableHead>
                       <TableRow>
-                        <TableCell>User</TableCell>
-                        <TableCell>Dept</TableCell>
-                        <TableCell align="right">Activities</TableCell>
-                        <TableCell align="right">Avg Risk</TableCell>
+                        <TableCell>Пользователь</TableCell>
+                        <TableCell>Отдел</TableCell>
+                        <TableCell align="right">Активности</TableCell>
+                        <TableCell align="right">Средний риск</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {liveData.userRows.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={4} align="center">No user activity data</TableCell>
+                          <TableCell colSpan={4} align="center">Нет данных по активности пользователей</TableCell>
                         </TableRow>
                       )}
                       {liveData.userRows.map((row) => (
@@ -802,29 +933,29 @@ const Reports = () => {
         <Card>
           <CardContent sx={{ minWidth: 0 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} gap={2} flexWrap="wrap">
-              <Typography variant="h6">Generated Reports (ReportService)</Typography>
-              <Chip label={`${liveData.generatedReports.length} rows`} color="primary" variant="outlined" />
+              <Typography variant="h6">Сформированные отчеты</Typography>
+              <Chip label={`${liveData.generatedReports.length} записей`} color="primary" variant="outlined" />
             </Box>
             <TableContainer sx={{ overflowX: 'auto' }}>
               <Table size="small">
                 <TableHead>
                   <TableRow>
                     <TableCell>ID</TableCell>
-                    <TableCell>Report Date</TableCell>
-                    <TableCell>Created At</TableCell>
-                    <TableCell align="right">User ID</TableCell>
-                    <TableCell align="right">Computer ID</TableCell>
-                    <TableCell align="right">Activities</TableCell>
-                    <TableCell align="right">Blocked</TableCell>
-                    <TableCell align="right">Avg Risk</TableCell>
-                    <TableCell>Status</TableCell>
+                    <TableCell>Дата отчета</TableCell>
+                    <TableCell>Создан</TableCell>
+                    <TableCell align="right">ID пользователя</TableCell>
+                    <TableCell align="right">ID компьютера</TableCell>
+                    <TableCell align="right">Активности</TableCell>
+                    <TableCell align="right">Блокировки</TableCell>
+                    <TableCell align="right">Средний риск</TableCell>
+                    <TableCell>Статус</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {liveData.generatedReports.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={9} align="center">
-                        No generated reports found for selected period.
+                        За выбранный период отчеты не найдены.
                       </TableCell>
                     </TableRow>
                   )}
@@ -832,14 +963,14 @@ const Reports = () => {
                     <TableRow key={report.id} hover>
                       <TableCell>{report.id}</TableCell>
                       <TableCell>{report.reportDate || '-'}</TableCell>
-                      <TableCell>{report.createdAt ? new Date(report.createdAt).toLocaleString() : '-'}</TableCell>
+                      <TableCell>{report.createdAt ? new Date(report.createdAt).toLocaleString('ru-RU') : '-'}</TableCell>
                       <TableCell align="right">{report.userId}</TableCell>
                       <TableCell align="right">{report.computerId}</TableCell>
                       <TableCell align="right">{report.totalActivities}</TableCell>
                       <TableCell align="right">{report.blockedActions}</TableCell>
                       <TableCell align="right">{Number(report.avgRiskScore || 0).toFixed(1)}</TableCell>
                       <TableCell>
-                        <Chip label="Ready" color={getStatusColor('ready')} size="small" />
+                        <Chip label="Готов" color={getStatusColor('ready')} size="small" />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -850,16 +981,24 @@ const Reports = () => {
         </Card>
       )}
 
+      <ChartExpandDialog
+        open={expandedChart.open}
+        onClose={closeChartPreview}
+        title={expandedChart.title || 'Диаграмма'}
+      >
+        {renderExpandedChart()}
+      </ChartExpandDialog>
+
       <Dialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Export Report</DialogTitle>
+        <DialogTitle>Экспорт отчета</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid item xs={12}>
               <FormControl fullWidth>
-                <InputLabel>Export Format</InputLabel>
+                <InputLabel>Формат экспорта</InputLabel>
                 <Select
                   value={exportFormat}
-                  label="Export Format"
+                  label="Формат экспорта"
                   onChange={(e) => setExportFormat(e.target.value)}
                 >
                   <MenuItem value="csv">CSV</MenuItem>
@@ -869,18 +1008,18 @@ const Reports = () => {
             </Grid>
             <Grid item xs={12}>
               <Typography variant="body2" color="text.secondary">
-                Selected period: {liveData.period?.label || '-'}
+                Выбранный период: {liveData.period?.label || '-'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Source: Gateway export generator (`/api/report/export`) with secure file download
+                Источник: генератор экспорта шлюза (`/api/report/export`) с защищенной загрузкой файла
               </Typography>
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setExportDialogOpen(false)} disabled={exporting}>Cancel</Button>
+          <Button onClick={() => setExportDialogOpen(false)} disabled={exporting}>Отмена</Button>
           <Button onClick={handleConfirmExport} variant="contained" disabled={exporting}>
-            {exporting ? 'Exporting...' : 'Export'}
+            {exporting ? 'Экспорт...' : 'Экспорт'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -898,28 +1037,28 @@ const Reports = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>ID</TableCell>
-                  <TableCell>Timestamp</TableCell>
-                  <TableCell>Type</TableCell>
-                  <TableCell align="right">Computer</TableCell>
-                  <TableCell align="right">Risk</TableCell>
-                  <TableCell>Status</TableCell>
+                  <TableCell>Время</TableCell>
+                  <TableCell>Тип</TableCell>
+                  <TableCell align="right">Компьютер</TableCell>
+                  <TableCell align="right">Риск</TableCell>
+                  <TableCell>Статус</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {drilldown.rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center">No activities matched this segment</TableCell>
+                    <TableCell colSpan={6} align="center">Для выбранного сегмента активности не найдены</TableCell>
                   </TableRow>
                 ) : (
                   drilldown.rows.map((row) => (
                     <TableRow key={row.id} hover>
                       <TableCell>{row.id}</TableCell>
-                      <TableCell>{row.timestamp ? new Date(row.timestamp).toLocaleString() : '-'}</TableCell>
+                      <TableCell>{row.timestamp ? new Date(row.timestamp).toLocaleString('ru-RU') : '-'}</TableCell>
                       <TableCell>{row.activityType || '-'}</TableCell>
                       <TableCell align="right">{row.computerId ?? '-'}</TableCell>
                       <TableCell align="right">{Number(row.riskScore || 0).toFixed(1)}</TableCell>
                       <TableCell>
-                        <Chip size="small" color={row.isBlocked ? 'error' : 'success'} label={row.isBlocked ? 'Blocked' : 'Normal'} />
+                        <Chip size="small" color={row.isBlocked ? 'error' : 'success'} label={row.isBlocked ? 'Заблокировано' : 'Норма'} />
                       </TableCell>
                     </TableRow>
                   ))
@@ -929,7 +1068,7 @@ const Reports = () => {
           </TableContainer>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDrilldown((prev) => ({ ...prev, open: false }))}>Close</Button>
+          <Button onClick={() => setDrilldown((prev) => ({ ...prev, open: false }))}>Закрыть</Button>
         </DialogActions>
       </Dialog>
     </Box>

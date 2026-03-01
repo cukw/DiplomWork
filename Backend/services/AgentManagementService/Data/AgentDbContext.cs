@@ -15,6 +15,7 @@ public class AgentDbContext : DbContext
     public DbSet<Models.AgentPolicy> AgentPolicies { get; set; }
     public DbSet<Models.AgentPolicyVersion> AgentPolicyVersions { get; set; }
     public DbSet<Models.AgentCommand> AgentCommands { get; set; }
+    public DbSet<Models.AgentCommandDeadLetter> AgentCommandDeadLetters { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -47,6 +48,10 @@ public class AgentDbContext : DbContext
             entity.Property(e => e.PolicyVersion).IsRequired().HasMaxLength(50);
             entity.Property(e => e.BlockedReason).HasMaxLength(500);
             entity.Property(e => e.BrowsersJson).HasDefaultValue("[\"chrome\",\"edge\",\"firefox\"]");
+            entity.Property(e => e.WhitelistJson).HasDefaultValue("[]");
+            entity.Property(e => e.BlacklistJson).HasDefaultValue("[]");
+            entity.Property(e => e.EnableWhitelist).HasDefaultValue(true);
+            entity.Property(e => e.EnableBlacklist).HasDefaultValue(true);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
             entity.HasIndex(e => e.AgentId).IsUnique();
             entity.HasIndex(e => e.ComputerId);
@@ -66,16 +71,48 @@ public class AgentDbContext : DbContext
 
         modelBuilder.Entity<Models.AgentCommand>(entity =>
         {
+            entity.ToTable("agent_commands");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Type).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.Status).IsRequired().HasMaxLength(20).HasDefaultValue("pending");
-            entity.Property(e => e.RequestedBy).HasMaxLength(100).HasDefaultValue("system");
-            entity.Property(e => e.ResultMessage).HasMaxLength(500).HasDefaultValue(string.Empty);
-            entity.Property(e => e.PayloadJson).HasDefaultValue("{}");
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.AgentId).HasColumnName("agent_id");
+            entity.Property(e => e.CommandKey).HasColumnName("command_key").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Type).HasColumnName("type").IsRequired().HasMaxLength(50);
+            entity.Property(e => e.PayloadJson).HasColumnName("payload_json").HasDefaultValue("{}");
+            entity.Property(e => e.Status).HasColumnName("status").IsRequired().HasMaxLength(20).HasDefaultValue("pending");
+            entity.Property(e => e.RequestedBy).HasColumnName("requested_by").HasMaxLength(100).HasDefaultValue("system");
+            entity.Property(e => e.ResultMessage).HasColumnName("result_message").HasMaxLength(500).HasDefaultValue(string.Empty);
+            entity.Property(e => e.DeliveryAttempts).HasColumnName("delivery_attempts").HasDefaultValue(0);
+            entity.Property(e => e.MaxDeliveryAttempts).HasColumnName("max_delivery_attempts").HasDefaultValue(5);
+            entity.Property(e => e.LastDispatchAt).HasColumnName("last_dispatch_at");
+            entity.Property(e => e.NextRetryAt).HasColumnName("next_retry_at");
+            entity.Property(e => e.TimeoutAt).HasColumnName("timeout_at");
+            entity.Property(e => e.DeadLetterReason).HasColumnName("dead_letter_reason").HasMaxLength(500).HasDefaultValue(string.Empty);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("NOW()");
+            entity.Property(e => e.AcknowledgedAt).HasColumnName("acknowledged_at");
             entity.HasIndex(e => e.AgentId);
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => new { e.AgentId, e.Status });
+            entity.HasIndex(e => new { e.AgentId, e.CommandKey }).IsUnique();
+            entity.HasIndex(e => e.TimeoutAt);
+            entity.HasIndex(e => e.NextRetryAt);
+        });
+
+        modelBuilder.Entity<Models.AgentCommandDeadLetter>(entity =>
+        {
+            entity.ToTable("agent_command_dlq");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.AgentCommandId).HasColumnName("agent_command_id");
+            entity.Property(e => e.AgentId).HasColumnName("agent_id");
+            entity.Property(e => e.CommandKey).HasColumnName("command_key").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Type).HasColumnName("type").IsRequired().HasMaxLength(50);
+            entity.Property(e => e.PayloadJson).HasColumnName("payload_json").HasDefaultValue("{}");
+            entity.Property(e => e.Reason).HasColumnName("reason").HasMaxLength(500).HasDefaultValue(string.Empty);
+            entity.Property(e => e.DeliveryAttempts).HasColumnName("delivery_attempts").HasDefaultValue(0);
+            entity.Property(e => e.FailedAt).HasColumnName("failed_at").HasDefaultValueSql("NOW()");
+            entity.HasIndex(e => e.AgentId);
+            entity.HasIndex(e => e.AgentCommandId).IsUnique();
+            entity.HasIndex(e => e.FailedAt);
         });
     }
 

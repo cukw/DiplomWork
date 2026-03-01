@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Primitives;
+using Microsoft.EntityFrameworkCore;
 using System.Text;
 using Gateway.Services;
+using Gateway.Data;
 
 // Алиасы для gRPC-клиентов
 using ActivityClient     = Gateway.Protos.Activity.ActivityGrpcService.ActivityGrpcServiceClient;
@@ -44,9 +46,21 @@ builder.Services.AddGrpcClient<AgentClient>(o =>
 // ─── REST + Auth ──────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
+
+var gatewayRuntimeConnection = builder.Configuration.GetConnectionString("GatewayRuntime")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(gatewayRuntimeConnection))
+{
+    throw new InvalidOperationException("ConnectionStrings:GatewayRuntime is not configured");
+}
+
+builder.Services.AddDbContextFactory<GatewayRuntimeDbContext>(options =>
+    options.UseNpgsql(gatewayRuntimeConnection));
+
 builder.Services.AddSingleton<AlertRuleStore>();
 builder.Services.AddSingleton<AppSettingsStore>();
 builder.Services.AddSingleton<DownloadFileStore>();
+builder.Services.AddScoped<PolicyAccessListSyncService>();
 
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
@@ -179,6 +193,19 @@ builder.Services.AddCors(options =>
         p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var runtimeDbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<GatewayRuntimeDbContext>>();
+    await using var runtimeDb = await runtimeDbFactory.CreateDbContextAsync();
+    await runtimeDb.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS app_settings_documents (
+            id          INTEGER PRIMARY KEY,
+            payload_json TEXT NOT NULL,
+            updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
+        );
+    ");
+}
 
 app.UseCors("AllowAll");
 

@@ -372,6 +372,63 @@ export const systemAPI = {
 };
 
 export const settingsAPI = {
+  extractPolicySyncMeta: (response) => {
+    const headers = response?.headers || {};
+    const responseData = response?.data || {};
+
+    const readHeader = (name) => {
+      const direct = headers[name];
+      if (direct !== undefined && direct !== null) return direct;
+      const lowered = headers[String(name).toLowerCase()];
+      return lowered !== undefined ? lowered : null;
+    };
+
+    const parseNumberHeader = (name) => {
+      const raw = readHeader(name);
+      if (raw === null || raw === undefined || raw === '') return null;
+      const parsed = Number(raw);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const headerStatus = String(readHeader('x-policy-sync-status') || '').trim().toLowerCase();
+    const headerTotal = parseNumberHeader('x-policy-sync-total-agents');
+    const headerSynced = parseNumberHeader('x-policy-sync-synced-agents');
+    const headerFailed = parseNumberHeader('x-policy-sync-failed-agents');
+
+    const bodyTotal = Number(responseData?.totalAgents);
+    const bodySynced = Number(responseData?.syncedAgents);
+    const bodyFailed = Number(responseData?.failedAgents);
+
+    const totalAgents = headerTotal ?? (Number.isFinite(bodyTotal) ? bodyTotal : 0);
+    const syncedAgents = headerSynced ?? (Number.isFinite(bodySynced) ? bodySynced : 0);
+    const failedAgents = headerFailed ?? (Number.isFinite(bodyFailed) ? bodyFailed : 0);
+
+    const hasAnySyncData =
+      Boolean(headerStatus) ||
+      headerTotal !== null ||
+      headerSynced !== null ||
+      headerFailed !== null ||
+      Number.isFinite(bodyTotal) ||
+      Number.isFinite(bodySynced) ||
+      Number.isFinite(bodyFailed);
+
+    if (!hasAnySyncData) return null;
+
+    const status = headerStatus || (failedAgents > 0 ? 'partial' : 'ok');
+    const errors = Array.isArray(responseData?.errors)
+      ? responseData.errors.filter((item) => typeof item === 'string' && item.trim().length > 0)
+      : [];
+
+    return {
+      status,
+      totalAgents,
+      syncedAgents,
+      failedAgents,
+      errors,
+      timestamp: new Date().toISOString(),
+    };
+  },
+
   getSettings: async () => {
     const response = await api.get('/app-settings');
     return response.data;
@@ -379,7 +436,10 @@ export const settingsAPI = {
 
   saveSettings: async (payload) => {
     const response = await api.put('/app-settings', payload);
-    return response.data;
+    return {
+      data: response.data,
+      policySync: settingsAPI.extractPolicySyncMeta(response),
+    };
   },
 
   getWhitelistEntries: async () => {
@@ -389,22 +449,34 @@ export const settingsAPI = {
 
   replaceWhitelistEntries: async (entries) => {
     const response = await api.put('/app-settings/whitelist', entries);
-    return response.data;
+    return {
+      data: response.data,
+      policySync: settingsAPI.extractPolicySyncMeta(response),
+    };
   },
 
   createWhitelistEntry: async (entry) => {
     const response = await api.post('/app-settings/whitelist', entry);
-    return response.data;
+    return {
+      data: response.data,
+      policySync: settingsAPI.extractPolicySyncMeta(response),
+    };
   },
 
   updateWhitelistEntry: async (id, entry) => {
     const response = await api.put(`/app-settings/whitelist/${id}`, entry);
-    return response.data;
+    return {
+      data: response.data,
+      policySync: settingsAPI.extractPolicySyncMeta(response),
+    };
   },
 
   deleteWhitelistEntry: async (id) => {
     const response = await api.delete(`/app-settings/whitelist/${id}`);
-    return response.data;
+    return {
+      data: response.data,
+      policySync: settingsAPI.extractPolicySyncMeta(response),
+    };
   },
 
   getBlacklistEntries: async () => {
@@ -414,22 +486,42 @@ export const settingsAPI = {
 
   replaceBlacklistEntries: async (entries) => {
     const response = await api.put('/app-settings/blacklist', entries);
-    return response.data;
+    return {
+      data: response.data,
+      policySync: settingsAPI.extractPolicySyncMeta(response),
+    };
   },
 
   createBlacklistEntry: async (entry) => {
     const response = await api.post('/app-settings/blacklist', entry);
-    return response.data;
+    return {
+      data: response.data,
+      policySync: settingsAPI.extractPolicySyncMeta(response),
+    };
   },
 
   updateBlacklistEntry: async (id, entry) => {
     const response = await api.put(`/app-settings/blacklist/${id}`, entry);
-    return response.data;
+    return {
+      data: response.data,
+      policySync: settingsAPI.extractPolicySyncMeta(response),
+    };
   },
 
   deleteBlacklistEntry: async (id) => {
     const response = await api.delete(`/app-settings/blacklist/${id}`);
-    return response.data;
+    return {
+      data: response.data,
+      policySync: settingsAPI.extractPolicySyncMeta(response),
+    };
+  },
+
+  syncPolicies: async () => {
+    const response = await api.post('/app-settings/sync/policies');
+    return {
+      data: response.data,
+      policySync: settingsAPI.extractPolicySyncMeta(response),
+    };
   },
 };
 

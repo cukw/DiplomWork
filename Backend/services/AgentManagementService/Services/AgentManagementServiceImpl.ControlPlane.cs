@@ -135,12 +135,40 @@ public partial class AgentManagementServiceImpl
 
         try
         {
+            if (request.AgentId <= 0 || request.AgentId > int.MaxValue)
+                return new GetPendingAgentCommandsResponse { Success = false, Message = "Invalid agent ID" };
+
             var limit = request.Limit > 0 ? Math.Min(request.Limit, 100) : 20;
+            var now = DateTime.UtcNow;
+            var dispatchTimeoutSeconds = Math.Clamp(_commandDeliveryOptions.DispatchTimeoutSeconds, 5, 3600);
+            var agentId = (int)request.AgentId;
+
+            await using var tx = await _db.Database.BeginTransactionAsync(context.CancellationToken);
             var commands = await _db.AgentCommands
-                .Where(c => c.AgentId == request.AgentId && c.Status == "pending")
-                .OrderBy(c => c.Id)
-                .Take(limit)
-                .ToListAsync();
+                .FromSqlInterpolated($"""
+                    SELECT *
+                    FROM agent_commands
+                    WHERE agent_id = {agentId}
+                      AND status = 'pending'
+                      AND (next_retry_at IS NULL OR next_retry_at <= NOW())
+                    ORDER BY id
+                    LIMIT {limit}
+                    FOR UPDATE SKIP LOCKED
+                    """)
+                .ToListAsync(context.CancellationToken);
+
+            foreach (var command in commands)
+            {
+                command.DeliveryAttempts = Math.Max(0, command.DeliveryAttempts) + 1;
+                command.Status = "running";
+                command.LastDispatchAt = now;
+                command.TimeoutAt = now.AddSeconds(dispatchTimeoutSeconds);
+                command.NextRetryAt = null;
+                command.ResultMessage = string.Empty;
+            }
+
+            await _db.SaveChangesAsync(context.CancellationToken);
+            await tx.CommitAsync(context.CancellationToken);
 
             return new GetPendingAgentCommandsResponse
             {
@@ -199,10 +227,11 @@ public partial class AgentManagementServiceImpl
 
         try
         {
-            if (request.AgentId <= 0)
+            if (request.AgentId <= 0 || request.AgentId > int.MaxValue)
                 return new CreateAgentCommandResponse { Success = false, Message = "Invalid agent ID" };
 
-            var agentExists = await _db.Agents.AnyAsync(a => a.Id == request.AgentId);
+            var agentId = (int)request.AgentId;
+            var agentExists = await _db.Agents.AnyAsync(a => a.Id == agentId);
             if (!agentExists)
                 return new CreateAgentCommandResponse { Success = false, Message = "Agent not found" };
 
@@ -211,19 +240,61 @@ public partial class AgentManagementServiceImpl
                 return new CreateAgentCommandResponse { Success = false, Message = "Command type is required" };
 
             var payloadJson = NormalizeJsonObjectString(request.PayloadJson);
+            var normalizedCommandKey = NormalizeCommandKey(request.CommandKey);
+            if (string.IsNullOrWhiteSpace(normalizedCommandKey))
+                normalizedCommandKey = $"cmd-{Guid.NewGuid():N}";
+
+            var existing = await _db.AgentCommands
+                .OrderByDescending(c => c.Id)
+                .FirstOrDefaultAsync(c => c.AgentId == agentId && c.CommandKey == normalizedCommandKey);
+
+            if (existing is not null)
+            {
+                return new CreateAgentCommandResponse
+                {
+                    Success = true,
+                    Message = "Agent command already exists (idempotent replay)",
+                    Command = MapCommandToProto(existing)
+                };
+            }
 
             var command = new Models.AgentCommand
             {
-                AgentId = (int)request.AgentId,
+                AgentId = agentId,
+                CommandKey = normalizedCommandKey,
                 Type = commandType,
                 PayloadJson = payloadJson,
                 Status = "pending",
                 RequestedBy = string.IsNullOrWhiteSpace(request.RequestedBy) ? "panel" : request.RequestedBy.Trim(),
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                DeliveryAttempts = 0,
+                MaxDeliveryAttempts = Math.Max(1, _commandDeliveryOptions.MaxDeliveryAttempts),
+                NextRetryAt = null
             };
 
             _db.AgentCommands.Add(command);
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                var replay = await _db.AgentCommands
+                    .OrderByDescending(c => c.Id)
+                    .FirstOrDefaultAsync(c => c.AgentId == agentId && c.CommandKey == normalizedCommandKey);
+
+                if (replay is not null)
+                {
+                    return new CreateAgentCommandResponse
+                    {
+                        Success = true,
+                        Message = "Agent command already exists (idempotent replay)",
+                        Command = MapCommandToProto(replay)
+                    };
+                }
+
+                throw;
+            }
 
             return new CreateAgentCommandResponse
             {
@@ -252,9 +323,26 @@ public partial class AgentManagementServiceImpl
             if (command is null)
                 return new AckAgentCommandResponse { Success = false, Message = "Command not found" };
 
-            command.Status = NormalizeCommandStatus(request.Status);
+            var normalizedStatus = NormalizeCommandStatus(request.Status);
+            var now = DateTime.UtcNow;
+
+            command.Status = normalizedStatus;
             command.ResultMessage = (request.ResultMessage ?? string.Empty).Trim();
-            command.AcknowledgedAt = DateTime.UtcNow;
+            command.TimeoutAt = null;
+            command.NextRetryAt = null;
+
+            if (normalizedStatus is "success" or "failed" or "ignored" or "deadletter" or "timeout")
+            {
+                command.AcknowledgedAt = now;
+            }
+
+            if (normalizedStatus is "deadletter" or "timeout")
+            {
+                command.DeadLetterReason = string.IsNullOrWhiteSpace(command.ResultMessage)
+                    ? $"Command marked as {normalizedStatus}"
+                    : command.ResultMessage;
+                await PersistDeadLetterAsync(command, now, context.CancellationToken);
+            }
 
             await _db.SaveChangesAsync();
 
@@ -316,6 +404,8 @@ public partial class AgentManagementServiceImpl
         entity.AutoLockEnabled = proto.AutoLockEnabled;
         entity.AdminBlocked = proto.AdminBlocked;
         entity.BlockedReason = string.IsNullOrWhiteSpace(proto.BlockedReason) ? null : proto.BlockedReason.Trim();
+        entity.EnableWhitelist = proto.EnableWhitelist;
+        entity.EnableBlacklist = proto.EnableBlacklist;
 
         var browsers = proto.Browsers.Where(b => !string.IsNullOrWhiteSpace(b))
             .Select(b => b.Trim().ToLowerInvariant())
@@ -325,6 +415,8 @@ public partial class AgentManagementServiceImpl
             browsers = ["chrome", "edge", "firefox"];
 
         entity.BrowsersJson = JsonSerializer.Serialize(browsers);
+        entity.WhitelistJson = JsonSerializer.Serialize(NormalizeAppList(proto.WhitelistApps));
+        entity.BlacklistJson = JsonSerializer.Serialize(NormalizeAppList(proto.BlacklistApps));
     }
 
     private ProtoAgentPolicy MapPolicyToProto(Models.AgentPolicy policy)
@@ -349,10 +441,14 @@ public partial class AgentManagementServiceImpl
             HighRiskThreshold = policy.HighRiskThreshold,
             AutoLockEnabled = policy.AutoLockEnabled,
             AdminBlocked = policy.AdminBlocked,
+            EnableWhitelist = policy.EnableWhitelist,
+            EnableBlacklist = policy.EnableBlacklist,
             BlockedReason = policy.BlockedReason ?? string.Empty,
             UpdatedAt = policy.UpdatedAt.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
         };
         proto.Browsers.AddRange(browsers);
+        proto.WhitelistApps.AddRange(ParseAppList(policy.WhitelistJson));
+        proto.BlacklistApps.AddRange(ParseAppList(policy.BlacklistJson));
         _controlPlaneSigning.ApplyPolicySignature(proto);
         return proto;
     }
@@ -368,11 +464,39 @@ public partial class AgentManagementServiceImpl
             Status = command.Status,
             RequestedBy = command.RequestedBy ?? string.Empty,
             ResultMessage = command.ResultMessage ?? string.Empty,
-            CreatedAt = command.CreatedAt.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-            AcknowledgedAt = command.AcknowledgedAt?.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? string.Empty
+            CreatedAt = FormatUtc(command.CreatedAt),
+            AcknowledgedAt = FormatUtc(command.AcknowledgedAt),
+            CommandKey = command.CommandKey ?? string.Empty,
+            DeliveryAttempts = command.DeliveryAttempts,
+            MaxDeliveryAttempts = command.MaxDeliveryAttempts,
+            LastDispatchAt = FormatUtc(command.LastDispatchAt),
+            NextRetryAt = FormatUtc(command.NextRetryAt),
+            TimeoutAt = FormatUtc(command.TimeoutAt),
+            DeadLetterReason = command.DeadLetterReason ?? string.Empty
         };
         _controlPlaneSigning.ApplyCommandSignature(proto);
         return proto;
+    }
+
+    private async Task PersistDeadLetterAsync(Models.AgentCommand command, DateTime failedAtUtc, CancellationToken cancellationToken)
+    {
+        var alreadyExists = await _db.AgentCommandDeadLetters
+            .AnyAsync(x => x.AgentCommandId == command.Id, cancellationToken);
+
+        if (alreadyExists)
+            return;
+
+        _db.AgentCommandDeadLetters.Add(new Models.AgentCommandDeadLetter
+        {
+            AgentCommandId = command.Id,
+            AgentId = command.AgentId,
+            CommandKey = command.CommandKey ?? string.Empty,
+            Type = command.Type ?? string.Empty,
+            PayloadJson = command.PayloadJson ?? "{}",
+            Reason = command.DeadLetterReason ?? string.Empty,
+            DeliveryAttempts = command.DeliveryAttempts,
+            FailedAt = failedAtUtc
+        });
     }
 
     private static string[] ParseBrowsers(string? value)
@@ -392,6 +516,30 @@ public partial class AgentManagementServiceImpl
         }
     }
 
+    private static string[] ParseAppList(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return [];
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<string[]>(value);
+            return NormalizeAppList(parsed);
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static string[] NormalizeAppList(IEnumerable<string>? values)
+    {
+        return (values ?? [])
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x.Trim().ToLowerInvariant())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
     private static string NormalizeCommandType(string? type)
     {
         return string.IsNullOrWhiteSpace(type)
@@ -404,9 +552,23 @@ public partial class AgentManagementServiceImpl
         var normalized = string.IsNullOrWhiteSpace(status) ? "success" : status.Trim().ToLowerInvariant();
         return normalized switch
         {
-            "pending" or "running" or "success" or "failed" or "ignored" => normalized,
+            "pending" or "running" or "success" or "failed" or "ignored" or "deadletter" or "timeout" => normalized,
             _ => "success"
         };
+    }
+
+    private static string NormalizeCommandKey(string? commandKey)
+    {
+        if (string.IsNullOrWhiteSpace(commandKey))
+            return string.Empty;
+
+        var normalized = commandKey.Trim();
+        return normalized.Length <= 100 ? normalized : normalized[..100];
+    }
+
+    private static string FormatUtc(DateTime? value)
+    {
+        return value?.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? string.Empty;
     }
 
     private static string NormalizeJsonObjectString(string? payloadJson)

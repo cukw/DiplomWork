@@ -1,8 +1,9 @@
 using MassTransit;
 using NotificationService.Data;
-using NotificationService.Models;
 using Microsoft.EntityFrameworkCore;
 using ActivityService.Services.Events;
+using NotificationEntity = NotificationService.Models.Notification;
+using ProcessedEventInboxEntryEntity = NotificationService.Models.ProcessedEventInboxEntry;
 
 namespace NotificationService.Events;
 
@@ -38,18 +39,18 @@ public class AnomalyDetectedEventHandler : IConsumer<AnomalyDetectedEvent>
             var consumerName = nameof(AnomalyDetectedEventHandler);
             var eventKey = EventProcessingHelper.AnomalyDetectedKey(@event);
 
-            var notification = new Notification
+            var notification = new NotificationEntity
             {
                 UserId = userId,
                 Type = "ANOMALY_DETECTED",
                 Title = $"Anomaly Detected: {@event.AnomalyType}",
                 Message = $"Anomaly '{@event.AnomalyType}' detected for activity '{@event.ActivityType}' on computer {@event.ComputerId}. {@event.Description}",
                 Channel = channel,
-                SentAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                SentAt = DateTime.UtcNow,
                 IsRead = false
             };
 
-            _db.ProcessedEventInboxEntries.Add(new ProcessedEventInboxEntry
+            _db.ProcessedEventInboxEntries.Add(new ProcessedEventInboxEntryEntity
             {
                 Consumer = consumerName,
                 EventKey = eventKey,

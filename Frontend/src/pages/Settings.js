@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -71,10 +71,10 @@ const DEFAULT_ALERT_RULE_FORM = {
 };
 
 const ALERT_RULE_LABELS = {
-  anomaly_count: 'Anomaly Count',
-  blocked_activities: 'Blocked Activities',
-  average_risk_score: 'Average Risk Score',
-  total_activities: 'Total Activities',
+  anomaly_count: 'Количество аномалий',
+  blocked_activities: 'Заблокированные действия',
+  average_risk_score: 'Средний риск',
+  total_activities: 'Всего активностей',
 };
 
 const OPERATOR_LABELS = {
@@ -112,21 +112,23 @@ const DEFAULT_AGENT_COMMAND_FORM = {
 const ACCESS_LIST_AUTOSAVE_STORAGE_KEY = 'settings.accessLists.autosave';
 
 const AGENT_COMMAND_TYPES = [
-  'PING',
-  'REFRESH_POLICY',
-  'BLOCK_WORKSTATION',
-  'UNBLOCK_WORKSTATION',
-  'SET_COLLECTION_STATE',
-  'SET_LOG_LEVEL',
+  { value: 'PING', label: 'Проверка связи (PING)' },
+  { value: 'REFRESH_POLICY', label: 'Обновить политику (REFRESH_POLICY)' },
+  { value: 'BLOCK_WORKSTATION', label: 'Заблокировать ПК (BLOCK_WORKSTATION)' },
+  { value: 'UNBLOCK_WORKSTATION', label: 'Разблокировать ПК (UNBLOCK_WORKSTATION)' },
+  { value: 'SET_COLLECTION_STATE', label: 'Режим сбора (SET_COLLECTION_STATE)' },
+  { value: 'SET_LOG_LEVEL', label: 'Уровень логирования (SET_LOG_LEVEL)' },
 ];
 
 const AGENT_COMMAND_STATUS_OPTIONS = [
-  { value: '', label: 'All' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'running', label: 'Running' },
-  { value: 'success', label: 'Success' },
-  { value: 'failed', label: 'Failed' },
-  { value: 'ignored', label: 'Ignored' },
+  { value: '', label: 'Все' },
+  { value: 'pending', label: 'В очереди' },
+  { value: 'running', label: 'Выполняется' },
+  { value: 'success', label: 'Успешно' },
+  { value: 'failed', label: 'Ошибка' },
+  { value: 'timeout', label: 'Таймаут' },
+  { value: 'deadletter', label: 'В карантине (DLQ)' },
+  { value: 'ignored', label: 'Игнорировано' },
 ];
 
 const mapAgentPolicyToForm = (policy) => ({
@@ -174,17 +176,72 @@ const getCommandStatusColor = (status) => {
   const normalized = String(status || '').toLowerCase();
   if (normalized === 'success') return 'success';
   if (normalized === 'pending' || normalized === 'running') return 'warning';
-  if (normalized === 'failed') return 'error';
+  if (normalized === 'timeout') return 'warning';
+  if (normalized === 'failed' || normalized === 'deadletter') return 'error';
+  if (normalized === 'ignored') return 'default';
   return 'default';
 };
 
+const getStatusLabel = (status) => {
+  const normalized = String(status || '').toLowerCase();
+  const labels = {
+    healthy: 'Исправен',
+    degraded: 'Частично доступен',
+    unhealthy: 'Неисправен',
+    online: 'Онлайн',
+    offline: 'Оффлайн',
+    active: 'Активен',
+    inactive: 'Неактивен',
+    unknown: 'Неизвестно',
+    pending: 'В очереди',
+    running: 'Выполняется',
+    success: 'Успешно',
+    failed: 'Ошибка',
+    timeout: 'Таймаут',
+    deadletter: 'В карантине (DLQ)',
+    ignored: 'Игнорировано',
+    ready: 'Готово',
+  };
+  return labels[normalized] || String(status || 'Неизвестно');
+};
+
+const getCommandTypeLabel = (type) => {
+  return AGENT_COMMAND_TYPES.find((item) => item.value === type)?.label || String(type || '—');
+};
+
+const isInFlightCommand = (status) => {
+  const normalized = String(status || '').toLowerCase();
+  return normalized === 'pending' || normalized === 'running';
+};
+
 const normalizeListEntries = (entries) => (Array.isArray(entries) ? entries : [])
-  .map((entry, index) => ({
-    id: Number(entry?.id) > 0 ? Number(entry.id) : Date.now() + index,
-    application: String(entry?.application || '').trim(),
-    description: String(entry?.description || '').trim(),
-  }))
+  .map((entry, index) => {
+    const parsedId = Number(entry?.id);
+    const hasNumericId = Number.isFinite(parsedId) && parsedId !== 0;
+    return {
+      id: hasNumericId ? parsedId : -(index + 1),
+      application: String(entry?.application || '').trim(),
+      description: String(entry?.description || '').trim(),
+    };
+  })
   .filter((entry) => entry.application);
+
+const getPolicySyncSeverity = (syncInfo) => {
+  const failedAgents = Number(syncInfo?.failedAgents) || 0;
+  const syncedAgents = Number(syncInfo?.syncedAgents) || 0;
+  if (failedAgents <= 0) return 'success';
+  if (syncedAgents > 0) return 'warning';
+  return 'error';
+};
+
+const getPolicySyncSummary = (syncInfo) => {
+  const totalAgents = Number(syncInfo?.totalAgents) || 0;
+  const syncedAgents = Number(syncInfo?.syncedAgents) || 0;
+  const failedAgents = Number(syncInfo?.failedAgents) || 0;
+  if (totalAgents <= 0) return 'Синхронизация политик: агенты не зарегистрированы';
+  if (failedAgents <= 0) return `Синхронизация политик: ${syncedAgents}/${totalAgents} агентов обновлено`;
+  return `Синхронизация политик: ${syncedAgents}/${totalAgents} агентов обновлено, с ошибками ${failedAgents}`;
+};
 
 const Settings = () => {
   useAuth();
@@ -209,6 +266,7 @@ const Settings = () => {
   const [agentActionLoading, setAgentActionLoading] = useState(false);
   const [agentCommands, setAgentCommands] = useState([]);
   const [agentCommandsTotal, setAgentCommandsTotal] = useState(0);
+  const [agentCommandsRefreshing, setAgentCommandsRefreshing] = useState(false);
   const [agentCommandStatusFilter, setAgentCommandStatusFilter] = useState('');
   const [agentCommandForm, setAgentCommandForm] = useState(DEFAULT_AGENT_COMMAND_FORM);
   const [agentCommandSaving, setAgentCommandSaving] = useState(false);
@@ -224,7 +282,7 @@ const Settings = () => {
 
   // General Settings
   const [generalSettings, setGeneralSettings] = useState({
-    systemName: 'Activity Monitoring System',
+    systemName: 'Система мониторинга активности',
     logLevel: 'Info',
     maxLogRetention: '30',
     sessionTimeout: '60',
@@ -265,18 +323,20 @@ const Settings = () => {
 
   // Whitelist entries
   const [whitelistEntries, setWhitelistEntries] = useState([
-    { id: 1, application: 'chrome.exe', description: 'Google Chrome Browser' },
-    { id: 2, application: 'explorer.exe', description: 'Windows Explorer' },
+    { id: 1, application: 'chrome.exe', description: 'Браузер Google Chrome' },
+    { id: 2, application: 'explorer.exe', description: 'Проводник Windows' },
     { id: 3, application: 'winword.exe', description: 'Microsoft Word' }
   ]);
 
   // Blacklist entries
   const [blacklistEntries, setBlacklistEntries] = useState([
-    { id: 1, application: 'torrent.exe', description: 'Torrent Client' },
-    { id: 2, application: 'game.exe', description: 'Gaming Application' }
+    { id: 1, application: 'torrent.exe', description: 'Торрент-клиент' },
+    { id: 2, application: 'game.exe', description: 'Игровое приложение' }
   ]);
   const [listSettingsDirty, setListSettingsDirty] = useState(false);
   const [listSettingsSaving, setListSettingsSaving] = useState(false);
+  const [policySyncInfo, setPolicySyncInfo] = useState(null);
+  const [policySyncRunning, setPolicySyncRunning] = useState(false);
   const [listSettingsAutoSave, setListSettingsAutoSave] = useState(() => {
     try {
       const raw = localStorage.getItem(ACCESS_LIST_AUTOSAVE_STORAGE_KEY);
@@ -286,10 +346,50 @@ const Settings = () => {
     }
   });
   const accessListAutosaveTimerRef = useRef(null);
+  const nextTempEntryIdRef = useRef(-1);
+
+  const applySettingsPayload = useCallback((payload) => {
+    if (!payload || typeof payload !== 'object') return;
+
+    if (payload.generalSettings) {
+      setGeneralSettings((prev) => ({ ...prev, ...payload.generalSettings }));
+    }
+    if (payload.securitySettings) {
+      setSecuritySettings((prev) => ({ ...prev, ...payload.securitySettings }));
+    }
+    if (payload.notificationSettings) {
+      setNotificationSettings((prev) => ({ ...prev, ...payload.notificationSettings }));
+    }
+    if (payload.monitoringSettings) {
+      setMonitoringSettings((prev) => ({ ...prev, ...payload.monitoringSettings }));
+    }
+    if (payload.whitelistEntries) {
+      setWhitelistEntries(normalizeListEntries(payload.whitelistEntries));
+      setListSettingsDirty(false);
+    }
+    if (payload.blacklistEntries) {
+      setBlacklistEntries(normalizeListEntries(payload.blacklistEntries));
+      setListSettingsDirty(false);
+    }
+  }, []);
+
+  const fetchSettings = useCallback(async ({ silent = false } = {}) => {
+    try {
+      if (!silent) setLoading(true);
+      setError(null);
+      const payload = await settingsAPI.getSettings();
+      applySettingsPayload(payload);
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Не удалось загрузить настройки');
+      console.error('Ошибка загрузки настроек:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [applySettingsPayload]);
 
   useEffect(() => {
     fetchSettings();
-  }, []);
+  }, [fetchSettings]);
 
   useEffect(() => {
     if (tabValue !== 3) return undefined;
@@ -338,47 +438,28 @@ const Settings = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabValue]);
 
-  const applySettingsPayload = (payload) => {
-    if (!payload || typeof payload !== 'object') return;
-
-    if (payload.generalSettings) {
-      setGeneralSettings((prev) => ({ ...prev, ...payload.generalSettings }));
-    }
-    if (payload.securitySettings) {
-      setSecuritySettings((prev) => ({ ...prev, ...payload.securitySettings }));
-    }
-    if (payload.notificationSettings) {
-      setNotificationSettings((prev) => ({ ...prev, ...payload.notificationSettings }));
-    }
-    if (payload.monitoringSettings) {
-      setMonitoringSettings((prev) => ({ ...prev, ...payload.monitoringSettings }));
-    }
-    if (payload.whitelistEntries) {
-      setWhitelistEntries(normalizeListEntries(payload.whitelistEntries));
-      setListSettingsDirty(false);
-    }
-    if (payload.blacklistEntries) {
-      setBlacklistEntries(normalizeListEntries(payload.blacklistEntries));
-      setListSettingsDirty(false);
-    }
-  };
-
-  const fetchSettings = async ({ silent = false } = {}) => {
-    try {
-      if (!silent) setLoading(true);
-      setError(null);
-      const payload = await settingsAPI.getSettings();
-      applySettingsPayload(payload);
-    } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Failed to load settings');
-      console.error('Settings fetch error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
+  };
+
+  const applyPolicySyncInfo = (syncMeta) => {
+    if (!syncMeta || typeof syncMeta !== 'object') return;
+
+    const totalAgents = Math.max(0, Number(syncMeta.totalAgents) || 0);
+    const syncedAgents = Math.max(0, Number(syncMeta.syncedAgents) || 0);
+    const failedAgents = Math.max(0, Number(syncMeta.failedAgents) || 0);
+    const errors = Array.isArray(syncMeta.errors)
+      ? syncMeta.errors.filter((item) => typeof item === 'string' && item.trim().length > 0)
+      : [];
+
+    setPolicySyncInfo({
+      status: String(syncMeta.status || '').toLowerCase() || (failedAgents > 0 ? 'partial' : 'ok'),
+      totalAgents,
+      syncedAgents,
+      failedAgents,
+      errors,
+      timestamp: syncMeta.timestamp || new Date().toISOString(),
+    });
   };
 
   const handleSaveSettings = async (category) => {
@@ -395,23 +476,24 @@ const Settings = () => {
         blacklistEntries: normalizeListEntries(blacklistEntries),
       };
 
-      const saved = await settingsAPI.saveSettings(payload);
+      const { data: saved, policySync } = await settingsAPI.saveSettings(payload);
       applySettingsPayload(saved);
+      applyPolicySyncInfo(policySync);
 
-      setSuccess(`${category} settings saved successfully`);
+      setSuccess(`Настройки раздела «${category}» успешно сохранены`);
       if (typeof addNotification === 'function') {
         addNotification({
           type: 'success',
-          title: `${category} settings saved`,
-          message: `${category} settings have been updated`,
+          title: `Настройки раздела «${category}» сохранены`,
+          message: `Параметры раздела «${category}» были обновлены`,
           timestamp: new Date().toISOString()
         });
       }
       
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Failed to save settings');
-      console.error('Save settings error:', err);
+      setError(err?.response?.data?.message || err?.message || 'Не удалось сохранить настройки');
+      console.error('Ошибка сохранения настроек:', err);
     } finally {
       setLoading(false);
     }
@@ -419,11 +501,12 @@ const Settings = () => {
 
   const handleAddWhitelistEntry = () => {
     const newEntry = {
-      id: Date.now(),
+      id: nextTempEntryIdRef.current--,
       application: '',
       description: ''
     };
     setWhitelistEntries((prev) => [...prev, newEntry]);
+    setListSettingsDirty(true);
   };
 
   const handleUpdateWhitelistEntry = (id, field, value) => {
@@ -437,18 +520,19 @@ const Settings = () => {
     setConfirmAction({
       type: 'delete_whitelist',
       id: id,
-      message: 'Are you sure you want to delete this whitelist entry?'
+      message: 'Удалить эту запись белого списка?'
     });
     setConfirmDialogOpen(true);
   };
 
   const handleAddBlacklistEntry = () => {
     const newEntry = {
-      id: Date.now(),
+      id: nextTempEntryIdRef.current--,
       application: '',
       description: ''
     };
     setBlacklistEntries((prev) => [...prev, newEntry]);
+    setListSettingsDirty(true);
   };
 
   const handleUpdateBlacklistEntry = (id, field, value) => {
@@ -462,7 +546,7 @@ const Settings = () => {
     setConfirmAction({
       type: 'delete_blacklist',
       id: id,
-      message: 'Are you sure you want to delete this blacklist entry?'
+      message: 'Удалить эту запись черного списка?'
     });
     setConfirmDialogOpen(true);
   };
@@ -483,11 +567,11 @@ const Settings = () => {
         if (confirmAction.agentId) {
           await fetchAgentControlData(confirmAction.agentId, { silent: true });
         }
-        setSuccess('Agent policy reset to defaults');
+        setSuccess('Политика агента сброшена к значениям по умолчанию');
         setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Action failed');
+      setError(err?.response?.data?.message || err?.message || 'Не удалось выполнить действие');
     } finally {
       setConfirmDialogOpen(false);
       setConfirmAction(null);
@@ -495,33 +579,37 @@ const Settings = () => {
   };
 
   const handleSaveAccessLists = async ({ silent = false } = {}) => {
+    const hasDraftRows = [...whitelistEntries, ...blacklistEntries]
+      .some((entry) => !String(entry?.application || '').trim());
+    if (hasDraftRows) {
+      setError('Заполните название приложения во всех строках или удалите пустые строки перед сохранением.');
+      return;
+    }
+
     try {
       setListSettingsSaving(true);
       setError(null);
 
-      const normalizedWhitelist = normalizeListEntries(whitelistEntries);
-      const normalizedBlacklist = normalizeListEntries(blacklistEntries);
+      const payload = {
+        generalSettings,
+        securitySettings,
+        notificationSettings,
+        monitoringSettings,
+        whitelistEntries: normalizeListEntries(whitelistEntries),
+        blacklistEntries: normalizeListEntries(blacklistEntries),
+      };
 
-      const [whitelistResp, blacklistResp] = await Promise.all([
-        settingsAPI.replaceWhitelistEntries(normalizedWhitelist),
-        settingsAPI.replaceBlacklistEntries(normalizedBlacklist),
-      ]);
-
-      if (Array.isArray(whitelistResp?.entries)) {
-        setWhitelistEntries(normalizeListEntries(whitelistResp.entries));
-      }
-      if (Array.isArray(blacklistResp?.entries)) {
-        setBlacklistEntries(normalizeListEntries(blacklistResp.entries));
-      }
-      setListSettingsDirty(false);
+      const { data: saved, policySync } = await settingsAPI.saveSettings(payload);
+      applySettingsPayload(saved);
+      applyPolicySyncInfo(policySync);
 
       if (!silent) {
-        setSuccess('Whitelist/Blacklist settings saved successfully');
+        setSuccess('Настройки белого/черного списка сохранены');
         setTimeout(() => setSuccess(null), 2500);
       }
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'Failed to save whitelist/blacklist settings');
-      console.error('Access list save error:', err);
+      setError(err?.response?.data?.message || err?.message || 'Не удалось сохранить настройки белого/черного списка');
+      console.error('Ошибка сохранения списка доступа:', err);
     } finally {
       setListSettingsSaving(false);
     }
@@ -532,8 +620,35 @@ const Settings = () => {
     if (tabValue === 3) {
       await fetchMonitoringData({ silent: true });
     }
-    setSuccess('Settings reloaded');
+    setSuccess('Настройки обновлены');
     setTimeout(() => setSuccess(null), 2000);
+  };
+
+  const handleSyncPoliciesNow = async () => {
+    try {
+      setPolicySyncRunning(true);
+      setError(null);
+
+      const { data, policySync } = await settingsAPI.syncPolicies();
+      const syncMeta = policySync || data || null;
+      applyPolicySyncInfo(syncMeta);
+
+      const failedAgents = Number(syncMeta?.failedAgents) || 0;
+      const syncedAgents = Number(syncMeta?.syncedAgents) || 0;
+      const totalAgents = Number(syncMeta?.totalAgents) || 0;
+
+      setSuccess(
+        failedAgents > 0
+          ? `Синхронизация политик выполнена с ошибками: ${syncedAgents}/${totalAgents} обновлено`
+          : `Синхронизация политик выполнена: ${syncedAgents}/${totalAgents} обновлено`
+      );
+      setTimeout(() => setSuccess(null), 2500);
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Не удалось синхронизировать политики');
+      console.error('Ошибка синхронизации политик:', err);
+    } finally {
+      setPolicySyncRunning(false);
+    }
   };
 
   useEffect(() => {
@@ -628,7 +743,7 @@ const Settings = () => {
         throw rulesResult.reason || metadataResult.reason;
       }
     } catch (err) {
-      setAlertRulesError(err?.response?.data?.message || err?.message || 'Failed to load alert rules');
+      setAlertRulesError(err?.response?.data?.message || err?.message || 'Не удалось загрузить правила тревог');
     } finally {
       setAlertRulesLoading(false);
     }
@@ -645,7 +760,7 @@ const Settings = () => {
       const payload = normalizeAlertRulePayload(alertRuleForm);
 
       if (!payload.name) {
-        setAlertRulesError('Rule name is required');
+        setAlertRulesError('Название правила обязательно');
         return;
       }
 
@@ -661,18 +776,18 @@ const Settings = () => {
       setAlertRuleDialogOpen(false);
       setEditingAlertRuleId(null);
       setAlertRuleForm({ ...DEFAULT_ALERT_RULE_FORM });
-      setSuccess(`Alert rule ${editingAlertRuleId ? 'updated' : 'created'} successfully`);
+      setSuccess(`Правило тревоги ${editingAlertRuleId ? 'обновлено' : 'создано'} успешно`);
       setTimeout(() => setSuccess(null), 3000);
       if (typeof addNotification === 'function') {
         addNotification({
           type: 'success',
-          title: `Alert rule ${editingAlertRuleId ? 'updated' : 'created'}`,
+          title: `Правило тревоги ${editingAlertRuleId ? 'обновлено' : 'создано'}`,
           message: savedRule.name,
           timestamp: new Date().toISOString(),
         });
       }
     } catch (err) {
-      setAlertRulesError(err?.response?.data?.message || err?.message || 'Failed to save alert rule');
+      setAlertRulesError(err?.response?.data?.message || err?.message || 'Не удалось сохранить правило тревоги');
     } finally {
       setAlertRuleSaving(false);
     }
@@ -683,7 +798,7 @@ const Settings = () => {
       const updated = await alertRulesAPI.setEnabled(rule.id, !rule.enabled);
       setAlertRules((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
     } catch (err) {
-      setAlertRulesError(err?.response?.data?.message || err?.message || 'Failed to update rule status');
+      setAlertRulesError(err?.response?.data?.message || err?.message || 'Не удалось обновить статус правила');
     }
   };
 
@@ -691,7 +806,7 @@ const Settings = () => {
     setConfirmAction({
       type: 'delete_alert_rule',
       id: rule.id,
-      message: `Delete alert rule "${rule.name}"?`,
+      message: `Удалить правило тревоги "${rule.name}"?`,
     });
     setConfirmDialogOpen(true);
   };
@@ -722,11 +837,46 @@ const Settings = () => {
 
       setMonitoringLastUpdated(new Date());
     } catch (err) {
-      setMonitoringDataError(err?.response?.data?.message || err?.message || 'Failed to load monitoring data');
+      setMonitoringDataError(err?.response?.data?.message || err?.message || 'Не удалось загрузить данные мониторинга');
     } finally {
       setMonitoringDataLoading(false);
     }
   };
+
+  const upsertCommandInState = useCallback((command) => {
+    if (!command || typeof command !== 'object') return;
+
+    setAgentCommands((prev) => {
+      const existing = Array.isArray(prev) ? prev : [];
+      const withoutCurrent = existing.filter((item) => item.id !== command.id);
+      return [command, ...withoutCurrent];
+    });
+
+    setAgentCommandsTotal((prevTotal) => {
+      if (typeof prevTotal === 'number' && prevTotal > 0) return prevTotal;
+      return 1;
+    });
+  }, []);
+
+  const fetchAgentCommands = useCallback(async (agentId, { silent = false } = {}) => {
+    if (!agentId) return;
+
+    try {
+      if (!silent) setAgentCommandsRefreshing(true);
+      setAgentControlError(null);
+
+      const commandQuery = { page: 1, pageSize: 30 };
+      if (agentCommandStatusFilter) commandQuery.status = agentCommandStatusFilter;
+
+      const commandsResponse = await agentAPI.getAgentCommands(agentId, commandQuery);
+      setAgentCommands(commandsResponse?.commands || []);
+      setAgentCommandsTotal(commandsResponse?.totalCount || 0);
+    } catch (err) {
+      setAgentControlError(err?.response?.data?.message || err?.message || 'Не удалось загрузить команды агента');
+    } finally {
+      setAgentCommandsRefreshing(false);
+    }
+  }, [agentCommandStatusFilter]);
 
   const fetchAgentControlData = async (agentId, { silent = false } = {}) => {
     if (!agentId) return;
@@ -735,7 +885,7 @@ const Settings = () => {
       if (!silent) setAgentControlLoading(true);
       setAgentControlError(null);
 
-      const commandQuery = { page: 1, pageSize: 20 };
+      const commandQuery = { page: 1, pageSize: 30 };
       if (agentCommandStatusFilter) commandQuery.status = agentCommandStatusFilter;
 
       const [policyResult, commandsResult] = await Promise.allSettled([
@@ -758,11 +908,36 @@ const Settings = () => {
         throw policyResult.reason || commandsResult.reason;
       }
     } catch (err) {
-      setAgentControlError(err?.response?.data?.message || err?.message || 'Failed to load agent control data');
+      setAgentControlError(err?.response?.data?.message || err?.message || 'Не удалось загрузить данные управления агентом');
     } finally {
       setAgentControlLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (tabValue !== 3 || !selectedMonitoringAgentId) return undefined;
+
+    const shouldPoll =
+      agentCommandSaving
+      || agentActionLoading
+      || agentCommands.some((command) => isInFlightCommand(command?.status));
+
+    if (!shouldPoll) return undefined;
+
+    const timerId = window.setInterval(() => {
+      if (document.hidden) return;
+      fetchAgentCommands(selectedMonitoringAgentId, { silent: true });
+    }, 2500);
+
+    return () => window.clearInterval(timerId);
+  }, [
+    tabValue,
+    selectedMonitoringAgentId,
+    agentCommandSaving,
+    agentActionLoading,
+    agentCommands,
+    fetchAgentCommands,
+  ]);
 
   const handleAgentPolicyFieldChange = (field, value) => {
     setAgentPolicyForm((prev) => ({ ...prev, [field]: value }));
@@ -780,10 +955,10 @@ const Settings = () => {
 
       setSelectedAgentPolicy(savedPolicy);
       setAgentPolicyForm(mapAgentPolicyToForm(savedPolicy));
-      setSuccess('Agent policy saved successfully');
+      setSuccess('Политика агента успешно сохранена');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setAgentControlError(err?.response?.data?.message || err?.message || 'Failed to save agent policy');
+      setAgentControlError(err?.response?.data?.message || err?.message || 'Не удалось сохранить политику агента');
     } finally {
       setAgentPolicySaving(false);
     }
@@ -813,7 +988,7 @@ const Settings = () => {
 
       const type = String(agentCommandForm.type || '').trim();
       if (!type) {
-        setAgentControlError('Command type is required');
+        setAgentControlError('Тип команды обязателен');
         return;
       }
 
@@ -821,21 +996,27 @@ const Settings = () => {
       try {
         JSON.parse(payloadJson);
       } catch {
-        setAgentControlError('Command payload must be valid JSON');
+        setAgentControlError('Payload команды должен быть валидным JSON');
         return;
       }
 
-      await agentAPI.createAgentCommand(selectedMonitoringAgentId, {
+      const commandKey = `panel-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      const createdCommand = await agentAPI.createAgentCommand(selectedMonitoringAgentId, {
         type,
         payloadJson,
         requestedBy: agentCommandForm.requestedBy || undefined,
+        commandKey,
       });
+      if (agentCommandStatusFilter) {
+        setAgentCommandStatusFilter('');
+      }
+      upsertCommandInState(createdCommand);
 
-      setSuccess('Agent command queued successfully');
+      setSuccess('Команда агента поставлена в очередь');
       setTimeout(() => setSuccess(null), 3000);
-      await fetchAgentControlData(selectedMonitoringAgentId, { silent: true });
+      await fetchAgentCommands(selectedMonitoringAgentId, { silent: true });
     } catch (err) {
-      setAgentControlError(err?.response?.data?.message || err?.message || 'Failed to queue command');
+      setAgentControlError(err?.response?.data?.message || err?.message || 'Не удалось поставить команду в очередь');
     } finally {
       setAgentCommandSaving(false);
     }
@@ -849,23 +1030,36 @@ const Settings = () => {
       setAgentControlError(null);
 
       const reason = String(agentAdminReason || '').trim()
-        || (blocked ? 'Blocked by admin' : 'Unblocked by admin');
+        || (blocked ? 'Заблокировано администратором' : 'Разблокировано администратором');
 
       if (blocked) {
-        await agentAPI.blockWorkstation(selectedMonitoringAgentId, reason);
+        const response = await agentAPI.blockWorkstation(selectedMonitoringAgentId, reason);
+        if (response?.command) {
+          if (agentCommandStatusFilter) {
+            setAgentCommandStatusFilter('');
+          }
+          upsertCommandInState(response.command);
+        }
       } else {
-        await agentAPI.unblockWorkstation(selectedMonitoringAgentId, reason);
+        const response = await agentAPI.unblockWorkstation(selectedMonitoringAgentId, reason);
+        if (response?.command) {
+          if (agentCommandStatusFilter) {
+            setAgentCommandStatusFilter('');
+          }
+          upsertCommandInState(response.command);
+        }
       }
 
-      setSuccess(blocked ? 'Block command queued' : 'Unblock command queued');
+      setSuccess(blocked ? 'Команда блокировки поставлена в очередь' : 'Команда разблокировки поставлена в очередь');
       setTimeout(() => setSuccess(null), 3000);
 
       await Promise.all([
         fetchAgentControlData(selectedMonitoringAgentId, { silent: true }),
+        fetchAgentCommands(selectedMonitoringAgentId, { silent: true }),
         fetchMonitoringData({ silent: true }),
       ]);
     } catch (err) {
-      setAgentControlError(err?.response?.data?.message || err?.message || 'Failed to send block/unblock command');
+      setAgentControlError(err?.response?.data?.message || err?.message || 'Не удалось отправить команду блокировки/разблокировки');
     } finally {
       setAgentActionLoading(false);
     }
@@ -886,14 +1080,14 @@ const Settings = () => {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">System Settings</Typography>
+        <Typography variant="h4">Системные настройки</Typography>
         <Button
           variant="outlined"
           startIcon={<Refresh />}
           onClick={handleReloadSettings}
           disabled={loading}
         >
-          Reload Settings
+          Обновить настройки
         </Button>
       </Box>
 
@@ -909,12 +1103,42 @@ const Settings = () => {
         </Alert>
       )}
 
+      {policySyncInfo && (
+        <Alert
+          severity={getPolicySyncSeverity(policySyncInfo)}
+          sx={{ mb: 2 }}
+          action={(
+            <Button
+              color="inherit"
+              size="small"
+              onClick={handleSyncPoliciesNow}
+              disabled={policySyncRunning || loading || listSettingsSaving}
+            >
+              {policySyncRunning ? 'Синхронизация...' : 'Пересинхронизировать'}
+            </Button>
+          )}
+        >
+          <Typography variant="body2" fontWeight={600}>
+            {getPolicySyncSummary(policySyncInfo)}
+          </Typography>
+          <Typography variant="caption" display="block">
+            Последняя синхронизация: {policySyncInfo.timestamp ? new Date(policySyncInfo.timestamp).toLocaleString('ru-RU') : '-'}
+          </Typography>
+          {Array.isArray(policySyncInfo.errors) && policySyncInfo.errors.length > 0 && (
+            <Typography variant="caption" display="block">
+              Ошибки: {policySyncInfo.errors.slice(0, 2).join(' | ')}
+              {policySyncInfo.errors.length > 2 ? ' ...' : ''}
+            </Typography>
+          )}
+        </Alert>
+      )}
+
       <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 3 }}>
-        <Tab label="General" icon={<SettingsIcon />} />
-        <Tab label="Security" icon={<Security />} />
-        <Tab label="Notifications" icon={<Notifications />} />
-        <Tab label="Monitoring" icon={<NetworkCheck />} />
-        <Tab label="Whitelist/Blacklist" icon={<Storage />} />
+        <Tab label="Общие" icon={<SettingsIcon />} />
+        <Tab label="Безопасность" icon={<Security />} />
+        <Tab label="Уведомления" icon={<Notifications />} />
+        <Tab label="Мониторинг" icon={<NetworkCheck />} />
+        <Tab label="Белый/черный список" icon={<Storage />} />
       </Tabs>
 
       {/* General Settings */}
@@ -922,36 +1146,36 @@ const Settings = () => {
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
-              General Configuration
+              Общая конфигурация
             </Typography>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="System Name"
+                  label="Имя системы"
                   value={generalSettings.systemName}
                   onChange={(e) => setGeneralSettings({ ...generalSettings, systemName: e.target.value })}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
-                  <InputLabel>Log Level</InputLabel>
+                  <InputLabel>Уровень логирования</InputLabel>
                   <Select
                     value={generalSettings.logLevel}
-                    label="Log Level"
+                    label="Уровень логирования"
                     onChange={(e) => setGeneralSettings({ ...generalSettings, logLevel: e.target.value })}
                   >
-                    <MenuItem value="Debug">Debug</MenuItem>
-                    <MenuItem value="Info">Info</MenuItem>
-                    <MenuItem value="Warning">Warning</MenuItem>
-                    <MenuItem value="Error">Error</MenuItem>
+                    <MenuItem value="Debug">Отладка</MenuItem>
+                    <MenuItem value="Info">Инфо</MenuItem>
+                    <MenuItem value="Warning">Предупреждение</MenuItem>
+                    <MenuItem value="Error">Ошибка</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Max Log Retention (days)"
+                  label="Хранение логов (дни)"
                   type="number"
                   value={generalSettings.maxLogRetention}
                   onChange={(e) => setGeneralSettings({ ...generalSettings, maxLogRetention: e.target.value })}
@@ -960,7 +1184,7 @@ const Settings = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Session Timeout (minutes)"
+                  label="Таймаут сессии (минуты)"
                   type="number"
                   value={generalSettings.sessionTimeout}
                   onChange={(e) => setGeneralSettings({ ...generalSettings, sessionTimeout: e.target.value })}
@@ -974,7 +1198,7 @@ const Settings = () => {
                       onChange={(e) => setGeneralSettings({ ...generalSettings, enableAuditLog: e.target.checked })}
                     />
                   }
-                  label="Enable Audit Logging"
+                  label="Включить аудит"
                 />
               </Grid>
             </Grid>
@@ -982,10 +1206,10 @@ const Settings = () => {
               <Button
                 variant="contained"
                 startIcon={<Save />}
-                onClick={() => handleSaveSettings('General')}
+                onClick={() => handleSaveSettings('Общие')}
                 disabled={loading}
               >
-                Save General Settings
+                Сохранить общие настройки
               </Button>
             </Box>
           </CardContent>
@@ -997,13 +1221,13 @@ const Settings = () => {
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
-              Security Configuration
+              Настройки безопасности
             </Typography>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Minimum Password Length"
+                  label="Минимальная длина пароля"
                   type="number"
                   value={securitySettings.passwordMinLength}
                   onChange={(e) => setSecuritySettings({ ...securitySettings, passwordMinLength: e.target.value })}
@@ -1012,7 +1236,7 @@ const Settings = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Max Login Attempts"
+                  label="Максимум попыток входа"
                   type="number"
                   value={securitySettings.maxLoginAttempts}
                   onChange={(e) => setSecuritySettings({ ...securitySettings, maxLoginAttempts: e.target.value })}
@@ -1021,7 +1245,7 @@ const Settings = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Lockout Duration (minutes)"
+                  label="Блокировка (минуты)"
                   type="number"
                   value={securitySettings.lockoutDurationMinutes}
                   onChange={(e) => setSecuritySettings({ ...securitySettings, lockoutDurationMinutes: e.target.value })}
@@ -1030,7 +1254,7 @@ const Settings = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="JWT Expiration (hours)"
+                  label="Срок действия JWT (часы)"
                   type="number"
                   value={securitySettings.jwtExpirationHours}
                   onChange={(e) => setSecuritySettings({ ...securitySettings, jwtExpirationHours: e.target.value })}
@@ -1044,7 +1268,7 @@ const Settings = () => {
                       onChange={(e) => setSecuritySettings({ ...securitySettings, passwordRequireSpecialChars: e.target.checked })}
                     />
                   }
-                  label="Require Special Characters in Password"
+                  label="Требовать спецсимволы в пароле"
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -1055,7 +1279,7 @@ const Settings = () => {
                       onChange={(e) => setSecuritySettings({ ...securitySettings, enableTwoFactor: e.target.checked })}
                     />
                   }
-                  label="Enable Two-Factor Authentication"
+                  label="Включить двухфакторную аутентификацию"
                 />
               </Grid>
             </Grid>
@@ -1063,10 +1287,10 @@ const Settings = () => {
               <Button
                 variant="contained"
                 startIcon={<Save />}
-                onClick={() => handleSaveSettings('Security')}
+                onClick={() => handleSaveSettings('Безопасность')}
                 disabled={loading}
               >
-                Save Security Settings
+                Сохранить настройки безопасности
               </Button>
             </Box>
           </CardContent>
@@ -1078,13 +1302,13 @@ const Settings = () => {
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
-              Notification Configuration
+              Настройки уведомлений
             </Typography>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Notification Email"
+                  label="Почта для уведомлений"
                   type="email"
                   value={notificationSettings.notificationEmail}
                   onChange={(e) => setNotificationSettings({ ...notificationSettings, notificationEmail: e.target.value })}
@@ -1093,7 +1317,7 @@ const Settings = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="SMTP Server"
+                  label="SMTP-сервер"
                   value={notificationSettings.smtpServer}
                   onChange={(e) => setNotificationSettings({ ...notificationSettings, smtpServer: e.target.value })}
                 />
@@ -1101,7 +1325,7 @@ const Settings = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="SMTP Port"
+                  label="SMTP-порт"
                   type="number"
                   value={notificationSettings.smtpPort}
                   onChange={(e) => setNotificationSettings({ ...notificationSettings, smtpPort: e.target.value })}
@@ -1110,7 +1334,7 @@ const Settings = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Alert Threshold"
+                  label="Порог тревог"
                   type="number"
                   value={notificationSettings.alertThreshold}
                   onChange={(e) => setNotificationSettings({ ...notificationSettings, alertThreshold: e.target.value })}
@@ -1124,7 +1348,7 @@ const Settings = () => {
                       onChange={(e) => setNotificationSettings({ ...notificationSettings, emailNotifications: e.target.checked })}
                     />
                   }
-                  label="Email Notifications"
+                  label="Почтовые уведомления"
                 />
               </Grid>
               <Grid item xs={12} md={4}>
@@ -1135,7 +1359,7 @@ const Settings = () => {
                       onChange={(e) => setNotificationSettings({ ...notificationSettings, smsNotifications: e.target.checked })}
                     />
                   }
-                  label="SMS Notifications"
+                  label="SMS-уведомления"
                 />
               </Grid>
               <Grid item xs={12} md={4}>
@@ -1146,7 +1370,7 @@ const Settings = () => {
                       onChange={(e) => setNotificationSettings({ ...notificationSettings, pushNotifications: e.target.checked })}
                     />
                   }
-                  label="Push Notifications"
+                  label="Push-уведомления"
                 />
               </Grid>
             </Grid>
@@ -1155,9 +1379,9 @@ const Settings = () => {
 
             <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2} mb={2}>
               <Box>
-                <Typography variant="h6">Alert Rules</Typography>
+                <Typography variant="h6">Правила тревог</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Threshold-based rules for anomalies, blocked activity and risk spikes.
+                  Пороговые правила для аномалий, блокировок и всплесков риска.
                 </Typography>
               </Box>
               <Stack direction="row" spacing={1}>
@@ -1167,10 +1391,10 @@ const Settings = () => {
                   onClick={() => fetchAlertRules()}
                   disabled={alertRulesLoading}
                 >
-                  Refresh Rules
+                  Обновить правила
                 </Button>
                 <Button variant="contained" startIcon={<Add />} onClick={openCreateAlertRuleDialog}>
-                  Add Rule
+                  Добавить правило
                 </Button>
               </Stack>
             </Box>
@@ -1187,19 +1411,19 @@ const Settings = () => {
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>Rule</TableCell>
-                    <TableCell>Condition</TableCell>
-                    <TableCell>Scope</TableCell>
-                    <TableCell>Channels</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell align="right">Actions</TableCell>
+                    <TableCell>Правило</TableCell>
+                    <TableCell>Условие</TableCell>
+                    <TableCell>Область</TableCell>
+                    <TableCell>Каналы</TableCell>
+                    <TableCell>Статус</TableCell>
+                    <TableCell align="right">Действия</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {alertRules.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} align="center">
-                        No alert rules yet. Create one to enable automated alerting.
+                        Правил тревог пока нет. Создайте правило для автоматических уведомлений.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -1212,7 +1436,13 @@ const Settings = () => {
                           <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.5 }}>
                             <Chip
                               size="small"
-                              label={String(rule.severity || 'medium').toUpperCase()}
+                              label={(() => {
+                                const severity = String(rule.severity || '').toLowerCase();
+                                if (severity === 'critical' || severity === 'high') return 'Высокая';
+                                if (severity === 'medium') return 'Средняя';
+                                if (severity === 'low') return 'Низкая';
+                                return String(rule.severity || 'Неизвестно');
+                              })()}
                               color={
                                 String(rule.severity).toLowerCase() === 'critical' ? 'error'
                                   : String(rule.severity).toLowerCase() === 'high' ? 'warning'
@@ -1220,8 +1450,8 @@ const Settings = () => {
                                       : 'default'
                               }
                             />
-                            <Chip size="small" variant="outlined" label={`${rule.windowMinutes || '-'}m`} />
-                            <Chip size="small" variant="outlined" label={`${rule.cooldownMinutes || 0}m cd`} />
+                            <Chip size="small" variant="outlined" label={`${rule.windowMinutes || '-'}м`} />
+                            <Chip size="small" variant="outlined" label={`${rule.cooldownMinutes || 0}м пауза`} />
                           </Stack>
                         </TableCell>
                         <TableCell>
@@ -1229,19 +1459,19 @@ const Settings = () => {
                         </TableCell>
                         <TableCell>
                           <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
-                            {rule.activityType && <Chip size="small" variant="outlined" label={`Type:${rule.activityType}`} />}
-                            {rule.userId && <Chip size="small" variant="outlined" label={`User:${rule.userId}`} />}
-                            {rule.computerId && <Chip size="small" variant="outlined" label={`PC:${rule.computerId}`} />}
+                            {rule.activityType && <Chip size="small" variant="outlined" label={`Тип:${rule.activityType}`} />}
+                            {rule.userId && <Chip size="small" variant="outlined" label={`Пользователь:${rule.userId}`} />}
+                            {rule.computerId && <Chip size="small" variant="outlined" label={`ПК:${rule.computerId}`} />}
                             {!rule.activityType && !rule.userId && !rule.computerId && (
-                              <Typography variant="caption" color="text.secondary">Global</Typography>
+                              <Typography variant="caption" color="text.secondary">Глобально</Typography>
                             )}
                           </Stack>
                         </TableCell>
                         <TableCell>
                           <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
-                            {rule.notifyInApp && <Chip size="small" label="In-app" />}
-                            {rule.notifyEmail && <Chip size="small" label="Email" />}
-                            {!rule.notifyInApp && !rule.notifyEmail && <Chip size="small" variant="outlined" label="None" />}
+                            {rule.notifyInApp && <Chip size="small" label="В приложении" />}
+                            {rule.notifyEmail && <Chip size="small" label="Почта" />}
+                            {!rule.notifyInApp && !rule.notifyEmail && <Chip size="small" variant="outlined" label="Нет" />}
                           </Stack>
                         </TableCell>
                         <TableCell>
@@ -1254,16 +1484,16 @@ const Settings = () => {
                                 onChange={() => handleToggleAlertRule(rule)}
                               />
                             }
-                            label={rule.enabled ? 'Enabled' : 'Disabled'}
+                            label={rule.enabled ? 'Включено' : 'Отключено'}
                           />
                         </TableCell>
                         <TableCell align="right">
-                          <Tooltip title="Edit rule">
+                          <Tooltip title="Редактировать правило">
                             <IconButton size="small" onClick={() => openEditAlertRuleDialog(rule)}>
                               <Edit fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Delete rule">
+                          <Tooltip title="Удалить правило">
                             <IconButton size="small" color="error" onClick={() => handleDeleteAlertRule(rule)}>
                               <Delete fontSize="small" />
                             </IconButton>
@@ -1280,10 +1510,10 @@ const Settings = () => {
               <Button
                 variant="contained"
                 startIcon={<Save />}
-                onClick={() => handleSaveSettings('Notification')}
+                onClick={() => handleSaveSettings('Уведомления')}
                 disabled={loading}
               >
-                Save Notification Settings
+                Сохранить настройки уведомлений
               </Button>
             </Box>
           </CardContent>
@@ -1298,12 +1528,12 @@ const Settings = () => {
               <CardContent>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2} flexWrap="wrap" mb={2}>
                   <Box>
-                    <Typography variant="h6">Live System Health</Typography>
+                    <Typography variant="h6">Состояние системы онлайн</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Real-time status from gateway aggregated checks (`/api/system/health`) and AgentService.
+                      Статус в реальном времени из агрегированных проверок шлюза (`/api/system/health`) и сервиса агентов.
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Last updated: {monitoringLastUpdated ? monitoringLastUpdated.toLocaleTimeString() : '-'}
+                      Последнее обновление: {monitoringLastUpdated ? monitoringLastUpdated.toLocaleTimeString('ru-RU') : '-'}
                     </Typography>
                   </Box>
                   <Button
@@ -1312,7 +1542,7 @@ const Settings = () => {
                     onClick={() => fetchMonitoringData()}
                     disabled={monitoringDataLoading}
                   >
-                    {monitoringDataLoading ? 'Refreshing...' : 'Refresh Health'}
+                    {monitoringDataLoading ? 'Обновление...' : 'Обновить состояние'}
                   </Button>
                 </Box>
 
@@ -1327,30 +1557,30 @@ const Settings = () => {
                 <Grid container spacing={2} sx={{ mb: 2 }}>
                   <Grid item xs={12} sm={6} md={3}>
                     <Paper sx={{ p: 2 }}>
-                      <Typography variant="body2" color="text.secondary">Overall Status</Typography>
+                      <Typography variant="body2" color="text.secondary">Общий статус</Typography>
                       <Chip
                         size="small"
                         color={systemHealth?.status === 'healthy' ? 'success' : systemHealth?.status === 'degraded' ? 'warning' : 'error'}
-                        label={(systemHealth?.status || 'unknown').toUpperCase()}
+                        label={getStatusLabel(systemHealth?.status)}
                         sx={{ mt: 1 }}
                       />
                     </Paper>
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
                     <Paper sx={{ p: 2 }}>
-                      <Typography variant="body2" color="text.secondary">Services Healthy</Typography>
+                      <Typography variant="body2" color="text.secondary">Работают сервисов</Typography>
                       <Typography variant="h5">{healthyServicesCount}/{healthServices.length}</Typography>
                     </Paper>
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
                     <Paper sx={{ p: 2 }}>
-                      <Typography variant="body2" color="text.secondary">Agents Total</Typography>
+                      <Typography variant="body2" color="text.secondary">Всего агентов</Typography>
                       <Typography variant="h5">{monitoringAgents.length}</Typography>
                     </Paper>
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
                     <Paper sx={{ p: 2 }}>
-                      <Typography variant="body2" color="text.secondary">Agents Online</Typography>
+                      <Typography variant="body2" color="text.secondary">Агенты онлайн</Typography>
                       <Typography variant="h5">{agentStatusSummary.online || agentStatusSummary.active || 0}</Typography>
                     </Paper>
                   </Grid>
@@ -1358,21 +1588,21 @@ const Settings = () => {
 
                 <Grid container spacing={2}>
                   <Grid item xs={12} lg={7}>
-                    <Typography variant="subtitle1" gutterBottom>Service Checks</Typography>
+                    <Typography variant="subtitle1" gutterBottom>Проверки сервисов</Typography>
                     <TableContainer component={Paper} variant="outlined">
                       <Table size="small">
                         <TableHead>
                           <TableRow>
-                            <TableCell>Service</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell align="right">Latency</TableCell>
+                            <TableCell>Сервис</TableCell>
+                            <TableCell>Статус</TableCell>
+                            <TableCell align="right">Задержка</TableCell>
                             <TableCell align="right">HTTP</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
                           {healthServices.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={4} align="center">No health data loaded yet</TableCell>
+                              <TableCell colSpan={4} align="center">Данные о состоянии еще не загружены</TableCell>
                             </TableRow>
                           ) : healthServices.map((service) => (
                             <TableRow key={service.name} hover>
@@ -1381,7 +1611,7 @@ const Settings = () => {
                                 <Chip
                                   size="small"
                                   color={service.status === 'healthy' ? 'success' : service.status === 'degraded' ? 'warning' : 'error'}
-                                  label={(service.status || 'unknown').toUpperCase()}
+                                  label={getStatusLabel(service.status)}
                                 />
                               </TableCell>
                               <TableCell align="right">{service.latencyMs ?? '-'} ms</TableCell>
@@ -1394,21 +1624,21 @@ const Settings = () => {
                   </Grid>
 
                   <Grid item xs={12} lg={5}>
-                    <Typography variant="subtitle1" gutterBottom>Agents & Heartbeats</Typography>
+                    <Typography variant="subtitle1" gutterBottom>Агенты и сигналы heartbeat</Typography>
                     <TableContainer component={Paper} variant="outlined">
                       <Table size="small">
                         <TableHead>
                           <TableRow>
                             <TableCell>ID</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell>Version</TableCell>
-                            <TableCell>Last Heartbeat</TableCell>
+                            <TableCell>Статус</TableCell>
+                            <TableCell>Версия</TableCell>
+                            <TableCell>Последний heartbeat</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
                           {monitoringAgents.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={4} align="center">No agents found</TableCell>
+                              <TableCell colSpan={4} align="center">Агенты не найдены</TableCell>
                             </TableRow>
                           ) : monitoringAgents.slice(0, 20).map((agent) => (
                             <TableRow key={agent.id} hover>
@@ -1417,12 +1647,12 @@ const Settings = () => {
                                 <Chip
                                   size="small"
                                   color={String(agent.status || '').toLowerCase().includes('online') || String(agent.status || '').toLowerCase().includes('active') ? 'success' : 'warning'}
-                                  label={(agent.status || 'unknown').toUpperCase()}
+                                  label={getStatusLabel(agent.status)}
                                 />
                               </TableCell>
                               <TableCell>{agent.version || '-'}</TableCell>
                               <TableCell>
-                                {agent.lastHeartbeat ? new Date(agent.lastHeartbeat).toLocaleString() : '-'}
+                                {agent.lastHeartbeat ? new Date(agent.lastHeartbeat).toLocaleString('ru-RU') : '-'}
                               </TableCell>
                             </TableRow>
                           ))}
@@ -1440,9 +1670,9 @@ const Settings = () => {
               <CardContent>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2} flexWrap="wrap" mb={2}>
                   <Box>
-                    <Typography variant="h6">Agent Control Plane</Typography>
+                    <Typography variant="h6">Управление агентом</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Configure collection policy and send direct commands (block/unblock, refresh policy) for a selected endpoint agent.
+                      Настройка политики сбора и отправка прямых команд (блокировка/разблокировка, обновление политики) для выбранного локального агента.
                     </Typography>
                   </Box>
                   <Stack direction="row" spacing={1}>
@@ -1452,7 +1682,7 @@ const Settings = () => {
                       onClick={() => selectedMonitoringAgentId && fetchAgentControlData(selectedMonitoringAgentId)}
                       disabled={!selectedMonitoringAgentId || agentControlLoading}
                     >
-                      {agentControlLoading ? 'Refreshing...' : 'Refresh Agent'}
+                      {agentControlLoading ? 'Обновление...' : 'Обновить агента'}
                     </Button>
                   </Stack>
                 </Box>
@@ -1465,7 +1695,7 @@ const Settings = () => {
 
                 {monitoringAgents.length === 0 ? (
                   <Alert severity="info">
-                    No agents available yet. Start a local endpoint agent and wait for heartbeat registration.
+                    Агенты пока недоступны. Запустите локальный агент и дождитесь регистрации сигнала heartbeat.
                   </Alert>
                 ) : (
                   <Grid container spacing={2}>
@@ -1473,15 +1703,15 @@ const Settings = () => {
                       <Grid container spacing={2} alignItems="center">
                         <Grid item xs={12} md={4}>
                           <FormControl fullWidth size="small">
-                            <InputLabel>Selected Agent</InputLabel>
+                            <InputLabel>Выбранный агент</InputLabel>
                             <Select
-                              label="Selected Agent"
+                              label="Выбранный агент"
                               value={selectedMonitoringAgentId || ''}
                               onChange={(e) => setSelectedMonitoringAgentId(Number(e.target.value))}
                             >
                               {monitoringAgents.map((agent) => (
                                 <MenuItem key={agent.id} value={agent.id}>
-                                  #{agent.id} · PC {agent.computerId ?? '-'} · {(agent.status || 'unknown').toUpperCase()}
+                                  #{agent.id} · ПК {agent.computerId ?? '-'} · {getStatusLabel(agent.status)}
                                 </MenuItem>
                               ))}
                             </Select>
@@ -1492,29 +1722,29 @@ const Settings = () => {
                           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
                             <Chip
                               size="small"
-                              label={`Agent #${selectedMonitoringAgent?.id ?? '-'}`}
+                              label={`Агент #${selectedMonitoringAgent?.id ?? '-'}`}
                               variant="outlined"
                             />
                             <Chip
                               size="small"
-                              label={`Computer: ${selectedMonitoringAgent?.computerId ?? '-'}`}
+                              label={`Компьютер: ${selectedMonitoringAgent?.computerId ?? '-'}`}
                               variant="outlined"
                             />
                             <Chip
                               size="small"
                               color={String(selectedMonitoringAgent?.status || '').toLowerCase().includes('online') || String(selectedMonitoringAgent?.status || '').toLowerCase().includes('active') ? 'success' : 'warning'}
-                              label={(selectedMonitoringAgent?.status || 'unknown').toUpperCase()}
+                              label={getStatusLabel(selectedMonitoringAgent?.status)}
                             />
                             <Chip
                               size="small"
                               color={agentPolicyForm.adminBlocked ? 'error' : 'success'}
-                              label={agentPolicyForm.adminBlocked ? 'ADMIN BLOCKED' : 'NOT BLOCKED'}
+                              label={agentPolicyForm.adminBlocked ? 'ЗАБЛОКИРОВАН АДМИНИСТРАТОРОМ' : 'НЕ ЗАБЛОКИРОВАН'}
                             />
                             {selectedMonitoringAgent?.lastHeartbeat && (
                               <Chip
                                 size="small"
                                 variant="outlined"
-                                label={`Heartbeat: ${new Date(selectedMonitoringAgent.lastHeartbeat).toLocaleTimeString()}`}
+                                label={`Последний сигнал heartbeat: ${new Date(selectedMonitoringAgent.lastHeartbeat).toLocaleTimeString('ru-RU')}`}
                               />
                             )}
                           </Stack>
@@ -1525,7 +1755,7 @@ const Settings = () => {
                     <Grid item xs={12} lg={7}>
                       <Paper variant="outlined" sx={{ p: 2 }}>
                         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                          <Typography variant="subtitle1">Collection Policy</Typography>
+                          <Typography variant="subtitle1">Политика сбора</Typography>
                           <Stack direction="row" spacing={1}>
                             <Button
                               size="small"
@@ -1534,7 +1764,7 @@ const Settings = () => {
                               onClick={handleResetAgentPolicy}
                               disabled={!selectedMonitoringAgentId || agentPolicySaving || agentControlLoading}
                             >
-                              Reset Policy
+                              Сбросить политику
                             </Button>
                             <Button
                               size="small"
@@ -1543,7 +1773,7 @@ const Settings = () => {
                               onClick={handleSaveAgentPolicy}
                               disabled={!selectedMonitoringAgentId || agentPolicySaving}
                             >
-                              {agentPolicySaving ? 'Saving...' : 'Save Policy'}
+                              {agentPolicySaving ? 'Сохранение...' : 'Сохранить политику'}
                             </Button>
                           </Stack>
                         </Box>
@@ -1554,7 +1784,7 @@ const Settings = () => {
                               fullWidth
                               size="small"
                               type="number"
-                              label="Collection Interval (s)"
+                              label="Интервал сбора (с)"
                               value={agentPolicyForm.collectionIntervalSec}
                               onChange={(e) => handleAgentPolicyFieldChange('collectionIntervalSec', e.target.value)}
                             />
@@ -1564,7 +1794,7 @@ const Settings = () => {
                               fullWidth
                               size="small"
                               type="number"
-                              label="Heartbeat Interval (s)"
+                              label="Интервал heartbeat-сигнала (с)"
                               value={agentPolicyForm.heartbeatIntervalSec}
                               onChange={(e) => handleAgentPolicyFieldChange('heartbeatIntervalSec', e.target.value)}
                             />
@@ -1574,7 +1804,7 @@ const Settings = () => {
                               fullWidth
                               size="small"
                               type="number"
-                              label="Flush Interval (s)"
+                              label="Интервал отправки (с)"
                               value={agentPolicyForm.flushIntervalSec}
                               onChange={(e) => handleAgentPolicyFieldChange('flushIntervalSec', e.target.value)}
                             />
@@ -1585,7 +1815,7 @@ const Settings = () => {
                               fullWidth
                               size="small"
                               type="number"
-                              label="Idle Threshold (s)"
+                              label="Порог бездействия (с)"
                               value={agentPolicyForm.idleThresholdSec}
                               onChange={(e) => handleAgentPolicyFieldChange('idleThresholdSec', e.target.value)}
                             />
@@ -1595,7 +1825,7 @@ const Settings = () => {
                               fullWidth
                               size="small"
                               type="number"
-                              label="Browser Poll (s)"
+                              label="Интервал опроса браузера (с)"
                               value={agentPolicyForm.browserPollIntervalSec}
                               onChange={(e) => handleAgentPolicyFieldChange('browserPollIntervalSec', e.target.value)}
                             />
@@ -1605,7 +1835,7 @@ const Settings = () => {
                               fullWidth
                               size="small"
                               type="number"
-                              label="Process Snapshot Limit"
+                              label="Лимит снимка процессов"
                               value={agentPolicyForm.processSnapshotLimit}
                               onChange={(e) => handleAgentPolicyFieldChange('processSnapshotLimit', e.target.value)}
                             />
@@ -1617,7 +1847,7 @@ const Settings = () => {
                               size="small"
                               type="number"
                               inputProps={{ min: 0, max: 100, step: 0.1 }}
-                              label="High Risk Threshold"
+                              label="Порог высокого риска"
                               value={agentPolicyForm.highRiskThreshold}
                               onChange={(e) => handleAgentPolicyFieldChange('highRiskThreshold', e.target.value)}
                             />
@@ -1626,7 +1856,7 @@ const Settings = () => {
                             <TextField
                               fullWidth
                               size="small"
-                              label="Browsers (comma-separated)"
+                              label="Браузеры (через запятую)"
                               value={agentPolicyForm.browsersCsv}
                               onChange={(e) => handleAgentPolicyFieldChange('browsersCsv', e.target.value)}
                               placeholder="chrome, edge, firefox"
@@ -1637,10 +1867,10 @@ const Settings = () => {
                             <TextField
                               fullWidth
                               size="small"
-                              label="Blocked Reason"
+                              label="Причина блокировки"
                               value={agentPolicyForm.blockedReason}
                               onChange={(e) => handleAgentPolicyFieldChange('blockedReason', e.target.value)}
-                              helperText="Used when admin block is active; also set automatically by block/unblock actions."
+                              helperText="Используется при админ-блокировке; также заполняется автоматически при блокировке/разблокировке."
                             />
                           </Grid>
 
@@ -1652,7 +1882,7 @@ const Settings = () => {
                                   onChange={(e) => handleAgentPolicyFieldChange('enableProcessCollection', e.target.checked)}
                                 />
                               }
-                              label="Collect Processes"
+                              label="Собирать процессы"
                             />
                           </Grid>
                           <Grid item xs={12} md={6}>
@@ -1663,7 +1893,7 @@ const Settings = () => {
                                   onChange={(e) => handleAgentPolicyFieldChange('enableBrowserCollection', e.target.checked)}
                                 />
                               }
-                              label="Collect Browser Visits"
+                              label="Собирать посещения браузера"
                             />
                           </Grid>
                           <Grid item xs={12} md={6}>
@@ -1674,7 +1904,7 @@ const Settings = () => {
                                   onChange={(e) => handleAgentPolicyFieldChange('enableActiveWindowCollection', e.target.checked)}
                                 />
                               }
-                              label="Collect Active Window"
+                              label="Собирать активное окно"
                             />
                           </Grid>
                           <Grid item xs={12} md={6}>
@@ -1685,7 +1915,7 @@ const Settings = () => {
                                   onChange={(e) => handleAgentPolicyFieldChange('enableIdleCollection', e.target.checked)}
                                 />
                               }
-                              label="Collect Idle Time"
+                              label="Собирать время бездействия"
                             />
                           </Grid>
                           <Grid item xs={12} md={6}>
@@ -1696,7 +1926,7 @@ const Settings = () => {
                                   onChange={(e) => handleAgentPolicyFieldChange('autoLockEnabled', e.target.checked)}
                                 />
                               }
-                              label="Auto-lock on High Risk"
+                              label="Автоблокировка при высоком риске"
                             />
                           </Grid>
                           <Grid item xs={12} md={6}>
@@ -1707,7 +1937,7 @@ const Settings = () => {
                                   disabled
                                 />
                               }
-                              label="Admin Block Flag (read-only)"
+                              label="Флаг админ-блокировки (только чтение)"
                             />
                           </Grid>
                         </Grid>
@@ -1716,8 +1946,8 @@ const Settings = () => {
 
                         <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap">
                           <Typography variant="caption" color="text.secondary">
-                            Policy version: {selectedAgentPolicy?.policyVersion || '-'} | Updated:{' '}
-                            {selectedAgentPolicy?.updatedAt ? new Date(selectedAgentPolicy.updatedAt).toLocaleString() : '-'}
+                            Версия политики: {selectedAgentPolicy?.policyVersion || '-'} | Обновлено:{' '}
+                            {selectedAgentPolicy?.updatedAt ? new Date(selectedAgentPolicy.updatedAt).toLocaleString('ru-RU') : '-'}
                           </Typography>
                           <Stack direction="row" spacing={1}>
                             <Button
@@ -1727,7 +1957,7 @@ const Settings = () => {
                               onClick={() => handleAgentBlockAction(true)}
                               disabled={!selectedMonitoringAgentId || agentActionLoading}
                             >
-                              Block PC
+                              Заблокировать ПК
                             </Button>
                             <Button
                               size="small"
@@ -1736,7 +1966,7 @@ const Settings = () => {
                               onClick={() => handleAgentBlockAction(false)}
                               disabled={!selectedMonitoringAgentId || agentActionLoading}
                             >
-                              Unblock PC
+                              Разблокировать ПК
                             </Button>
                           </Stack>
                         </Box>
@@ -1745,18 +1975,18 @@ const Settings = () => {
 
                     <Grid item xs={12} lg={5}>
                       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-                        <Typography variant="subtitle1" gutterBottom>Admin Commands</Typography>
+                        <Typography variant="subtitle1" gutterBottom>Команды администратора</Typography>
                         <Grid container spacing={2}>
                           <Grid item xs={12} sm={6}>
                             <FormControl fullWidth size="small">
-                              <InputLabel>Command Type</InputLabel>
+                              <InputLabel>Тип команды</InputLabel>
                               <Select
-                                label="Command Type"
+                                label="Тип команды"
                                 value={agentCommandForm.type}
                                 onChange={(e) => handleAgentCommandFieldChange('type', e.target.value)}
                               >
                                 {AGENT_COMMAND_TYPES.map((type) => (
-                                  <MenuItem key={type} value={type}>{type}</MenuItem>
+                                  <MenuItem key={type.value} value={type.value}>{type.label}</MenuItem>
                                 ))}
                               </Select>
                             </FormControl>
@@ -1765,20 +1995,20 @@ const Settings = () => {
                             <TextField
                               fullWidth
                               size="small"
-                              label="Requested By (optional)"
+                              label="Кем запрошено (необязательно)"
                               value={agentCommandForm.requestedBy}
                               onChange={(e) => handleAgentCommandFieldChange('requestedBy', e.target.value)}
-                              placeholder="admin"
+                              placeholder="администратор"
                             />
                           </Grid>
                           <Grid item xs={12}>
                             <TextField
                               fullWidth
                               size="small"
-                              label="Reason / Note"
+                              label="Причина / примечание"
                               value={agentAdminReason}
                               onChange={(e) => setAgentAdminReason(e.target.value)}
-                              placeholder="Optional reason for block/unblock"
+                              placeholder="Необязательная причина блокировки/разблокировки"
                             />
                           </Grid>
                           <Grid item xs={12}>
@@ -1787,7 +2017,7 @@ const Settings = () => {
                               size="small"
                               multiline
                               minRows={4}
-                              label="Command Payload JSON"
+                              label="JSON-параметры команды"
                               value={agentCommandForm.payloadJson}
                               onChange={(e) => handleAgentCommandFieldChange('payloadJson', e.target.value)}
                               placeholder='{"reason":"Manual action"}'
@@ -1800,14 +2030,14 @@ const Settings = () => {
                                 onClick={handleCreateAgentCommand}
                                 disabled={!selectedMonitoringAgentId || agentCommandSaving}
                               >
-                                {agentCommandSaving ? 'Sending...' : 'Send Command'}
+                                {agentCommandSaving ? 'Отправка...' : 'Отправить команду'}
                               </Button>
                               <Button
                                 variant="outlined"
                                 onClick={() => handleAgentCommandFieldChange('payloadJson', '{}')}
                                 disabled={agentCommandSaving}
                               >
-                                Reset Payload
+                                Сбросить параметры
                               </Button>
                             </Stack>
                           </Grid>
@@ -1816,14 +2046,23 @@ const Settings = () => {
 
                       <Paper variant="outlined" sx={{ p: 2 }}>
                         <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap" mb={1.5}>
-                          <Typography variant="subtitle1">
-                            Command History ({agentCommandsTotal || agentCommands.length})
-                          </Typography>
+                          <Box>
+                            <Typography variant="subtitle1">
+                              История команд ({agentCommandsTotal || agentCommands.length})
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Автообновление: {
+                                agentCommandSaving || agentActionLoading || agentCommands.some((command) => isInFlightCommand(command?.status))
+                                  ? 'вкл'
+                                  : 'ожидание'
+                              }
+                            </Typography>
+                          </Box>
                           <Stack direction="row" spacing={1}>
                             <FormControl size="small" sx={{ minWidth: 140 }}>
-                              <InputLabel>Status</InputLabel>
+                              <InputLabel>Статус</InputLabel>
                               <Select
-                                label="Status"
+                                label="Статус"
                                 value={agentCommandStatusFilter}
                                 onChange={(e) => setAgentCommandStatusFilter(e.target.value)}
                               >
@@ -1838,10 +2077,10 @@ const Settings = () => {
                               size="small"
                               variant="outlined"
                               startIcon={<Refresh />}
-                              onClick={() => selectedMonitoringAgentId && fetchAgentControlData(selectedMonitoringAgentId)}
-                              disabled={!selectedMonitoringAgentId || agentControlLoading}
+                              onClick={() => selectedMonitoringAgentId && fetchAgentCommands(selectedMonitoringAgentId)}
+                              disabled={!selectedMonitoringAgentId || agentCommandsRefreshing}
                             >
-                              Refresh
+                              {agentCommandsRefreshing ? 'Обновление...' : 'Обновить'}
                             </Button>
                           </Stack>
                         </Box>
@@ -1851,23 +2090,29 @@ const Settings = () => {
                             <TableHead>
                               <TableRow>
                                 <TableCell>ID</TableCell>
-                                <TableCell>Type</TableCell>
-                                <TableCell>Status</TableCell>
-                                <TableCell>Created</TableCell>
+                                <TableCell>Тип</TableCell>
+                                <TableCell>Статус</TableCell>
+                                <TableCell>Доставка</TableCell>
+                                <TableCell>Жизненный цикл</TableCell>
                               </TableRow>
                             </TableHead>
                             <TableBody>
                               {agentCommands.length === 0 ? (
                                 <TableRow>
-                                  <TableCell colSpan={4} align="center">No commands found</TableCell>
+                                  <TableCell colSpan={5} align="center">Команды не найдены</TableCell>
                                 </TableRow>
                               ) : agentCommands.map((command) => (
                                 <TableRow key={command.id} hover>
                                   <TableCell>{command.id}</TableCell>
                                   <TableCell>
                                     <Typography variant="body2" fontWeight={600}>
-                                      {command.type}
+                                      {getCommandTypeLabel(command.type)}
                                     </Typography>
+                                    {command.commandKey && (
+                                      <Typography variant="caption" color="text.secondary" display="block">
+                                        key: {command.commandKey}
+                                      </Typography>
+                                    )}
                                     {command.resultMessage && (
                                       <Typography variant="caption" color="text.secondary">
                                         {command.resultMessage}
@@ -1878,15 +2123,36 @@ const Settings = () => {
                                     <Chip
                                       size="small"
                                       color={getCommandStatusColor(command.status)}
-                                      label={String(command.status || 'unknown').toUpperCase()}
+                                      label={getStatusLabel(command.status)}
                                     />
                                   </TableCell>
                                   <TableCell>
                                     <Typography variant="caption" display="block">
-                                      {command.createdAt ? new Date(command.createdAt).toLocaleString() : '-'}
+                                      Попытки: {Number(command.deliveryAttempts) || 0}/{Number(command.maxDeliveryAttempts) || 0}
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary" display="block">
-                                      Ack: {command.acknowledgedAt ? new Date(command.acknowledgedAt).toLocaleString() : '-'}
+                                      Отправка: {command.lastDispatchAt ? new Date(command.lastDispatchAt).toLocaleTimeString('ru-RU') : '-'}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary" display="block">
+                                      Повтор: {command.nextRetryAt ? new Date(command.nextRetryAt).toLocaleTimeString('ru-RU') : '-'}
+                                    </Typography>
+                                    {command.timeoutAt && (
+                                      <Typography variant="caption" color="text.secondary" display="block">
+                                        Таймаут: {new Date(command.timeoutAt).toLocaleTimeString('ru-RU')}
+                                      </Typography>
+                                    )}
+                                    {command.deadLetterReason && (
+                                      <Typography variant="caption" color="error.main" display="block">
+                                        DLQ: {command.deadLetterReason}
+                                      </Typography>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Typography variant="caption" display="block">
+                                      {command.createdAt ? new Date(command.createdAt).toLocaleString('ru-RU') : '-'}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary" display="block">
+                                      Подтверждение: {command.acknowledgedAt ? new Date(command.acknowledgedAt).toLocaleString('ru-RU') : '-'}
                                     </Typography>
                                   </TableCell>
                                 </TableRow>
@@ -1906,13 +2172,13 @@ const Settings = () => {
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
-                  Monitoring Configuration
+                  Конфигурация мониторинга
                 </Typography>
                 <Grid container spacing={3}>
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
-                      label="Data Retention (days)"
+                      label="Хранение данных (дни)"
                       type="number"
                       value={monitoringSettings.dataRetentionDays}
                       onChange={(e) => setMonitoringSettings({ ...monitoringSettings, dataRetentionDays: e.target.value })}
@@ -1921,7 +2187,7 @@ const Settings = () => {
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
-                      label="Monitoring Interval (seconds)"
+                      label="Интервал мониторинга (секунды)"
                       type="number"
                       value={monitoringSettings.monitoringInterval}
                       onChange={(e) => setMonitoringSettings({ ...monitoringSettings, monitoringInterval: e.target.value })}
@@ -1935,7 +2201,7 @@ const Settings = () => {
                           onChange={(e) => setMonitoringSettings({ ...monitoringSettings, realTimeMonitoring: e.target.checked })}
                         />
                       }
-                      label="Real-time Monitoring"
+                      label="Мониторинг в реальном времени"
                     />
                   </Grid>
                   <Grid item xs={12} md={4}>
@@ -1946,7 +2212,7 @@ const Settings = () => {
                           onChange={(e) => setMonitoringSettings({ ...monitoringSettings, anomalyDetection: e.target.checked })}
                         />
                       }
-                      label="Anomaly Detection"
+                      label="Обнаружение аномалий"
                     />
                   </Grid>
                   <Grid item xs={12} md={4}>
@@ -1957,7 +2223,7 @@ const Settings = () => {
                           onChange={(e) => setMonitoringSettings({ ...monitoringSettings, enableWhitelist: e.target.checked })}
                         />
                       }
-                      label="Enable Whitelist"
+                      label="Включить белый список"
                     />
                   </Grid>
                 </Grid>
@@ -1965,10 +2231,10 @@ const Settings = () => {
                   <Button
                     variant="contained"
                     startIcon={<Save />}
-                    onClick={() => handleSaveSettings('Monitoring')}
+                    onClick={() => handleSaveSettings('Мониторинг')}
                     disabled={loading}
                   >
-                    Save Monitoring Settings
+                    Сохранить настройки мониторинга
                   </Button>
                 </Box>
               </CardContent>
@@ -1985,12 +2251,19 @@ const Settings = () => {
               <CardContent>
                 <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap">
                   <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                    <Typography variant="h6">Access Lists</Typography>
+                    <Typography variant="h6">Списки доступа</Typography>
                     <Chip
                       size="small"
                       color={listSettingsDirty ? 'warning' : 'success'}
-                      label={listSettingsDirty ? 'Unsaved changes' : 'Saved'}
+                      label={listSettingsDirty ? 'Есть несохраненные изменения' : 'Сохранено'}
                     />
+                    {policySyncInfo && (
+                      <Chip
+                        size="small"
+                        color={getPolicySyncSeverity(policySyncInfo)}
+                        label={policySyncInfo.failedAgents > 0 ? 'Синхронизация политик частичная' : 'Синхронизация политик успешна'}
+                      />
+                    )}
                   </Stack>
 
                   <Stack direction="row" spacing={1} alignItems="center">
@@ -2002,15 +2275,23 @@ const Settings = () => {
                           onChange={(e) => setListSettingsAutoSave(e.target.checked)}
                         />
                       }
-                      label="Autosave"
+                      label="Автосохранение"
                     />
+                    <Button
+                      variant="outlined"
+                      startIcon={<Refresh />}
+                      onClick={handleSyncPoliciesNow}
+                      disabled={loading || listSettingsSaving || policySyncRunning}
+                    >
+                      {policySyncRunning ? 'Синхронизация...' : 'Синхронизировать политики'}
+                    </Button>
                     <Button
                       variant="contained"
                       startIcon={<Save />}
                       onClick={() => handleSaveAccessLists()}
                       disabled={loading || listSettingsSaving || !listSettingsDirty}
                     >
-                      {listSettingsSaving ? 'Saving...' : 'Save Access Lists'}
+                      {listSettingsSaving ? 'Сохранение...' : 'Сохранить списки доступа'}
                     </Button>
                   </Stack>
                 </Box>
@@ -2022,14 +2303,14 @@ const Settings = () => {
             <Card>
               <CardContent>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Typography variant="h6">Whitelist</Typography>
+                  <Typography variant="h6">Белый список</Typography>
                   <Button
                     variant="outlined"
                     size="small"
                     startIcon={<Add />}
                     onClick={handleAddWhitelistEntry}
                   >
-                    Add Entry
+                    Добавить запись
                   </Button>
                 </Box>
                 <List>
@@ -2040,7 +2321,7 @@ const Settings = () => {
                           <TextField
                             fullWidth
                             size="small"
-                            placeholder="Application name"
+                            placeholder="Название приложения"
                             value={entry.application}
                             onChange={(e) => handleUpdateWhitelistEntry(entry.id, 'application', e.target.value)}
                           />
@@ -2049,7 +2330,7 @@ const Settings = () => {
                           <TextField
                             fullWidth
                             size="small"
-                            placeholder="Description"
+                            placeholder="Описание"
                             value={entry.description}
                             onChange={(e) => handleUpdateWhitelistEntry(entry.id, 'description', e.target.value)}
                             sx={{ mt: 1 }}
@@ -2076,14 +2357,14 @@ const Settings = () => {
             <Card>
               <CardContent>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Typography variant="h6">Blacklist</Typography>
+                  <Typography variant="h6">Черный список</Typography>
                   <Button
                     variant="outlined"
                     size="small"
                     startIcon={<Add />}
                     onClick={handleAddBlacklistEntry}
                   >
-                    Add Entry
+                    Добавить запись
                   </Button>
                 </Box>
                 <List>
@@ -2094,7 +2375,7 @@ const Settings = () => {
                           <TextField
                             fullWidth
                             size="small"
-                            placeholder="Application name"
+                            placeholder="Название приложения"
                             value={entry.application}
                             onChange={(e) => handleUpdateBlacklistEntry(entry.id, 'application', e.target.value)}
                           />
@@ -2103,7 +2384,7 @@ const Settings = () => {
                           <TextField
                             fullWidth
                             size="small"
-                            placeholder="Description"
+                            placeholder="Описание"
                             value={entry.description}
                             onChange={(e) => handleUpdateBlacklistEntry(entry.id, 'description', e.target.value)}
                             sx={{ mt: 1 }}
@@ -2134,13 +2415,13 @@ const Settings = () => {
         fullWidth
         maxWidth="md"
       >
-        <DialogTitle>{editingAlertRuleId ? 'Edit Alert Rule' : 'Create Alert Rule'}</DialogTitle>
+        <DialogTitle>{editingAlertRuleId ? 'Редактировать правило тревоги' : 'Создать правило тревоги'}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid item xs={12} md={8}>
               <TextField
                 fullWidth
-                label="Rule Name"
+                label="Название правила"
                 value={alertRuleForm.name}
                 onChange={(e) => handleAlertRuleFieldChange('name', e.target.value)}
               />
@@ -2153,14 +2434,14 @@ const Settings = () => {
                     onChange={(e) => handleAlertRuleFieldChange('enabled', e.target.checked)}
                   />
                 }
-                label="Enabled"
+                label="Включено"
               />
             </Grid>
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
-                <InputLabel>Metric</InputLabel>
+                <InputLabel>Метрика</InputLabel>
                 <Select
-                  label="Metric"
+                  label="Метрика"
                   value={alertRuleForm.metric}
                   onChange={(e) => handleAlertRuleFieldChange('metric', e.target.value)}
                 >
@@ -2174,9 +2455,9 @@ const Settings = () => {
             </Grid>
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
-                <InputLabel>Operator</InputLabel>
+                <InputLabel>Оператор</InputLabel>
                 <Select
-                  label="Operator"
+                  label="Оператор"
                   value={alertRuleForm.operator}
                   onChange={(e) => handleAlertRuleFieldChange('operator', e.target.value)}
                 >
@@ -2191,7 +2472,7 @@ const Settings = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="Threshold"
+                label="Порог"
                 type="number"
                 value={alertRuleForm.threshold}
                 onChange={(e) => handleAlertRuleFieldChange('threshold', e.target.value)}
@@ -2199,15 +2480,21 @@ const Settings = () => {
             </Grid>
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
-                <InputLabel>Severity</InputLabel>
+                <InputLabel>Серьезность</InputLabel>
                 <Select
-                  label="Severity"
+                  label="Серьезность"
                   value={alertRuleForm.severity}
                   onChange={(e) => handleAlertRuleFieldChange('severity', e.target.value)}
                 >
                   {alertRuleSeverities.map((severity) => (
                     <MenuItem key={severity} value={severity}>
-                      {String(severity).charAt(0).toUpperCase() + String(severity).slice(1)}
+                      {String(severity).toLowerCase() === 'critical' || String(severity).toLowerCase() === 'high'
+                        ? 'Высокая'
+                        : String(severity).toLowerCase() === 'medium'
+                          ? 'Средняя'
+                          : String(severity).toLowerCase() === 'low'
+                            ? 'Низкая'
+                            : String(severity)}
                     </MenuItem>
                   ))}
                 </Select>
@@ -2216,7 +2503,7 @@ const Settings = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="Window (minutes)"
+                label="Окно (минуты)"
                 type="number"
                 value={alertRuleForm.windowMinutes}
                 onChange={(e) => handleAlertRuleFieldChange('windowMinutes', e.target.value)}
@@ -2225,7 +2512,7 @@ const Settings = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="Cooldown (minutes)"
+                label="Пауза (минуты)"
                 type="number"
                 value={alertRuleForm.cooldownMinutes}
                 onChange={(e) => handleAlertRuleFieldChange('cooldownMinutes', e.target.value)}
@@ -2234,7 +2521,7 @@ const Settings = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="Activity Type (optional)"
+                label="Тип активности (необязательно)"
                 placeholder="FILE_ACCESS"
                 value={alertRuleForm.activityType}
                 onChange={(e) => handleAlertRuleFieldChange('activityType', e.target.value)}
@@ -2243,7 +2530,7 @@ const Settings = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="User ID (optional)"
+                label="ID пользователя (необязательно)"
                 type="number"
                 value={alertRuleForm.userId}
                 onChange={(e) => handleAlertRuleFieldChange('userId', e.target.value)}
@@ -2252,7 +2539,7 @@ const Settings = () => {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Computer ID (optional)"
+                label="ID компьютера (необязательно)"
                 type="number"
                 value={alertRuleForm.computerId}
                 onChange={(e) => handleAlertRuleFieldChange('computerId', e.target.value)}
@@ -2266,7 +2553,7 @@ const Settings = () => {
                     onChange={(e) => handleAlertRuleFieldChange('notifyInApp', e.target.checked)}
                   />
                 }
-                label="In-app"
+                label="В приложении"
               />
             </Grid>
             <Grid item xs={12} md={3}>
@@ -2277,14 +2564,14 @@ const Settings = () => {
                     onChange={(e) => handleAlertRuleFieldChange('notifyEmail', e.target.checked)}
                   />
                 }
-                label="Email"
+                label="Почта"
               />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAlertRuleDialogOpen(false)} disabled={alertRuleSaving}>
-            Cancel
+            Отмена
           </Button>
           <Button
             onClick={handleSaveAlertRule}
@@ -2292,21 +2579,21 @@ const Settings = () => {
             startIcon={<Save />}
             disabled={alertRuleSaving}
           >
-            {alertRuleSaving ? 'Saving...' : editingAlertRuleId ? 'Save Rule' : 'Create Rule'}
+            {alertRuleSaving ? 'Сохранение...' : editingAlertRuleId ? 'Сохранить правило' : 'Создать правило'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Confirmation Dialog */}
       <Dialog open={confirmDialogOpen} onClose={() => setConfirmDialogOpen(false)}>
-        <DialogTitle>Confirm Action</DialogTitle>
+        <DialogTitle>Подтвердите действие</DialogTitle>
         <DialogContent>
           <Typography>{confirmAction?.message}</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setConfirmDialogOpen(false)}>Отмена</Button>
           <Button onClick={handleConfirmAction} variant="contained" color="primary">
-            Confirm
+            Подтвердить
           </Button>
         </DialogActions>
       </Dialog>

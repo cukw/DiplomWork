@@ -39,7 +39,8 @@ import {
 import { alpha } from '@mui/material/styles';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
-import { dashboardAPI } from '../services/api';
+import { activityAPI, dashboardAPI } from '../services/api';
+import AlertDetailsDialog from '../components/AlertDetailsDialog';
 
 const initialStats = {
   totalActivities: 0,
@@ -50,7 +51,7 @@ const initialStats = {
 };
 
 const formatDateTime = (value) => {
-  if (!value) return 'N/A';
+  if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
 
@@ -63,7 +64,7 @@ const formatDateTime = (value) => {
 };
 
 const titleCaseActivity = (value) => {
-  if (!value) return 'Unknown';
+  if (!value) return 'Неизвестно';
   return String(value)
     .replace(/_/g, ' ')
     .toLowerCase()
@@ -92,14 +93,14 @@ const normalizeActivity = (activity) => ({
 
 const deriveAnomalySeverity = (anomaly) => {
   const haystack = `${anomaly?.type || ''} ${anomaly?.description || ''}`.toLowerCase();
-  if (/unauthor|malware|exfil|critical|forbidden/.test(haystack)) return 'High';
-  if (/suspicious|anomaly|blocked|risk/.test(haystack)) return 'Medium';
-  return 'Low';
+  if (/unauthor|malware|exfil|critical|forbidden/.test(haystack)) return 'Высокий';
+  if (/suspicious|anomaly|blocked|risk/.test(haystack)) return 'Средний';
+  return 'Низкий';
 };
 
 const normalizeAnomaly = (anomaly) => ({
   id: anomaly?.id,
-  type: anomaly?.type || 'Anomaly',
+  type: anomaly?.type || 'Тревога',
   description: anomaly?.description || '',
   detectedAt: anomaly?.detectedAt ?? anomaly?.detected_at,
   activityId: anomaly?.activityId ?? anomaly?.activity_id,
@@ -108,9 +109,9 @@ const normalizeAnomaly = (anomaly) => ({
 
 const getSeverityColor = (severity) => {
   switch (severity) {
-    case 'High':
+    case 'Высокий':
       return 'error';
-    case 'Medium':
+    case 'Средний':
       return 'warning';
     default:
       return 'info';
@@ -118,9 +119,9 @@ const getSeverityColor = (severity) => {
 };
 
 const getActivityStatus = (activity) => {
-  if (activity.isBlocked) return { label: 'Blocked', color: 'error' };
-  if (activity.riskScore >= 10) return { label: 'Warning', color: 'warning' };
-  return { label: 'Normal', color: 'success' };
+  if (activity.isBlocked) return { label: 'Заблокировано', color: 'error' };
+  if (activity.riskScore >= 10) return { label: 'Внимание', color: 'warning' };
+  return { label: 'Норма', color: 'success' };
 };
 
 const Dashboard = () => {
@@ -136,6 +137,9 @@ const Dashboard = () => {
   const [stats, setStats] = useState(initialStats);
   const [recentActivities, setRecentActivities] = useState([]);
   const [anomalies, setAnomalies] = useState([]);
+  const [selectedAlert, setSelectedAlert] = useState(null);
+  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [alertDetailsOpen, setAlertDetailsOpen] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(() => {
     const stored = localStorage.getItem('dashboard_auto_refresh');
     return stored == null ? true : stored === 'true';
@@ -257,6 +261,34 @@ const Dashboard = () => {
   const anomalyRate = stats.totalActivities > 0
     ? (stats.anomalyCount / stats.totalActivities) * 100
     : 0;
+  const openAlertDetails = async (anomaly) => {
+    setSelectedAlert(anomaly);
+    setSelectedActivity(null);
+    setAlertDetailsOpen(true);
+
+    const activityId = anomaly?.activityId;
+    if (activityId == null) return;
+
+    const localActivity = recentActivities.find((item) => Number(item?.id) === Number(activityId));
+    if (localActivity) {
+      setSelectedActivity(localActivity);
+      return;
+    }
+
+    try {
+      const response = await activityAPI.getActivities({
+        page: 1,
+        pageSize: 25,
+        activityId,
+        id: activityId,
+      });
+      const items = response?.items || response?.activities || (Array.isArray(response) ? response : []);
+      const matched = (Array.isArray(items) ? items : []).find((item) => Number(item?.id) === Number(activityId));
+      setSelectedActivity(matched ? normalizeActivity(matched) : null);
+    } catch {
+      setSelectedActivity(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -267,7 +299,13 @@ const Dashboard = () => {
   }
 
   return (
-    <Box>
+    <Box
+      sx={{
+        transition: 'opacity 160ms ease, transform 160ms ease',
+        opacity: refreshing ? 0.94 : 1,
+        transform: refreshing ? 'translateY(1px)' : 'translateY(0)',
+      }}
+    >
       <Stack
         direction={{ xs: 'column', md: 'row' }}
         justifyContent="space-between"
@@ -277,7 +315,7 @@ const Dashboard = () => {
       >
         <Box>
           <Typography variant="h4" gutterBottom>
-            Dashboard
+            Панель мониторинга
           </Typography>
           <Typography variant="body1" color="text.secondary">
             Оперативный обзор активности, блокировок и аномалий.
@@ -305,7 +343,7 @@ const Dashboard = () => {
                 onChange={(e) => setAutoRefresh(e.target.checked)}
               />
             )}
-            label="Live"
+            label="Онлайн"
           />
           {lastUpdated && (
             <Chip
@@ -347,7 +385,7 @@ const Dashboard = () => {
           <Grid container spacing={2} alignItems="stretch">
             <Grid item xs={12} md={7}>
               <Typography variant="overline" color="primary" sx={{ letterSpacing: '0.10em', fontWeight: 700 }}>
-                Live Operations
+                Оперативный мониторинг
               </Typography>
               <Typography variant="h5" sx={{ mt: 0.5, mb: 1 }}>
                 {user?.username ? `Добро пожаловать, ${user.username}` : 'Мониторинг активности включен'}
@@ -381,9 +419,9 @@ const Dashboard = () => {
                 <Stack spacing={1.5}>
                   <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Typography variant="body2" color="text.secondary">
-                      Top activity type
+                      Основной тип активности
                     </Typography>
-                    <Chip size="small" label={topActivityType?.label || 'No data'} color="info" />
+                    <Chip size="small" label={topActivityType?.label || 'Нет данных'} color="info" />
                   </Stack>
 
                   <Divider />
@@ -391,25 +429,25 @@ const Dashboard = () => {
                   <Grid container spacing={1}>
                     <Grid item xs={6}>
                       <Typography variant="caption" color="text.secondary">
-                        Total events
+                        Всего событий
                       </Typography>
                       <Typography variant="h6">{stats.totalActivities}</Typography>
                     </Grid>
                     <Grid item xs={6}>
                       <Typography variant="caption" color="text.secondary">
-                        Anomaly rate
+                        Доля тревог
                       </Typography>
                       <Typography variant="h6">{anomalyRate.toFixed(1)}%</Typography>
                     </Grid>
                     <Grid item xs={6}>
                       <Typography variant="caption" color="text.secondary">
-                        Avg risk score
+                        Средний риск
                       </Typography>
                       <Typography variant="h6">{stats.averageRiskScore.toFixed(1)}</Typography>
                     </Grid>
                     <Grid item xs={6}>
                       <Typography variant="caption" color="text.secondary">
-                        Activity categories
+                        Категорий активности
                       </Typography>
                       <Typography variant="h6">{activityTypeEntries.length}</Typography>
                     </Grid>
@@ -424,30 +462,30 @@ const Dashboard = () => {
       <Grid container spacing={2.5} sx={{ mb: 3 }}>
         {[
           {
-            title: 'Total Activities',
+            title: 'Всего активностей',
             value: stats.totalActivities,
-            caption: 'Events processed',
+            caption: 'Обработано событий',
             icon: <Timeline />,
             color: 'primary',
           },
           {
-            title: 'Blocked Activities',
+            title: 'Заблокированные действия',
             value: stats.blockedActivities,
-            caption: 'Policy enforcement',
+            caption: 'Сработали политики',
             icon: <ShieldOutlined />,
             color: 'warning',
           },
           {
-            title: 'Anomalies',
+            title: 'Тревоги',
             value: stats.anomalyCount,
-            caption: 'Requires review',
+            caption: 'Требуют проверки',
             icon: <WarningAmber />,
             color: 'error',
           },
           {
-            title: 'Avg Risk Score',
+            title: 'Средний риск',
             value: stats.averageRiskScore.toFixed(1),
-            caption: 'Across all events',
+            caption: 'По всем событиям',
             icon: <AutoGraph />,
             color: 'info',
           },
@@ -492,7 +530,7 @@ const Dashboard = () => {
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                Activity Type Distribution
+                Распределение по типам активности
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Распределение по категориям активности за текущий набор данных.
@@ -544,8 +582,8 @@ const Dashboard = () => {
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
-                <Typography variant="h6">Recent Activities</Typography>
-                <Chip size="small" icon={<Bolt />} label={`${recentActivities.length} records`} />
+                <Typography variant="h6">Последние активности</Typography>
+                <Chip size="small" icon={<Bolt />} label={`${recentActivities.length} записей`} />
               </Stack>
 
               {sectionErrors.activities && (
@@ -558,12 +596,12 @@ const Dashboard = () => {
                 <Table stickyHeader size="small">
                   <TableHead>
                     <TableRow>
-                      <TableCell>Type</TableCell>
-                      <TableCell>Computer</TableCell>
-                      <TableCell>Context</TableCell>
-                      <TableCell align="right">Risk</TableCell>
-                      <TableCell>Time</TableCell>
-                      <TableCell>Status</TableCell>
+                      <TableCell>Тип</TableCell>
+                      <TableCell>Компьютер</TableCell>
+                      <TableCell>Контекст</TableCell>
+                      <TableCell align="right">Риск</TableCell>
+                      <TableCell>Время</TableCell>
+                      <TableCell>Статус</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -599,7 +637,7 @@ const Dashboard = () => {
                             <TableCell>
                               <Stack direction="row" spacing={0.5} alignItems="center">
                                 <Computer sx={{ fontSize: 16, color: 'text.secondary' }} />
-                                <Typography variant="body2">{activity.computerId ?? 'N/A'}</Typography>
+                                <Typography variant="body2">{activity.computerId ?? '—'}</Typography>
                               </Stack>
                             </TableCell>
                             <TableCell sx={{ maxWidth: 320 }}>
@@ -650,8 +688,8 @@ const Dashboard = () => {
           <Card>
             <CardContent>
               <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
-                <Typography variant="h6">Recent Anomalies</Typography>
-                <Chip size="small" color="error" label={`${anomalies.length} entries`} />
+                <Typography variant="h6">Последние тревоги</Typography>
+                <Chip size="small" color="error" label={`${anomalies.length} записей`} />
               </Stack>
 
               {sectionErrors.anomalies && (
@@ -669,9 +707,11 @@ const Dashboard = () => {
                   {anomalies.slice(0, 6).map((anomaly) => (
                     <Grid item xs={12} md={6} xl={4} key={anomaly.id}>
                       <Paper
+                        onClick={() => openAlertDetails(anomaly)}
                         sx={(theme) => ({
                           p: 2,
                           height: '100%',
+                          cursor: 'pointer',
                           border: `1px solid ${alpha(theme.palette.error.main, 0.12)}`,
                           background:
                             theme.palette.mode === 'dark'
@@ -695,14 +735,14 @@ const Dashboard = () => {
                           color="text.secondary"
                           sx={{ mt: 1, minHeight: 42 }}
                         >
-                          {anomaly.description || 'No description provided'}
+                          {anomaly.description || 'Описание отсутствует'}
                         </Typography>
 
                         <Divider sx={{ my: 1.25 }} />
 
                         <Stack direction="row" justifyContent="space-between">
                           <Typography variant="caption" color="text.secondary">
-                            Activity #{anomaly.activityId ?? 'N/A'}
+                            Активность #{anomaly.activityId ?? '—'}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
                             {formatDateTime(anomaly.detectedAt)}
@@ -717,6 +757,13 @@ const Dashboard = () => {
           </Card>
         </Grid>
       </Grid>
+
+      <AlertDetailsDialog
+        open={alertDetailsOpen}
+        onClose={() => setAlertDetailsOpen(false)}
+        alertItem={selectedAlert}
+        activityItem={selectedActivity}
+      />
     </Box>
   );
 };

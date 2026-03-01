@@ -11,10 +11,17 @@ namespace Gateway.Controllers;
 public sealed class AppSettingsController : ControllerBase
 {
     private readonly AppSettingsStore _store;
+    private readonly PolicyAccessListSyncService _policySyncService;
+    private readonly ILogger<AppSettingsController> _logger;
 
-    public AppSettingsController(AppSettingsStore store)
+    public AppSettingsController(
+        AppSettingsStore store,
+        PolicyAccessListSyncService policySyncService,
+        ILogger<AppSettingsController> logger)
     {
         _store = store;
+        _policySyncService = policySyncService;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -28,6 +35,7 @@ public sealed class AppSettingsController : ControllerBase
     public async Task<IActionResult> Save([FromBody] AppSettingsDocument document, CancellationToken cancellationToken)
     {
         var saved = await _store.SaveAsync(document, cancellationToken);
+        _ = await SyncAccessPoliciesAsync(saved, cancellationToken);
         return Ok(saved);
     }
 
@@ -42,6 +50,7 @@ public sealed class AppSettingsController : ControllerBase
     public async Task<IActionResult> ReplaceWhitelist([FromBody] List<ApplicationListEntryModel> entries, CancellationToken cancellationToken)
     {
         var saved = await _store.ReplaceWhitelistEntriesAsync(entries ?? [], cancellationToken);
+        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
         return Ok(new { entries = saved });
     }
 
@@ -52,6 +61,7 @@ public sealed class AppSettingsController : ControllerBase
             return BadRequest(new { message = "Application is required" });
 
         var saved = await _store.UpsertWhitelistEntryAsync(entry, cancellationToken);
+        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
         return Ok(new { entries = saved });
     }
 
@@ -63,6 +73,7 @@ public sealed class AppSettingsController : ControllerBase
             return BadRequest(new { message = "Application is required" });
 
         var saved = await _store.UpsertWhitelistEntryAsync(entry, cancellationToken);
+        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
         return Ok(new { entries = saved });
     }
 
@@ -70,6 +81,7 @@ public sealed class AppSettingsController : ControllerBase
     public async Task<IActionResult> DeleteWhitelistEntry(long id, CancellationToken cancellationToken)
     {
         var saved = await _store.DeleteWhitelistEntryAsync(id, cancellationToken);
+        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
         return Ok(new { entries = saved });
     }
 
@@ -84,6 +96,7 @@ public sealed class AppSettingsController : ControllerBase
     public async Task<IActionResult> ReplaceBlacklist([FromBody] List<ApplicationListEntryModel> entries, CancellationToken cancellationToken)
     {
         var saved = await _store.ReplaceBlacklistEntriesAsync(entries ?? [], cancellationToken);
+        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
         return Ok(new { entries = saved });
     }
 
@@ -94,6 +107,7 @@ public sealed class AppSettingsController : ControllerBase
             return BadRequest(new { message = "Application is required" });
 
         var saved = await _store.UpsertBlacklistEntryAsync(entry, cancellationToken);
+        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
         return Ok(new { entries = saved });
     }
 
@@ -105,6 +119,7 @@ public sealed class AppSettingsController : ControllerBase
             return BadRequest(new { message = "Application is required" });
 
         var saved = await _store.UpsertBlacklistEntryAsync(entry, cancellationToken);
+        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
         return Ok(new { entries = saved });
     }
 
@@ -112,6 +127,43 @@ public sealed class AppSettingsController : ControllerBase
     public async Task<IActionResult> DeleteBlacklistEntry(long id, CancellationToken cancellationToken)
     {
         var saved = await _store.DeleteBlacklistEntryAsync(id, cancellationToken);
+        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
         return Ok(new { entries = saved });
+    }
+
+    [HttpPost("sync/policies")]
+    public async Task<IActionResult> SyncPolicies(CancellationToken cancellationToken)
+    {
+        var syncResult = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        return Ok(syncResult);
+    }
+
+    private async Task<PolicyAccessListSyncResult> SyncAccessPoliciesFromStoreAsync(CancellationToken cancellationToken)
+    {
+        var settings = await _store.GetAsync(cancellationToken);
+        return await SyncAccessPoliciesAsync(settings, cancellationToken);
+    }
+
+    private async Task<PolicyAccessListSyncResult> SyncAccessPoliciesAsync(
+        AppSettingsDocument settings,
+        CancellationToken cancellationToken)
+    {
+        var syncResult = await _policySyncService.SyncFromSettingsAsync(settings, cancellationToken);
+
+        Response.Headers["X-Policy-Sync-Total-Agents"] = syncResult.TotalAgents.ToString();
+        Response.Headers["X-Policy-Sync-Synced-Agents"] = syncResult.SyncedAgents.ToString();
+        Response.Headers["X-Policy-Sync-Failed-Agents"] = syncResult.FailedAgents.ToString();
+        Response.Headers["X-Policy-Sync-Status"] = syncResult.Success ? "ok" : "partial";
+
+        if (!syncResult.Success)
+        {
+            _logger.LogWarning(
+                "Access-list sync completed with failures. Total={Total}, Synced={Synced}, Failed={Failed}",
+                syncResult.TotalAgents,
+                syncResult.SyncedAgents,
+                syncResult.FailedAgents);
+        }
+
+        return syncResult;
     }
 }

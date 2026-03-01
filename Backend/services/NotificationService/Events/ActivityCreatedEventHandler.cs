@@ -1,8 +1,9 @@
 using MassTransit;
 using NotificationService.Data;
-using NotificationService.Models;
 using Microsoft.EntityFrameworkCore;
 using ActivityService.Services.Events;
+using NotificationEntity = NotificationService.Models.Notification;
+using ProcessedEventInboxEntryEntity = NotificationService.Models.ProcessedEventInboxEntry;
 
 namespace NotificationService.Events;
 
@@ -39,18 +40,18 @@ public class ActivityCreatedEventHandler : IConsumer<ActivityCreatedEvent>
             {
                 var consumerName = nameof(ActivityCreatedEventHandler);
                 var eventKey = EventProcessingHelper.ActivityCreatedKey(@event);
-                var notification = new Notification
+                var notification = new NotificationEntity
                 {
                     UserId = userId,
                     Type = "SECURITY_ALERT",
                     Title = $"Security Alert: {@event.ActivityType}",
                     Message = $"Suspicious activity '{@event.ActivityType}' detected on computer {@event.ComputerId}. Activity ID: {@event.ActivityId}",
                     Channel = "email",
-                    SentAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    SentAt = DateTime.UtcNow,
                     IsRead = false
                 };
 
-                _db.ProcessedEventInboxEntries.Add(new ProcessedEventInboxEntry
+                _db.ProcessedEventInboxEntries.Add(new ProcessedEventInboxEntryEntity
                 {
                     Consumer = consumerName,
                     EventKey = eventKey,

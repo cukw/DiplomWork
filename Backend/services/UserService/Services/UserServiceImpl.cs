@@ -158,9 +158,39 @@ public class UserServiceImpl : UserService.UserServiceBase
                 };
             }
 
+            var requestedHostname = request.Hostname?.Trim();
+            if (!string.IsNullOrWhiteSpace(requestedHostname) &&
+                !string.Equals(requestedHostname, computer.Hostname, StringComparison.OrdinalIgnoreCase))
+            {
+                var hostnameUsed = await _db.Computers.AnyAsync(c => c.Id != computer.Id && c.Hostname == requestedHostname);
+                if (hostnameUsed)
+                {
+                    return new UpdateComputerInfoResponse
+                    {
+                        Success = false,
+                        Message = "Hostname is already used by another computer"
+                    };
+                }
+            }
+
+            var requestedMac = request.MacAddress?.Trim();
+            if (!string.IsNullOrWhiteSpace(requestedMac) &&
+                !string.Equals(requestedMac, computer.MacAddress, StringComparison.OrdinalIgnoreCase))
+            {
+                var macUsed = await _db.Computers.AnyAsync(c => c.Id != computer.Id && c.MacAddress == requestedMac);
+                if (macUsed)
+                {
+                    return new UpdateComputerInfoResponse
+                    {
+                        Success = false,
+                        Message = "MAC address is already used by another computer"
+                    };
+                }
+            }
+
             // Update computer properties
             if (!string.IsNullOrEmpty(request.Hostname))
-                computer.Hostname = request.Hostname;
+                computer.Hostname = requestedHostname!;
             
             if (!string.IsNullOrEmpty(request.OsVersion))
                 computer.OsVersion = request.OsVersion;
@@ -169,7 +199,7 @@ public class UserServiceImpl : UserService.UserServiceBase
                 computer.IpAddress = request.IpAddress;
             
             if (!string.IsNullOrEmpty(request.MacAddress))
-                computer.MacAddress = request.MacAddress;
+                computer.MacAddress = requestedMac;
             
             if (!string.IsNullOrEmpty(request.Status))
                 computer.Status = request.Status;
@@ -270,6 +300,27 @@ public class UserServiceImpl : UserService.UserServiceBase
 
         try
         {
+            if (request.AuthUserId <= 0)
+            {
+                return new CreateUserResponse
+                {
+                    Success = false,
+                    Message = "AuthUserId must be greater than 0"
+                };
+            }
+
+            var hostname = request.Hostname?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(hostname))
+            {
+                return new CreateUserResponse
+                {
+                    Success = false,
+                    Message = "Hostname is required (1:1 user-computer policy)"
+                };
+            }
+
+            var normalizedMac = string.IsNullOrWhiteSpace(request.MacAddress) ? string.Empty : request.MacAddress.Trim();
+
             // Check if user already exists
             var existingUser = await _db.Users
                 .FirstOrDefaultAsync(u => u.AuthUserId == request.AuthUserId);
@@ -283,7 +334,26 @@ public class UserServiceImpl : UserService.UserServiceBase
                 };
             }
 
-            // Create new user
+            if (await _db.Computers.AnyAsync(c => c.Hostname == hostname))
+            {
+                return new CreateUserResponse
+                {
+                    Success = false,
+                    Message = "Computer hostname is already assigned to another user"
+                };
+            }
+
+            if (!string.IsNullOrWhiteSpace(normalizedMac) && await _db.Computers.AnyAsync(c => c.MacAddress == normalizedMac))
+            {
+                return new CreateUserResponse
+                {
+                    Success = false,
+                    Message = "Computer MAC address is already assigned to another user"
+                };
+            }
+
+            await using var transaction = await _db.Database.BeginTransactionAsync(context.CancellationToken);
+
             var user = new User
             {
                 AuthUserId = (int)request.AuthUserId,
@@ -292,38 +362,40 @@ public class UserServiceImpl : UserService.UserServiceBase
             };
 
             _db.Users.Add(user);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(context.CancellationToken);
 
-            // Create computer if provided
-            Computer? computer = null;
-            if (!string.IsNullOrEmpty(request.Hostname))
+            var computer = new Computer
             {
-                computer = new Computer
-                {
-                    UserId = user.Id,
-                    Hostname = request.Hostname,
-                    OsVersion = request.OsVersion,
-                    IpAddress = request.IpAddress,
-                    MacAddress = request.MacAddress,
-                    Status = "active",
-                    LastSeen = DateTime.UtcNow
-                };
+                UserId = user.Id,
+                Hostname = hostname,
+                OsVersion = request.OsVersion,
+                IpAddress = request.IpAddress,
+                MacAddress = normalizedMac,
+                Status = "active",
+                LastSeen = DateTime.UtcNow
+            };
 
-                _db.Computers.Add(computer);
-                await _db.SaveChangesAsync();
-            }
+            _db.Computers.Add(computer);
+            await _db.SaveChangesAsync(context.CancellationToken);
+            await transaction.CommitAsync(context.CancellationToken);
 
-            // Reload user with computer
-            user = await _db.Users
-                .Include(u => u.Computer)
-                .FirstAsync(u => u.Id == user.Id);
+            user.Computer = computer;
 
             return new CreateUserResponse
             {
                 Success = true,
                 Message = "User created successfully",
                 UserProfile = MapUserToProto(user),
-                Computer = computer != null ? MapComputerToProto(computer) : null
+                Computer = MapComputerToProto(computer)
+            };
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database constraint violation while creating user for auth user ID: {AuthUserId}", request.AuthUserId);
+            return new CreateUserResponse
+            {
+                Success = false,
+                Message = "Failed to create user: unique computer/user constraint violated"
             };
         }
         catch (Exception ex)
@@ -407,7 +479,7 @@ public class UserServiceImpl : UserService.UserServiceBase
         return new ComputerInfo
         {
             Id = computer.Id,
-            UserId = computer.UserId ?? 0,
+            UserId = computer.UserId,
             Hostname = computer.Hostname,
             OsVersion = computer.OsVersion ?? "",
             IpAddress = computer.IpAddress ?? "",

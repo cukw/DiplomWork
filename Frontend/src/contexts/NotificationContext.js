@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { notificationAPI } from '../services/api';
 
-// Create context for notifications
+// Контекст уведомлений
 const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
@@ -12,7 +12,7 @@ export const NotificationProvider = ({ children }) => {
     error: null
   });
 
-  // Fetch notifications on mount and when authenticated
+  // Загружаем уведомления при старте, если пользователь авторизован
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -57,14 +57,14 @@ export const NotificationProvider = ({ children }) => {
         });
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error('Ошибка загрузки уведомлений:', error);
       
       // Изолируем ошибку, не даем ей сломать всё приложение
       setNotificationState({
         notifications: [],
         unreadCount: 0,
         loading: false,
-        error: error.message || 'An error occurred while fetching notifications'
+        error: error.message || 'Ошибка при загрузке уведомлений'
       });
       
       // Не выбрасываем ошибку дальше, чтобы не сломать рендеринг
@@ -85,10 +85,10 @@ export const NotificationProvider = ({ children }) => {
         unreadCount: Math.max(0, prev.unreadCount - 1)
       }));
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error('Ошибка отметки уведомления как прочитанного:', error);
       setNotificationState(prev => ({
         ...prev,
-        error: error.message || 'Failed to mark notification as read'
+        error: error.message || 'Не удалось отметить уведомление как прочитанное'
       }));
       // Не выбрасываем ошибку дальше, чтобы не сломать рендеринг
     }
@@ -105,10 +105,10 @@ export const NotificationProvider = ({ children }) => {
         unreadCount: 0
       }));
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
+      console.error('Ошибка отметки всех уведомлений как прочитанных:', error);
       setNotificationState(prev => ({
         ...prev,
-        error: error.message || 'Failed to mark all notifications as read'
+        error: error.message || 'Не удалось отметить все уведомления как прочитанные'
       }));
       // Не выбрасываем ошибку дальше, чтобы не сломать рендеринг
     }
@@ -127,10 +127,10 @@ export const NotificationProvider = ({ children }) => {
         };
       });
     } catch (error) {
-      console.error('Error deleting notification:', error);
+      console.error('Ошибка удаления уведомления:', error);
       setNotificationState(prev => ({
         ...prev,
-        error: error.message || 'Failed to delete notification'
+        error: error.message || 'Не удалось удалить уведомление'
       }));
     }
   };
@@ -141,7 +141,7 @@ export const NotificationProvider = ({ children }) => {
     const normalized = {
       id: notification.id ?? `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       type: notification.type || 'info',
-      title: notification.title || notification.type || 'Notification',
+      title: notification.title || notification.type || 'Уведомление',
       message: notification.message || notification.description || '',
       timestamp: notification.timestamp || new Date().toISOString(),
       sentAt: notification.sentAt || notification.timestamp || new Date().toISOString(),
@@ -193,7 +193,7 @@ export const NotificationProvider = ({ children }) => {
 export const useNotifications = () => {
   const context = useContext(NotificationContext);
   if (!context) {
-    throw new Error('useNotifications must be used within a NotificationProvider');
+    throw new Error('useNotifications должен использоваться внутри NotificationProvider');
   }
   return context;
 };

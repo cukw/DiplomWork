@@ -49,11 +49,18 @@ CREATE INDEX idx_agent_policies_computer_id ON agent_policies(computer_id);
 CREATE TABLE agent_commands (
     id              SERIAL PRIMARY KEY,
     agent_id        INTEGER NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+    command_key     VARCHAR(100) NOT NULL,
     type            VARCHAR(50) NOT NULL,
     payload_json    TEXT NOT NULL DEFAULT '{}',
     status          VARCHAR(20) NOT NULL DEFAULT 'pending',
     requested_by    VARCHAR(100) NOT NULL DEFAULT 'system',
     result_message  VARCHAR(500) NOT NULL DEFAULT '',
+    delivery_attempts INTEGER NOT NULL DEFAULT 0,
+    max_delivery_attempts INTEGER NOT NULL DEFAULT 5,
+    last_dispatch_at TIMESTAMP NULL,
+    next_retry_at TIMESTAMP NULL,
+    timeout_at TIMESTAMP NULL,
+    dead_letter_reason VARCHAR(500) NOT NULL DEFAULT '',
     created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
     acknowledged_at TIMESTAMP NULL
 );
@@ -61,3 +68,21 @@ CREATE TABLE agent_commands (
 CREATE INDEX idx_agent_commands_agent_id ON agent_commands(agent_id);
 CREATE INDEX idx_agent_commands_status ON agent_commands(status);
 CREATE INDEX idx_agent_commands_agent_status ON agent_commands(agent_id, status);
+CREATE UNIQUE INDEX uq_agent_commands_agent_command_key ON agent_commands(agent_id, command_key);
+CREATE INDEX idx_agent_commands_timeout_at ON agent_commands(timeout_at);
+CREATE INDEX idx_agent_commands_next_retry_at ON agent_commands(next_retry_at);
+
+CREATE TABLE agent_command_dlq (
+    id              SERIAL PRIMARY KEY,
+    agent_command_id INTEGER NOT NULL UNIQUE REFERENCES agent_commands(id) ON DELETE CASCADE,
+    agent_id        INTEGER NOT NULL,
+    command_key     VARCHAR(100) NOT NULL,
+    type            VARCHAR(50) NOT NULL,
+    payload_json    TEXT NOT NULL DEFAULT '{}',
+    reason          VARCHAR(500) NOT NULL DEFAULT '',
+    delivery_attempts INTEGER NOT NULL DEFAULT 0,
+    failed_at       TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_agent_command_dlq_agent_id ON agent_command_dlq(agent_id);
+CREATE INDEX idx_agent_command_dlq_failed_at ON agent_command_dlq(failed_at);

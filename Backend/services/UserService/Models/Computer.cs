@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Net;
 
 namespace UserService.Models;
 
@@ -7,7 +6,7 @@ public class Computer
 {
     public int Id { get; set; }
     
-    public int? UserId { get; set; }
+    public int UserId { get; set; }
     
     [Required]
     [MaxLength(255)]

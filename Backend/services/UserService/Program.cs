@@ -41,6 +41,22 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<UserDbContext>();
+    dbContext.Database.Migrate();
+    dbContext.Database.ExecuteSqlRaw(@"
+        -- Clean orphan computers before enforcing NOT NULL relationship.
+        DELETE FROM computers WHERE user_id IS NULL;
+
+        ALTER TABLE IF EXISTS computers
+            ALTER COLUMN user_id SET NOT NULL;
+
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_computers_user_id
+            ON computers(user_id);
+    ");
+}
+
 // Configure the HTTP request pipeline.
 app.UseCors("AllowAll");
 

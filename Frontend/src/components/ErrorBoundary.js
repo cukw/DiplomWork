@@ -16,7 +16,7 @@ class ErrorBoundary extends React.Component {
       errorInfo: errorInfo
     });
     
-    console.error('Error caught by boundary:', error, errorInfo);
+    console.error('Ошибка перехвачена ErrorBoundary:', error, errorInfo);
     
     // Логирование ошибки в сервис мониторинга
     if (this.props.onError) {
@@ -85,47 +85,7 @@ class ErrorBoundary extends React.Component {
               Перезагрузить страницу
             </button>
           </div>
-            <button 
-              onClick={() => window.location.reload()}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: '#1976d2',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                marginRight: '10px'
-              }}
-            >
-              Обновить страницу
-            </button>
-            <button 
-              onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: '#4caf50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Попробовать снова
-            </button>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                backgroundColor: '#f50057',
-                color: 'white',
-                border: 'none',
-                padding: '10px 20px',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Перезагрузить страницу
-            </button>
-          </div>
+        </div>
       );
     }
 

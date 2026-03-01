@@ -1,5 +1,35 @@
-Frontend/node_modules/.cache/
+# Node
 node_modules/
+Frontend/node_modules/
+Frontend/.cache/
+Frontend/node_modules/.cache/
 
-# Build outputs
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+
+# .NET / C#
 **/bin/
+**/obj/
+*.user
+*.suo
+*.rsuser
+
+# Frontend build artifacts
+Frontend/build/
+Frontend/dist/
+Frontend/certs/fullchain.pem
+Frontend/certs/privkey.pem
+*.map
+
+# Logs
+*.log
+logs/
+
+# macOS / editor
+.DS_Store
+.vscode/
+.idea/

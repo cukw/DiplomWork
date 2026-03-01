@@ -180,6 +180,7 @@ message CreateAgentCommandRequest {
   string type = 2;
   string payload_json = 3;
   string requested_by = 4;
+  string command_key = 5;
 }
 
 message CreateAgentCommandResponse {
@@ -303,6 +304,10 @@ message AgentPolicy {
   string signature = 21;
   string signature_key_id = 22;
   string signature_alg = 23;
+  bool enable_whitelist = 24;
+  bool enable_blacklist = 25;
+  repeated string whitelist_apps = 26;
+  repeated string blacklist_apps = 27;
 }
 
 message AgentPolicyVersion {
@@ -328,4 +333,11 @@ message AgentCommand {
   string signature = 10;
   string signature_key_id = 11;
   string signature_alg = 12;
+  string command_key = 13;
+  int32 delivery_attempts = 14;
+  int32 max_delivery_attempts = 15;
+  string last_dispatch_at = 16;
+  string next_retry_at = 17;
+  string timeout_at = 18;
+  string dead_letter_reason = 19;
 }

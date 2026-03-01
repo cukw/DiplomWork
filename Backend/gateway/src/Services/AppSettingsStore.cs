@@ -1,22 +1,33 @@
 using System.Text.Json;
+using Gateway.Data;
 using Gateway.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Gateway.Services;
 
 public sealed class AppSettingsStore
 {
+    private const int RuntimeSettingsRowId = 1;
+
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly string _settingsPath;
+    private readonly IDbContextFactory<GatewayRuntimeDbContext> _dbFactory;
+    private readonly string _legacySettingsPath;
+    private readonly ILogger<AppSettingsStore> _logger;
     private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
     };
 
-    public AppSettingsStore(IHostEnvironment environment)
+    public AppSettingsStore(
+        IDbContextFactory<GatewayRuntimeDbContext> dbFactory,
+        IHostEnvironment environment,
+        ILogger<AppSettingsStore> logger)
     {
+        _dbFactory = dbFactory;
+        _logger = logger;
         var dataDir = Path.Combine(environment.ContentRootPath, "data");
         Directory.CreateDirectory(dataDir);
-        _settingsPath = Path.Combine(dataDir, "runtime-settings.json");
+        _legacySettingsPath = Path.Combine(dataDir, "runtime-settings.json");
     }
 
     public async Task<AppSettingsDocument> GetAsync(CancellationToken cancellationToken = default)
@@ -54,13 +65,13 @@ public sealed class AppSettingsStore
     public async Task<List<ApplicationListEntryModel>> GetWhitelistEntriesAsync(CancellationToken cancellationToken = default)
     {
         var doc = await GetAsync(cancellationToken);
-        return Clone(doc).WhitelistEntries;
+        return CloneList(doc.WhitelistEntries);
     }
 
     public async Task<List<ApplicationListEntryModel>> GetBlacklistEntriesAsync(CancellationToken cancellationToken = default)
     {
         var doc = await GetAsync(cancellationToken);
-        return Clone(doc).BlacklistEntries;
+        return CloneList(doc.BlacklistEntries);
     }
 
     public Task<List<ApplicationListEntryModel>> ReplaceWhitelistEntriesAsync(List<ApplicationListEntryModel> entries, CancellationToken cancellationToken = default)
@@ -83,29 +94,91 @@ public sealed class AppSettingsStore
 
     private async Task<AppSettingsDocument> LoadUnsafeAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(_settingsPath))
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var entity = await db.AppSettingsDocuments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == RuntimeSettingsRowId, cancellationToken);
+
+        if (entity is null)
         {
-            var seeded = Sanitize(new AppSettingsDocument());
+            var seeded = await LoadLegacyOrDefaultAsync(cancellationToken);
             seeded.UpdatedAt = DateTime.UtcNow;
-            var seedJson = JsonSerializer.Serialize(seeded, _jsonOptions);
-            await File.WriteAllTextAsync(_settingsPath, seedJson, cancellationToken);
+
+            db.AppSettingsDocuments.Add(new AppSettingsDocumentEntity
+            {
+                Id = RuntimeSettingsRowId,
+                PayloadJson = JsonSerializer.Serialize(seeded, _jsonOptions),
+                UpdatedAt = seeded.UpdatedAt
+            });
+            await db.SaveChangesAsync(cancellationToken);
             return seeded;
         }
 
+        return DeserializeAndSanitize(entity.PayloadJson);
+    }
+
+    private async Task SaveUnsafeAsync(AppSettingsDocument document, CancellationToken cancellationToken)
+    {
+        var json = JsonSerializer.Serialize(document, _jsonOptions);
+
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var entity = await db.AppSettingsDocuments
+            .FirstOrDefaultAsync(x => x.Id == RuntimeSettingsRowId, cancellationToken);
+
+        if (entity is null)
+        {
+            db.AppSettingsDocuments.Add(new AppSettingsDocumentEntity
+            {
+                Id = RuntimeSettingsRowId,
+                PayloadJson = json,
+                UpdatedAt = document.UpdatedAt.ToUniversalTime()
+            });
+        }
+        else
+        {
+            entity.PayloadJson = json;
+            entity.UpdatedAt = document.UpdatedAt.ToUniversalTime();
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<AppSettingsDocument> LoadLegacyOrDefaultAsync(CancellationToken cancellationToken)
+    {
+        if (!File.Exists(_legacySettingsPath))
+            return Sanitize(new AppSettingsDocument());
+
         try
         {
-            var json = await File.ReadAllTextAsync(_settingsPath, cancellationToken);
+            var json = await File.ReadAllTextAsync(_legacySettingsPath, cancellationToken);
             var parsed = JsonSerializer.Deserialize<AppSettingsDocument>(json, _jsonOptions);
+            if (parsed is not null)
+            {
+                _logger.LogInformation("Imported runtime settings from legacy file into database: {Path}", _legacySettingsPath);
+                return Sanitize(parsed);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to import legacy runtime settings file: {Path}", _legacySettingsPath);
+        }
+
+        return Sanitize(new AppSettingsDocument());
+    }
+
+    private AppSettingsDocument DeserializeAndSanitize(string? payloadJson)
+    {
+        if (string.IsNullOrWhiteSpace(payloadJson))
+            return Sanitize(new AppSettingsDocument());
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<AppSettingsDocument>(payloadJson, _jsonOptions);
             return Sanitize(parsed ?? new AppSettingsDocument());
         }
         catch
         {
-            // Corrupted file fallback: preserve service availability with defaults.
-            var fallback = Sanitize(new AppSettingsDocument());
-            fallback.UpdatedAt = DateTime.UtcNow;
-            var json = JsonSerializer.Serialize(fallback, _jsonOptions);
-            await File.WriteAllTextAsync(_settingsPath, json, cancellationToken);
-            return fallback;
+            return Sanitize(new AppSettingsDocument());
         }
     }
 
@@ -216,15 +289,9 @@ public sealed class AppSettingsStore
         return sanitized;
     }
 
-    private async Task SaveUnsafeAsync(AppSettingsDocument document, CancellationToken cancellationToken)
-    {
-        var json = JsonSerializer.Serialize(document, _jsonOptions);
-        await File.WriteAllTextAsync(_settingsPath, json, cancellationToken);
-    }
-
     private static AppSettingsDocument Sanitize(AppSettingsDocument input)
     {
-        var result = new AppSettingsDocument
+        return new AppSettingsDocument
         {
             GeneralSettings = input.GeneralSettings ?? new GeneralSettingsModel(),
             SecuritySettings = input.SecuritySettings ?? new SecuritySettingsModel(),
@@ -234,8 +301,6 @@ public sealed class AppSettingsStore
             BlacklistEntries = NormalizeEntries(input.BlacklistEntries),
             UpdatedAt = input.UpdatedAt == default ? DateTime.UtcNow : input.UpdatedAt.ToUniversalTime()
         };
-
-        return result;
     }
 
     private static List<ApplicationListEntryModel> NormalizeEntries(List<ApplicationListEntryModel>? source)
@@ -260,7 +325,6 @@ public sealed class AppSettingsStore
             nextId = Math.Max(nextId + 1, (entry.Id > 0 ? entry.Id : nextId) + 1);
         }
 
-        // Reassign duplicates/missing IDs for stability in the UI.
         var seen = new HashSet<long>();
         long fallbackId = 1;
         foreach (var entry in result)
