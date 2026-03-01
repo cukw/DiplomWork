@@ -1,0 +1,37 @@
+Metadata-Version: 2.4
+Name: local-endpoint-agent
+Version: 0.2.0
+Summary: Cross-platform endpoint agent for Activity Monitoring System
+Author: Activity Monitoring Team
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: grpcio>=1.62.0
+Requires-Dist: protobuf>=4.25.0
+Requires-Dist: psutil>=5.9.8
+Requires-Dist: PyYAML>=6.0.1
+Provides-Extra: rust
+Requires-Dist: maturin>=1.6.0; extra == "rust"
+
+# Local Endpoint Agent
+
+Cross-platform endpoint agent (Linux/macOS/Windows) for direct gRPC communication with:
+- ActivityService
+- AgentManagementService
+
+Run locally:
+
+```bash
+python3 -m endpoint_agent.cli run --config ./config/agent.yaml
+```
+
+Generate gRPC Python files:
+
+```bash
+bash ./scripts/generate_protos.sh
+```
+
+Install helper:
+
+```bash
+python3 ./scripts/install_agent.py --computer-id 1
+```

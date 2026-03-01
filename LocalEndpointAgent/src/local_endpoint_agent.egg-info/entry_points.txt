@@ -1,0 +1,2 @@
+[console_scripts]
+endpoint-agent = endpoint_agent.cli:main
