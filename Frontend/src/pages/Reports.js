@@ -55,7 +55,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { activityAPI, reportsAPI, reportServiceAPI, userAPI } from '../services/api';
+import { activityAPI, normalizeStoredToken, reportsAPI, reportServiceAPI, userAPI } from '../services/api';
 import {
   addDays,
   aggregateByDepartment,
@@ -333,14 +333,27 @@ const Reports = () => {
         const absoluteHref = href.startsWith('http://') || href.startsWith('https://')
           ? href
           : `${window.location.origin}${href.startsWith('/') ? '' : '/'}${href}`;
-        const a = document.createElement('a');
-        a.href = absoluteHref;
-        if (result?.fileName) {
-          a.download = result.fileName;
+
+        const token = normalizeStoredToken(localStorage.getItem('token'));
+        const downloadResp = await fetch(absoluteHref, {
+          method: 'GET',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
+        if (!downloadResp.ok) {
+          throw new Error(`Не удалось скачать файл (HTTP ${downloadResp.status})`);
         }
+
+        const blob = await downloadResp.blob();
+        const blobUrl = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = result?.fileName || `report.${exportFormat}`;
         document.body.appendChild(a);
         a.click();
         a.remove();
+        URL.revokeObjectURL(blobUrl);
       }
 
       setExportDialogOpen(false);
