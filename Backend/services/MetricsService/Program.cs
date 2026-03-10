@@ -97,48 +97,51 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<MetricsDbContext>();
-    await db.Database.MigrateAsync();
-    await db.Database.ExecuteSqlRawAsync(@"
-        CREATE TABLE IF NOT EXISTS processed_event_inbox (
-            id BIGSERIAL PRIMARY KEY,
-            consumer VARCHAR(128) NOT NULL,
-            event_key VARCHAR(256) NOT NULL,
-            message_id VARCHAR(128),
-            processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
-        CREATE UNIQUE INDEX IF NOT EXISTS uq_metrics_processed_event_inbox_consumer_event_key
-            ON processed_event_inbox(consumer, event_key);
+await InitializeDatabaseWithRetryAsync(
+    app.Services,
+    app.Logger,
+    async (services, cancellationToken) =>
+    {
+        var db = services.GetRequiredService<MetricsDbContext>();
+        await db.Database.MigrateAsync(cancellationToken);
+        await db.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE IF NOT EXISTS processed_event_inbox (
+                id BIGSERIAL PRIMARY KEY,
+                consumer VARCHAR(128) NOT NULL,
+                event_key VARCHAR(256) NOT NULL,
+                message_id VARCHAR(128),
+                processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_metrics_processed_event_inbox_consumer_event_key
+                ON processed_event_inbox(consumer, event_key);
 
-        CREATE TABLE IF NOT EXISTS activity_event_rollups (
-            id BIGSERIAL PRIMARY KEY,
-            bucket_date DATE NOT NULL,
-            computer_id INTEGER NOT NULL,
-            activity_type VARCHAR(100) NOT NULL,
-            total_count BIGINT NOT NULL DEFAULT 0,
-            blocked_count BIGINT NOT NULL DEFAULT 0,
-            risk_score_sum NUMERIC(18,2) NOT NULL DEFAULT 0,
-            risk_score_samples INTEGER NOT NULL DEFAULT 0,
-            last_event_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
-        CREATE UNIQUE INDEX IF NOT EXISTS uq_activity_event_rollups_bucket_computer_type
-            ON activity_event_rollups(bucket_date, computer_id, activity_type);
+            CREATE TABLE IF NOT EXISTS activity_event_rollups (
+                id BIGSERIAL PRIMARY KEY,
+                bucket_date DATE NOT NULL,
+                computer_id INTEGER NOT NULL,
+                activity_type VARCHAR(100) NOT NULL,
+                total_count BIGINT NOT NULL DEFAULT 0,
+                blocked_count BIGINT NOT NULL DEFAULT 0,
+                risk_score_sum NUMERIC(18,2) NOT NULL DEFAULT 0,
+                risk_score_samples INTEGER NOT NULL DEFAULT 0,
+                last_event_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_activity_event_rollups_bucket_computer_type
+                ON activity_event_rollups(bucket_date, computer_id, activity_type);
 
-        CREATE TABLE IF NOT EXISTS anomaly_event_rollups (
-            id BIGSERIAL PRIMARY KEY,
-            bucket_date DATE NOT NULL,
-            computer_id INTEGER NOT NULL,
-            anomaly_type VARCHAR(100) NOT NULL,
-            total_count BIGINT NOT NULL DEFAULT 0,
-            high_priority_count BIGINT NOT NULL DEFAULT 0,
-            last_event_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
-        CREATE UNIQUE INDEX IF NOT EXISTS uq_anomaly_event_rollups_bucket_computer_type
-            ON anomaly_event_rollups(bucket_date, computer_id, anomaly_type);
-    ");
-}
+            CREATE TABLE IF NOT EXISTS anomaly_event_rollups (
+                id BIGSERIAL PRIMARY KEY,
+                bucket_date DATE NOT NULL,
+                computer_id INTEGER NOT NULL,
+                anomaly_type VARCHAR(100) NOT NULL,
+                total_count BIGINT NOT NULL DEFAULT 0,
+                high_priority_count BIGINT NOT NULL DEFAULT 0,
+                last_event_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_anomaly_event_rollups_bucket_computer_type
+                ON anomaly_event_rollups(bucket_date, computer_id, anomaly_type);
+        ", cancellationToken);
+    });
 
 // Configure the HTTP request pipeline.
 app.UseCors("AllowAll");
@@ -150,3 +153,35 @@ app.MapGet("/", () => "Communication with gRPC endpoints must be made through a 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "MetricsService", timestamp = DateTime.UtcNow }));
 
 app.Run();
+
+static async Task InitializeDatabaseWithRetryAsync(
+    IServiceProvider rootServices,
+    ILogger logger,
+    Func<IServiceProvider, CancellationToken, Task> migrationStep,
+    CancellationToken cancellationToken = default)
+{
+    const int maxAttempts = 20;
+    var delay = TimeSpan.FromSeconds(2);
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            using var scope = rootServices.CreateScope();
+            await migrationStep(scope.ServiceProvider, cancellationToken);
+            logger.LogInformation("MetricsService database bootstrap completed on attempt {Attempt}.", attempt);
+            return;
+        }
+        catch (Exception ex) when (attempt < maxAttempts)
+        {
+            logger.LogWarning(
+                ex,
+                "MetricsService database bootstrap attempt {Attempt}/{MaxAttempts} failed. Retrying in {DelaySeconds}s.",
+                attempt,
+                maxAttempts,
+                delay.TotalSeconds);
+            await Task.Delay(delay, cancellationToken);
+            delay = TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds * 1.5, 15));
+        }
+    }
+}

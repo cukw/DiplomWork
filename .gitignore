@@ -1,4 +1,4 @@
-# Node
+# Node / frontend dependencies
 node_modules/
 Frontend/node_modules/
 Frontend/.cache/
@@ -6,6 +6,7 @@ Frontend/node_modules/.cache/
 
 # Python
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *.pyo
 *.pyd
@@ -18,12 +19,23 @@ __pycache__/
 *.suo
 *.rsuser
 
+# Generic build/cache artifacts
+**/build/
+**/coverage/
+*.cache
+*.pid
+
 # Frontend build artifacts
 Frontend/build/
 Frontend/dist/
 Frontend/certs/fullchain.pem
 Frontend/certs/privkey.pem
 *.map
+
+# Local endpoint agent local-generated artifacts
+LocalEndpointAgent/src/local_endpoint_agent.egg-info/
+LocalEndpointAgent/src/endpoint_agent/__pycache__/
+LocalEndpointAgent/src/endpoint_agent/protos/__pycache__/
 
 # Logs
 *.log

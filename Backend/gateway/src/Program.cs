@@ -53,6 +53,7 @@ if (string.IsNullOrWhiteSpace(gatewayRuntimeConnection))
 {
     throw new InvalidOperationException("ConnectionStrings:GatewayRuntime is not configured");
 }
+gatewayRuntimeConnection = NormalizeGatewayRuntimeConnectionString(gatewayRuntimeConnection);
 
 builder.Services.AddDbContextFactory<GatewayRuntimeDbContext>(options =>
     options.UseNpgsql(gatewayRuntimeConnection));
@@ -194,18 +195,21 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var runtimeDbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<GatewayRuntimeDbContext>>();
-    await using var runtimeDb = await runtimeDbFactory.CreateDbContextAsync();
-    await runtimeDb.Database.ExecuteSqlRawAsync(@"
-        CREATE TABLE IF NOT EXISTS app_settings_documents (
-            id          INTEGER PRIMARY KEY,
-            payload_json TEXT NOT NULL,
-            updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
-        );
-    ");
-}
+await InitializeDatabaseWithRetryAsync(
+    app.Services,
+    app.Logger,
+    async (services, cancellationToken) =>
+    {
+        var runtimeDbFactory = services.GetRequiredService<IDbContextFactory<GatewayRuntimeDbContext>>();
+        await using var runtimeDb = await runtimeDbFactory.CreateDbContextAsync(cancellationToken);
+        await runtimeDb.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE IF NOT EXISTS app_settings_documents (
+                id           INTEGER PRIMARY KEY,
+                payload_json TEXT NOT NULL,
+                updated_at   TIMESTAMP NOT NULL DEFAULT NOW()
+            );
+        ", cancellationToken);
+    });
 
 app.UseCors("AllowAll");
 
@@ -234,3 +238,61 @@ app.MapGet("/gateway/info", () => Results.Ok(new
 }));
 
 app.Run();
+
+static string NormalizeGatewayRuntimeConnectionString(string connectionString)
+{
+    var runningInContainer = string.Equals(
+        Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"),
+        "true",
+        StringComparison.OrdinalIgnoreCase);
+    var runtimeConnectionFromEnv = Environment.GetEnvironmentVariable("ConnectionStrings__GatewayRuntime");
+
+    if (!runningInContainer || !string.IsNullOrWhiteSpace(runtimeConnectionFromEnv))
+        return connectionString;
+
+    if (connectionString.Contains("Host=localhost", StringComparison.OrdinalIgnoreCase))
+    {
+        Console.WriteLine("GatewayRuntime connection string uses localhost inside container. Falling back to postgres-user host.");
+        return connectionString.Replace("Host=localhost", "Host=postgres-user", StringComparison.OrdinalIgnoreCase);
+    }
+
+    if (connectionString.Contains("Host=127.0.0.1", StringComparison.OrdinalIgnoreCase))
+    {
+        Console.WriteLine("GatewayRuntime connection string uses 127.0.0.1 inside container. Falling back to postgres-user host.");
+        return connectionString.Replace("Host=127.0.0.1", "Host=postgres-user", StringComparison.OrdinalIgnoreCase);
+    }
+
+    return connectionString;
+}
+
+static async Task InitializeDatabaseWithRetryAsync(
+    IServiceProvider rootServices,
+    ILogger logger,
+    Func<IServiceProvider, CancellationToken, Task> migrationStep,
+    CancellationToken cancellationToken = default)
+{
+    const int maxAttempts = 20;
+    var delay = TimeSpan.FromSeconds(2);
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            using var scope = rootServices.CreateScope();
+            await migrationStep(scope.ServiceProvider, cancellationToken);
+            logger.LogInformation("Gateway runtime database bootstrap completed on attempt {Attempt}.", attempt);
+            return;
+        }
+        catch (Exception ex) when (attempt < maxAttempts)
+        {
+            logger.LogWarning(
+                ex,
+                "Gateway runtime database bootstrap attempt {Attempt}/{MaxAttempts} failed. Retrying in {DelaySeconds}s.",
+                attempt,
+                maxAttempts,
+                delay.TotalSeconds);
+            await Task.Delay(delay, cancellationToken);
+            delay = TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds * 1.5, 15));
+        }
+    }
+}

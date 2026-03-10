@@ -68,30 +68,33 @@ builder.Services.AddMassTransit(x =>
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
-    await db.Database.ExecuteSqlRawAsync(@"
-        CREATE TABLE IF NOT EXISTS activity_outbox (
-            id BIGSERIAL PRIMARY KEY,
-            event_type VARCHAR(128) NOT NULL,
-            activity_id BIGINT NULL,
-            payload JSONB NOT NULL,
-            headers JSONB NULL,
-            attempt_count INTEGER NOT NULL DEFAULT 0,
-            available_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            processed_at TIMESTAMPTZ NULL,
-            last_error TEXT NULL,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
+await InitializeDatabaseWithRetryAsync(
+    app.Services,
+    app.Logger,
+    async (services, cancellationToken) =>
+    {
+        var db = services.GetRequiredService<AppDbContext>();
+        await db.Database.MigrateAsync(cancellationToken);
+        await db.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE IF NOT EXISTS activity_outbox (
+                id BIGSERIAL PRIMARY KEY,
+                event_type VARCHAR(128) NOT NULL,
+                activity_id BIGINT NULL,
+                payload JSONB NOT NULL,
+                headers JSONB NULL,
+                attempt_count INTEGER NOT NULL DEFAULT 0,
+                available_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                processed_at TIMESTAMPTZ NULL,
+                last_error TEXT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
 
-        CREATE INDEX IF NOT EXISTS idx_activity_outbox_pending
-            ON activity_outbox(processed_at, available_at);
-        CREATE INDEX IF NOT EXISTS idx_activity_outbox_activity_id
-            ON activity_outbox(activity_id);
-    ");
-}
+            CREATE INDEX IF NOT EXISTS idx_activity_outbox_pending
+                ON activity_outbox(processed_at, available_at);
+            CREATE INDEX IF NOT EXISTS idx_activity_outbox_activity_id
+                ON activity_outbox(activity_id);
+        ", cancellationToken);
+    });
 
 if (app.Environment.IsDevelopment())
     app.MapGrpcReflectionService();
@@ -101,3 +104,35 @@ app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "ActivityService", timestamp = DateTime.UtcNow }));
 
 app.Run();
+
+static async Task InitializeDatabaseWithRetryAsync(
+    IServiceProvider rootServices,
+    ILogger logger,
+    Func<IServiceProvider, CancellationToken, Task> migrationStep,
+    CancellationToken cancellationToken = default)
+{
+    const int maxAttempts = 20;
+    var delay = TimeSpan.FromSeconds(2);
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            using var scope = rootServices.CreateScope();
+            await migrationStep(scope.ServiceProvider, cancellationToken);
+            logger.LogInformation("ActivityService database bootstrap completed on attempt {Attempt}.", attempt);
+            return;
+        }
+        catch (Exception ex) when (attempt < maxAttempts)
+        {
+            logger.LogWarning(
+                ex,
+                "ActivityService database bootstrap attempt {Attempt}/{MaxAttempts} failed. Retrying in {DelaySeconds}s.",
+                attempt,
+                maxAttempts,
+                delay.TotalSeconds);
+            await Task.Delay(delay, cancellationToken);
+            delay = TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds * 1.5, 15));
+        }
+    }
+}

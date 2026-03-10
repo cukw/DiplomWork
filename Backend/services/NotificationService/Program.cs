@@ -96,26 +96,29 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
-    dbContext.Database.Migrate();
-    dbContext.Database.ExecuteSqlRaw(@"
-        CREATE TABLE IF NOT EXISTS processed_event_inbox (
-            id BIGSERIAL PRIMARY KEY,
-            consumer VARCHAR(128) NOT NULL,
-            event_key VARCHAR(256) NOT NULL,
-            message_id VARCHAR(128),
-            processed_at TIMESTAMP NOT NULL DEFAULT NOW()
-        );
+await InitializeDatabaseWithRetryAsync(
+    app.Services,
+    app.Logger,
+    async (services, cancellationToken) =>
+    {
+        var dbContext = services.GetRequiredService<NotificationDbContext>();
+        await dbContext.Database.MigrateAsync(cancellationToken);
+        await dbContext.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE IF NOT EXISTS processed_event_inbox (
+                id BIGSERIAL PRIMARY KEY,
+                consumer VARCHAR(128) NOT NULL,
+                event_key VARCHAR(256) NOT NULL,
+                message_id VARCHAR(128),
+                processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
 
-        CREATE UNIQUE INDEX IF NOT EXISTS uq_processed_event_inbox_consumer_event_key
-            ON processed_event_inbox(consumer, event_key);
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_processed_event_inbox_consumer_event_key
+                ON processed_event_inbox(consumer, event_key);
 
-        CREATE INDEX IF NOT EXISTS idx_processed_event_inbox_processed_at
-            ON processed_event_inbox(processed_at);
-    ");
-}
+            CREATE INDEX IF NOT EXISTS idx_processed_event_inbox_processed_at
+                ON processed_event_inbox(processed_at);
+        ", cancellationToken);
+    });
 
 app.UseCors("AllowAll");
 
@@ -126,3 +129,35 @@ app.MapGet("/", () => "gRPC NotificationService");
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "NotificationService", timestamp = DateTime.UtcNow }));
 
 app.Run();
+
+static async Task InitializeDatabaseWithRetryAsync(
+    IServiceProvider rootServices,
+    ILogger logger,
+    Func<IServiceProvider, CancellationToken, Task> migrationStep,
+    CancellationToken cancellationToken = default)
+{
+    const int maxAttempts = 20;
+    var delay = TimeSpan.FromSeconds(2);
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            using var scope = rootServices.CreateScope();
+            await migrationStep(scope.ServiceProvider, cancellationToken);
+            logger.LogInformation("NotificationService database bootstrap completed on attempt {Attempt}.", attempt);
+            return;
+        }
+        catch (Exception ex) when (attempt < maxAttempts)
+        {
+            logger.LogWarning(
+                ex,
+                "NotificationService database bootstrap attempt {Attempt}/{MaxAttempts} failed. Retrying in {DelaySeconds}s.",
+                attempt,
+                maxAttempts,
+                delay.TotalSeconds);
+            await Task.Delay(delay, cancellationToken);
+            delay = TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds * 1.5, 15));
+        }
+    }
+}
