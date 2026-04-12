@@ -386,19 +386,19 @@ services:
     restart: unless-stopped
     depends_on:
       activityservice:
-        condition: service_healthy
+        condition: service_started
       authservice:
-        condition: service_healthy
+        condition: service_started
       userservice:
-        condition: service_healthy
+        condition: service_started
       metricservice:
-        condition: service_healthy
+        condition: service_started
       notificationservice:
-        condition: service_healthy
+        condition: service_started
       reportservice:
-        condition: service_healthy
+        condition: service_started
       agentmanagementservice:
-        condition: service_healthy
+        condition: service_started
     environment:
       ASPNETCORE_URLS: "http://+:8080"
       Jwt__Key: "${JWT_KEYS_V1:?JWT_KEYS_V1 is required}"
