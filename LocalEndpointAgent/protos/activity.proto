@@ -71,6 +71,10 @@ message GetActivityStatisticsReply {
   int32 anomaly_count = 3;
   map<string, int32> activity_type_counts = 4;
   float average_risk_score = 5;
+  int32 total_users = 6;
+  int32 active_users = 7;
+  int32 total_computers = 8;
+  int32 active_computers = 9;
 }
 
 message ActivityReply {
@@ -85,6 +89,15 @@ message ActivityReply {
   bool is_blocked = 9;
   float risk_score = 10;
   bool Synced = 11;
+  optional int64 user_id = 12;
+  optional int64 agent_id = 13;
+  string agent_version = 14;
+  string device_name = 15;
+  string collector = 16;
+  string event_id = 17;
+  int64 sequence = 18;
+  string batch_id = 19;
+  string source_platform = 20;
 }
 
 message AnomalyReply {

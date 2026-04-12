@@ -80,7 +80,16 @@ public class DashboardController : ControllerBase
         processName  = a.ProcessName,
         isBlocked    = a.IsBlocked,
         riskScore    = a.RiskScore,
-        synced       = a.Synced
+        synced       = a.Synced,
+        userId       = a.HasUserId ? (long?)a.UserId : null,
+        agentId      = a.HasAgentId ? (long?)a.AgentId : null,
+        agentVersion = a.AgentVersion,
+        deviceName   = a.DeviceName,
+        collector    = a.Collector,
+        eventId      = a.EventId,
+        sequence     = a.Sequence,
+        batchId      = a.BatchId,
+        sourcePlatform = a.SourcePlatform
     };
 
     private static object MapAnomaly(AnomalyReply a) => new

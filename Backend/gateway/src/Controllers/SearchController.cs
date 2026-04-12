@@ -85,7 +85,26 @@ public class SearchController : ControllerBase
     [HttpGet("filters")]
     public IActionResult GetFilters() => Ok(new
     {
-        activityTypes = new[] { "process_open", "site_visit", "file_access", "network", "usb" },
+        activityTypes = new[]
+        {
+            "PROCESS_SNAPSHOT",
+            "BROWSER_VISIT",
+            "ACTIVE_WINDOW_CHANGE",
+            "USER_IDLE",
+            "USER_ACTIVE",
+            "NETWORK_CONNECTION",
+            "FILE_CREATED",
+            "FILE_MODIFIED",
+            "FILE_DELETED",
+            "USB_DEVICE_ATTACHED",
+            "USB_DEVICE_REMOVED",
+            "INSTALLED_APPS_INVENTORY",
+            "PROCESS_INVENTORY",
+            "SESSION_LOGIN",
+            "SESSION_LOGOUT",
+            "SESSION_LOCKED",
+            "SESSION_UNLOCKED"
+        },
         anomalyTypes  = new[] { "HIGH_RISK", "SUSPICIOUS_URL", "UNUSUAL_TIME", "BLOCKED", "REPETITIVE" },
         riskLevels    = new[] { "low", "medium", "high", "critical" }
     });
@@ -101,7 +120,16 @@ public class SearchController : ControllerBase
         url          = a.Url,
         processName  = a.ProcessName,
         isBlocked    = a.IsBlocked,
-        riskScore    = a.RiskScore
+        riskScore    = a.RiskScore,
+        userId       = a.HasUserId ? (long?)a.UserId : null,
+        agentId      = a.HasAgentId ? (long?)a.AgentId : null,
+        agentVersion = a.AgentVersion,
+        deviceName   = a.DeviceName,
+        collector    = a.Collector,
+        eventId      = a.EventId,
+        sequence     = a.Sequence,
+        batchId      = a.BatchId,
+        sourcePlatform = a.SourcePlatform
     };
 
     private static object MapAnomaly(AnomalyReply a) => new

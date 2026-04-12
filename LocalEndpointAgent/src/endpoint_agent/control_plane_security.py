@@ -60,6 +60,10 @@ def canonical_policy_payload(policy) -> bytes:
     _append_str(lines, "blocked_reason", policy.blocked_reason or "")
     _append_str(lines, "updated_at", getattr(policy, "updated_at", "") or "")
     _append_list(lines, "browsers", list(policy.browsers))
+    _append_bool(lines, "enable_whitelist", bool(getattr(policy, "enable_whitelist", False)))
+    _append_bool(lines, "enable_blacklist", bool(getattr(policy, "enable_blacklist", False)))
+    _append_list(lines, "whitelist_apps", list(getattr(policy, "whitelist_apps", []) or []))
+    _append_list(lines, "blacklist_apps", list(getattr(policy, "blacklist_apps", []) or []))
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
@@ -101,4 +105,3 @@ def verify_command_signature(command, secret: str) -> bool:
         return False
     expected = sign_payload(canonical_command_payload(command), secret)
     return hmac.compare_digest(expected, command.signature.lower())
-

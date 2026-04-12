@@ -89,6 +89,15 @@ message ActivityReply {
   bool is_blocked = 9;
   float risk_score = 10;
   bool Synced = 11;
+  optional int64 user_id = 12;
+  optional int64 agent_id = 13;
+  string agent_version = 14;
+  string device_name = 15;
+  string collector = 16;
+  string event_id = 17;
+  int64 sequence = 18;
+  string batch_id = 19;
+  string source_platform = 20;
 }
 
 message AnomalyReply {

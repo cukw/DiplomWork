@@ -1,7 +1,7 @@
 # Control Plane Spec (for admin panel -> local agent)
 
-Status: base control-plane RPC/messages (`policy + commands`) уже добавлены в код `AgentManagementService` и `gateway`.
-Осталось: UI в админ-панели и runtime e2e проверка с локальным агентом.
+Status: control-plane RPC/messages (`policy + commands`) добавлены в `AgentManagementService`, `gateway` и локальный агент.
+Осталось: runtime e2e проверка с настоящим endpoint-хостом и артефактами self-update.
 
 Чтобы локальный агент полностью управлялся из вашей админ-панели, `AgentManagementService` нужно расширить как минимум следующими сущностями и RPC.
 
@@ -14,15 +14,16 @@ Status: base control-plane RPC/messages (`policy + commands`) уже добав�
   - `auto_lock_enabled`
   - `admin_blocked` + `blocked_reason`
   - `policy_version`
-- `AgentCommand`
+  - `AgentCommand`
   - `BLOCK_WORKSTATION`
   - `UNBLOCK_WORKSTATION`
   - `FORCE_SYNC`
+  - `SELF_UPDATE`
   - `RESTART_AGENT`
   - `UPDATE_POLICY`
-  - статус выполнения (`pending/running/success/failed/ignored`)
+  - статус выполнения (`pending/running/success/failed/ignored/timeout/deadletter`)
 
-## Минимальные gRPC методы (добавить в AgentManagementService)
+## Минимальные gRPC методы
 - `GetAgentPolicy(GetAgentPolicyRequest) returns (GetAgentPolicyResponse)`
 - `UpsertAgentPolicy(UpsertAgentPolicyRequest) returns (UpsertAgentPolicyResponse)`
 - `GetPendingAgentCommands(GetPendingAgentCommandsRequest) returns (GetPendingAgentCommandsResponse)`
@@ -32,8 +33,10 @@ Status: base control-plane RPC/messages (`policy + commands`) уже добав�
 ## Что уже готово в агенте
 - direct gRPC к `ActivityService` и `AgentManagementService`
 - локальный `policy_cache.json`
-- periodic `fetch_policy()` и `fetch_commands()` (сейчас заглушки)
-- обработчик команд `BLOCK_WORKSTATION` / `UNBLOCK_WORKSTATION`
+- periodic `fetch_policy()` и `fetch_commands()`
+- heartbeat health snapshot: очередь, последние сбор/отправка/ошибка, capabilities и статусы collector-ов
+- обработчики команд `BLOCK_WORKSTATION`, `UNBLOCK_WORKSTATION`, `FORCE_SYNC`, `UPDATE_POLICY`/`REFRESH_POLICY`, `RESTART_AGENT`, `SELF_UPDATE`
+- применение policy allow/deny списков в локальном risk engine
 
 ## Что нужно сделать в админ-панели
 В `Settings`/`Agents` добавить UI:

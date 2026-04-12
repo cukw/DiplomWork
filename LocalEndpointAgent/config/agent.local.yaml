@@ -29,6 +29,23 @@ collectors:
   idle_time:
     enabled: true
     idle_threshold_sec: 120
+  network:
+    enabled: true
+    snapshot_limit: 50
+  file_activity:
+    enabled: true
+    paths: []
+    max_files_per_scan: 200
+  usb_devices:
+    enabled: true
+    poll_interval_sec: 30
+  inventory:
+    enabled: true
+    interval_sec: 3600
+    max_apps: 200
+    max_processes: 200
+  session:
+    enabled: true
 
 risk:
   local_high_risk_threshold: 85.0

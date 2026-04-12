@@ -58,7 +58,11 @@ def _import_generated():
         except ModuleNotFoundError:
             activity_pb2 = importlib.import_module("endpoint_agent.generated.Activity_pb2")
 
-        activity_pb2_grpc = importlib.import_module("endpoint_agent.generated.activity_pb2_grpc")
+        try:
+            activity_pb2_grpc = importlib.import_module("endpoint_agent.generated.activity_pb2_grpc")
+        except ModuleNotFoundError:
+            activity_pb2_grpc = importlib.import_module("endpoint_agent.generated.Activity_pb2_grpc")
+
         agent_pb2 = importlib.import_module("endpoint_agent.generated.agent_pb2")
         agent_pb2_grpc = importlib.import_module("endpoint_agent.generated.agent_pb2_grpc")
         return activity_pb2, activity_pb2_grpc, agent_pb2, agent_pb2_grpc
@@ -113,6 +117,20 @@ class ActivityServiceDirectClient:
             risk_score=float(payload["risk_score"]),
             Synced=True,
         )
+        for field in (
+            "user_id",
+            "agent_id",
+            "agent_version",
+            "device_name",
+            "collector",
+            "event_id",
+            "sequence",
+            "batch_id",
+            "source_platform",
+        ):
+            value = payload.get(field)
+            if value not in (None, "") and hasattr(activity_msg, field):
+                setattr(activity_msg, field, value)
         req = self._pb.CreateActivityRequest(activity=activity_msg)
         try:
             await self._stub.CreateActivity(req, timeout=5, metadata=self._auth_metadata())
@@ -214,19 +232,35 @@ class AgentManagementDirectClient:
             logger.warning("Failed to register agent: %s", exc)
         return None
 
-    async def heartbeat(self, status: str = "online") -> bool:
+    async def heartbeat(self, status: str = "online", health: dict[str, Any] | None = None) -> bool:
         await self.connect()
         assert self._pb is not None and self._stub is not None
         agent_id = await self.ensure_registered()
         if not agent_id:
             return False
+        req = self._pb.UpdateAgentStatusRequest(
+            agent_id=agent_id,
+            status=status,
+            config_version=self.config_version,
+        )
+        if health:
+            values = {
+                "queue_size": int(health.get("queue_size") or 0),
+                "last_collected_at": str(health.get("last_collected_at") or ""),
+                "last_sent_at": str(health.get("last_sent_at") or ""),
+                "last_error": str(health.get("last_error") or ""),
+                "policy_version": str(health.get("policy_version") or ""),
+                "capabilities_json": json.dumps(health.get("capabilities") or {}, ensure_ascii=False),
+                "collector_statuses_json": json.dumps(health.get("collector_statuses") or {}, ensure_ascii=False),
+                "health_json": json.dumps(health, ensure_ascii=False),
+                "source_platform": str(health.get("source_platform") or ""),
+            }
+            for field, value in values.items():
+                if hasattr(req, field):
+                    setattr(req, field, value)
         try:
             resp = await self._stub.UpdateAgentStatus(
-                self._pb.UpdateAgentStatusRequest(
-                    agent_id=agent_id,
-                    status=status,
-                    config_version=self.config_version,
-                ),
+                req,
                 timeout=5,
                 metadata=self._auth_metadata(),
             )
@@ -272,6 +306,10 @@ class AgentManagementDirectClient:
                 "admin_blocked": bool(p.admin_blocked),
                 "blocked_reason": (p.blocked_reason or None),
                 "browsers": list(p.browsers or []),
+                "enable_whitelist": bool(getattr(p, "enable_whitelist", False)),
+                "enable_blacklist": bool(getattr(p, "enable_blacklist", False)),
+                "whitelist_apps": list(getattr(p, "whitelist_apps", []) or []),
+                "blacklist_apps": list(getattr(p, "blacklist_apps", []) or []),
                 "_signature": str(getattr(p, "signature", "") or ""),
                 "_signature_key_id": str(getattr(p, "signature_key_id", "") or ""),
                 "_signature_alg": str(getattr(p, "signature_alg", "") or ""),
@@ -466,6 +504,16 @@ def _canonical_policy_payload(p: Any) -> bytes:
     _append_int(parts, "browsers_count", len(browsers))
     for idx, browser in enumerate(browsers):
         _append_str(parts, f"browsers_{idx}", str(browser or ""))
+    _append_bool(parts, "enable_whitelist", getattr(p, "enable_whitelist", False))
+    _append_bool(parts, "enable_blacklist", getattr(p, "enable_blacklist", False))
+    whitelist_apps = list(getattr(p, "whitelist_apps", []) or [])
+    _append_int(parts, "whitelist_apps_count", len(whitelist_apps))
+    for idx, app in enumerate(whitelist_apps):
+        _append_str(parts, f"whitelist_apps_{idx}", str(app or ""))
+    blacklist_apps = list(getattr(p, "blacklist_apps", []) or [])
+    _append_int(parts, "blacklist_apps_count", len(blacklist_apps))
+    for idx, app in enumerate(blacklist_apps):
+        _append_str(parts, f"blacklist_apps_{idx}", str(app or ""))
     return ("\n".join(parts) + "\n").encode("utf-8")
 
 

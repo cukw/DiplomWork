@@ -86,7 +86,8 @@ public sealed class ActivityRetentionWorker : BackgroundService
                      ORDER BY id
                      LIMIT @batch_size
                  )
-                RETURNING id, computer_id, "timestamp", activity_type, details, duration_ms, url, process_name, is_blocked, risk_score, synced
+                RETURNING id, computer_id, "timestamp", activity_type, details, duration_ms, url, process_name, is_blocked, risk_score, synced,
+                          user_id, agent_id, agent_version, device_name, collector, event_id, sequence, batch_id, source_platform
             )
             INSERT INTO activities_archive (
                 original_activity_id,
@@ -100,6 +101,15 @@ public sealed class ActivityRetentionWorker : BackgroundService
                 is_blocked,
                 risk_score,
                 synced,
+                user_id,
+                agent_id,
+                agent_version,
+                device_name,
+                collector,
+                event_id,
+                sequence,
+                batch_id,
+                source_platform,
                 archived_at
             )
             SELECT
@@ -114,6 +124,15 @@ public sealed class ActivityRetentionWorker : BackgroundService
                 is_blocked,
                 risk_score,
                 synced,
+                user_id,
+                agent_id,
+                agent_version,
+                device_name,
+                collector,
+                event_id,
+                sequence,
+                batch_id,
+                source_platform,
                 NOW()
             FROM moved
             ON CONFLICT (original_activity_id) DO NOTHING;

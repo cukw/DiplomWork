@@ -27,4 +27,25 @@ public class Agent
     public string? DesiredVersion { get; set; }
 
     public DateTime? DesiredVersionSetAt { get; set; }
+
+    public string HealthJson { get; set; } = "{}";
+
+    public int QueueSize { get; set; }
+
+    public DateTime? LastCollectedAt { get; set; }
+
+    public DateTime? LastSentAt { get; set; }
+
+    [MaxLength(500)]
+    public string LastError { get; set; } = string.Empty;
+
+    [MaxLength(50)]
+    public string? PolicyVersion { get; set; }
+
+    public string CapabilitiesJson { get; set; } = "{}";
+
+    public string CollectorStatusesJson { get; set; } = "{}";
+
+    [MaxLength(50)]
+    public string? SourcePlatform { get; set; }
 }

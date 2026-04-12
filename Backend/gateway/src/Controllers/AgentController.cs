@@ -896,7 +896,16 @@ public class AgentController : ControllerBase
         configVersion = a.ConfigVersion,
         offlineSince  = a.OfflineSince,
         desiredVersion = a.DesiredVersion,
-        desiredVersionSetAt = a.DesiredVersionSetAt
+        desiredVersionSetAt = a.DesiredVersionSetAt,
+        healthJson = a.HealthJson,
+        queueSize = a.QueueSize,
+        lastCollectedAt = a.LastCollectedAt,
+        lastSentAt = a.LastSentAt,
+        lastError = a.LastError,
+        policyVersion = a.PolicyVersion,
+        capabilitiesJson = a.CapabilitiesJson,
+        collectorStatusesJson = a.CollectorStatusesJson,
+        sourcePlatform = a.SourcePlatform
     };
 
     private static object? MapBatch(SyncBatch? b) => b is null ? null : new

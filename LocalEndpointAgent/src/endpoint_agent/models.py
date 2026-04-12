@@ -22,6 +22,15 @@ class ActivityEvent:
     is_blocked: bool = False
     risk_score: float = 0.0
     synced: bool = False
+    user_id: int | None = None
+    agent_id: int | None = None
+    agent_version: str = ""
+    device_name: str = ""
+    collector: str = ""
+    event_id: str = ""
+    sequence: int = 0
+    batch_id: str = ""
+    source_platform: str = ""
 
     def to_activity_reply_payload(self) -> dict[str, Any]:
         return {
@@ -36,6 +45,15 @@ class ActivityEvent:
             "is_blocked": self.is_blocked,
             "risk_score": float(self.risk_score),
             "Synced": bool(self.synced),
+            "user_id": self.user_id,
+            "agent_id": self.agent_id,
+            "agent_version": self.agent_version,
+            "device_name": self.device_name,
+            "collector": self.collector,
+            "event_id": self.event_id,
+            "sequence": int(self.sequence or 0),
+            "batch_id": self.batch_id,
+            "source_platform": self.source_platform,
         }
 
     def to_json(self) -> str:
@@ -50,6 +68,15 @@ class ActivityEvent:
             "is_blocked": self.is_blocked,
             "risk_score": self.risk_score,
             "synced": self.synced,
+            "user_id": self.user_id,
+            "agent_id": self.agent_id,
+            "agent_version": self.agent_version,
+            "device_name": self.device_name,
+            "collector": self.collector,
+            "event_id": self.event_id,
+            "sequence": self.sequence,
+            "batch_id": self.batch_id,
+            "source_platform": self.source_platform,
         }, ensure_ascii=False)
 
     @classmethod

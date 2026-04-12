@@ -18,16 +18,32 @@ namespace ActivityService.Services.Data
             {
                 entity.ToTable("activities");
                 entity.Property(e => e.Details).HasColumnType("jsonb");
+                entity.Property(e => e.AgentVersion).HasMaxLength(50);
+                entity.Property(e => e.DeviceName).HasMaxLength(255);
+                entity.Property(e => e.Collector).HasMaxLength(100);
+                entity.Property(e => e.EventId).HasMaxLength(100);
+                entity.Property(e => e.BatchId).HasMaxLength(100);
+                entity.Property(e => e.SourcePlatform).HasMaxLength(50);
                 entity.HasIndex(e => e.ComputerId).HasDatabaseName("idx_activities_computer_id");
                 entity.HasIndex(e => e.Timestamp).HasDatabaseName("idx_activities_timestamp");
                 entity.HasIndex(e => e.ActivityType).HasDatabaseName("idx_activities_activity_type");
                 entity.HasIndex(e => e.IsBlocked).HasDatabaseName("idx_activities_is_blocked");
+                entity.HasIndex(e => e.UserId).HasDatabaseName("idx_activities_user_id");
+                entity.HasIndex(e => e.AgentId).HasDatabaseName("idx_activities_agent_id");
+                entity.HasIndex(e => e.EventId).HasDatabaseName("idx_activities_event_id");
+                entity.HasIndex(e => e.BatchId).HasDatabaseName("idx_activities_batch_id");
             });
 
             modelBuilder.Entity<ActivityArchive>(entity =>
             {
                 entity.ToTable("activities_archive");
                 entity.Property(e => e.Details).HasColumnType("jsonb");
+                entity.Property(e => e.AgentVersion).HasMaxLength(50);
+                entity.Property(e => e.DeviceName).HasMaxLength(255);
+                entity.Property(e => e.Collector).HasMaxLength(100);
+                entity.Property(e => e.EventId).HasMaxLength(100);
+                entity.Property(e => e.BatchId).HasMaxLength(100);
+                entity.Property(e => e.SourcePlatform).HasMaxLength(50);
                 entity.Property(e => e.ArchivedAt).HasDefaultValueSql("NOW()");
                 entity.HasIndex(e => e.OriginalActivityId).IsUnique().HasDatabaseName("idx_activities_archive_original_id");
                 entity.HasIndex(e => e.ComputerId).HasDatabaseName("idx_activities_archive_computer_id");

@@ -7,8 +7,14 @@
 - читает историю посещённых сайтов из локальных браузеров (`BROWSER_VISIT`)
 - отслеживает idle time (`USER_IDLE`, `USER_ACTIVE`)
 - отслеживает активное окно (`ACTIVE_WINDOW_CHANGE`)
+- собирает сетевые соединения (`NETWORK_CONNECTION`)
+- отслеживает изменения файлов в Desktop/Documents/Downloads или заданных путях (`FILE_CREATED`, `FILE_MODIFIED`, `FILE_DELETED`)
+- отслеживает USB-устройства (`USB_INVENTORY`, `USB_DEVICE_ATTACHED`, `USB_DEVICE_REMOVED`)
+- отправляет inventory установленных приложений и процессов (`INSTALLED_APPS_INVENTORY`, `PROCESS_INVENTORY`)
+- фиксирует best-effort события пользовательской сессии (`SESSION_LOGIN`, `SESSION_LOGOUT`, `SESSION_LOCKED`, `SESSION_UNLOCKED`)
 - работает напрямую по gRPC с `ActivityService` и `AgentManagementService` (без gateway)
 - хранит очередь событий локально (SQLite) и продолжает работу при потере связи
+- хранит state collectors в `agent_state.json`, включая browser last_seen, file snapshot, USB baseline и sequence
 - применяет последние полученные политики (локальный cache)
 - умеет блокировать рабочую станцию (soft-lock/lock workstation) при высоком риске
 
@@ -33,6 +39,38 @@
    - `maturin develop --manifest-path rust/sysprobe/Cargo.toml`
 4. Запустить агент:
    - `python -m endpoint_agent.main --config config/agent.local.yaml`
+
+## Проверка корректного взаимодействия с backend
+Чтобы агент стабильно работал с backend в production, обязательно:
+
+1. В конфиге агента указывать адрес сервера (не `localhost`, если агент на другом ПК):
+   - `services.activity_service_url: "2.26.89.86:5001"`
+   - `services.agent_management_url: "2.26.89.86:5015"`
+2. Указывать тот же токен, что в backend (`AGENT_AUTH_TOKEN`):
+   - `security.agent_transport_auth.token: "<значение AGENT_AUTH_TOKEN>"`
+   - `security.agent_transport_auth.header_name: "x-agent-token"`
+3. Поднять backend сервисы в healthy-состояние:
+   - `activityservice`
+   - `agentmanagementservice`
+
+Быстрая проверка на сервере:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml ps
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml logs --tail=200 activityservice agentmanagementservice
+```
+
+Проверка, что агент реально пишет данные:
+
+```bash
+# События активности (ActivityService)
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml exec -T postgres-activity \
+  psql -U postgres -d activities -c "select count(*) as total, max(timestamp) as last_event from activities;"
+
+# Heartbeat/статус агента (AgentManagementService)
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml exec -T postgres-agent \
+  psql -U postgres -d agents -c "select id, computer_id, status, last_heartbeat from agents order by last_heartbeat desc limit 20;"
+```
 
 ## Сборка пакетов
 - macOS (бинарник + dmg):
@@ -101,6 +139,35 @@ python3 LocalEndpointAgent/scripts/install_agent.py \
   - `lock workstation`: `loginctl`, `gnome-screensaver-command`, `dm-tool`, `qdbus*`
 
 Если конкретная capability недоступна, агент продолжит работу (процессы, браузеры, очередь, gRPC, policy/commands), а неподдерживаемый коллектор будет автоматически отключён без падения процесса.
+
+## Permissions и платформенные зависимости
+- macOS:
+  - `ActiveWindowCollector` требует Accessibility/Automation permission для Terminal/агентского бинарника (`System Settings -> Privacy & Security -> Accessibility`).
+  - `BrowserHistoryCollector` и `FileActivityWatcherCollector` для профилей браузеров, Documents/Desktop/Downloads могут требовать Full Disk Access.
+  - USB inventory использует `system_profiler SPUSBDataType -json`.
+- Linux:
+  - active window/idle обычно требуют X11-утилиты: `xdotool`, `xprop`, `xprintidle` или `xssstate`.
+  - в Wayland доступ к active window часто ограничен compositor-ом; агент продолжит работу без этого collector.
+  - USB inventory использует `lsusb`, fallback — `/sys/bus/usb/devices`.
+  - installed apps inventory использует `dpkg-query` или `rpm`.
+- Windows:
+  - idle/active window/lock работают через WinAPI fallback или Rust `sysprobe`.
+  - USB inventory использует PowerShell `Get-PnpDevice`.
+  - для расширенного мониторинга через WMI/Event Log/ETW запускать агент нужно с правами на чтение Windows Event Log/WMI namespaces; Security Event Log может требовать elevated/service account.
+  - рекомендуемые будущие источники: logon/logoff из Security Event Log, device events из WMI, process/network events из ETW.
+
+## Heartbeat health snapshot
+Каждый heartbeat теперь может передавать:
+- `queue_size`
+- `last_collected_at`
+- `last_sent_at`
+- `last_error`
+- `policy_version`
+- `capabilities`
+- `collector_statuses`
+- `source_platform`
+
+Эти данные сохраняются в `AgentManagementService` и доступны через gateway agent endpoints.
 
 ## Нужен ли AgentManagementService?
 Да, нужен.

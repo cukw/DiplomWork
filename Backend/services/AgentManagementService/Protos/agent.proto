@@ -47,6 +47,15 @@ message UpdateAgentStatusRequest {
   int64 agent_id = 1;
   string status = 2;
   string config_version = 3;
+  int32 queue_size = 4;
+  string last_collected_at = 5;
+  string last_sent_at = 6;
+  string last_error = 7;
+  string policy_version = 8;
+  string capabilities_json = 9;
+  string collector_statuses_json = 10;
+  string health_json = 11;
+  string source_platform = 12;
 }
 
 message UpdateAgentStatusResponse {
@@ -303,6 +312,15 @@ message Agent {
   string offline_since = 7;
   string desired_version = 8;
   string desired_version_set_at = 9;
+  string health_json = 10;
+  int32 queue_size = 11;
+  string last_collected_at = 12;
+  string last_sent_at = 13;
+  string last_error = 14;
+  string policy_version = 15;
+  string capabilities_json = 16;
+  string collector_statuses_json = 17;
+  string source_platform = 18;
 }
 
 message SyncBatch {

@@ -103,7 +103,16 @@ namespace ActivityService.Services
                 ProcessName  = request.Activity.ProcessName,
                 IsBlocked    = request.Activity.IsBlocked,
                 RiskScore    = (decimal?)request.Activity.RiskScore,
-                Synced       = request.Activity.Synced
+                Synced       = request.Activity.Synced,
+                UserId       = request.Activity.HasUserId ? (long?)request.Activity.UserId : null,
+                AgentId      = request.Activity.HasAgentId ? (long?)request.Activity.AgentId : null,
+                AgentVersion = EmptyToNull(request.Activity.AgentVersion),
+                DeviceName   = EmptyToNull(request.Activity.DeviceName),
+                Collector    = EmptyToNull(request.Activity.Collector),
+                EventId      = EmptyToNull(request.Activity.EventId),
+                Sequence     = request.Activity.Sequence > 0 ? request.Activity.Sequence : null,
+                BatchId      = EmptyToNull(request.Activity.BatchId),
+                SourcePlatform = EmptyToNull(request.Activity.SourcePlatform)
             };
 
             await using var tx = await _db.Database.BeginTransactionAsync(context.CancellationToken);
@@ -206,6 +215,15 @@ namespace ActivityService.Services
             activity.IsBlocked   = request.Activity.IsBlocked;
             activity.RiskScore   = (decimal?)request.Activity.RiskScore;
             activity.Synced      = request.Activity.Synced;
+            activity.UserId      = request.Activity.HasUserId ? (long?)request.Activity.UserId : null;
+            activity.AgentId     = request.Activity.HasAgentId ? (long?)request.Activity.AgentId : null;
+            activity.AgentVersion = EmptyToNull(request.Activity.AgentVersion);
+            activity.DeviceName  = EmptyToNull(request.Activity.DeviceName);
+            activity.Collector   = EmptyToNull(request.Activity.Collector);
+            activity.EventId     = EmptyToNull(request.Activity.EventId);
+            activity.Sequence    = request.Activity.Sequence > 0 ? request.Activity.Sequence : null;
+            activity.BatchId     = EmptyToNull(request.Activity.BatchId);
+            activity.SourcePlatform = EmptyToNull(request.Activity.SourcePlatform);
 
             if (activity.RiskScore < 0 || activity.RiskScore > 100)
                 throw new RpcException(new Status(StatusCode.InvalidArgument, "RiskScore must be between 0 and 100"));
@@ -406,20 +424,37 @@ namespace ActivityService.Services
                 .ToUpperInvariant();
         }
 
-        private static ActivityReply MapToReply(Activity activity) => new()
+        private static ActivityReply MapToReply(Activity activity)
         {
-            Id           = activity.Id,
-            ComputerId   = activity.ComputerId,
-            Timestamp    = activity.Timestamp.ToString("O"),
-            ActivityType = NormalizeActivityType(activity.ActivityType),
-            Details      = activity.Details ?? "",
-            DurationMs   = activity.DurationMs ?? 0,
-            Url          = activity.Url ?? "",
-            ProcessName  = activity.ProcessName ?? "",
-            IsBlocked    = activity.IsBlocked,
-            RiskScore    = (float)(activity.RiskScore ?? 0),
-            Synced       = activity.Synced
-        };
+            var reply = new ActivityReply
+            {
+                Id           = activity.Id,
+                ComputerId   = activity.ComputerId,
+                Timestamp    = activity.Timestamp.ToString("O"),
+                ActivityType = NormalizeActivityType(activity.ActivityType),
+                Details      = activity.Details ?? "",
+                DurationMs   = activity.DurationMs ?? 0,
+                Url          = activity.Url ?? "",
+                ProcessName  = activity.ProcessName ?? "",
+                IsBlocked    = activity.IsBlocked,
+                RiskScore    = (float)(activity.RiskScore ?? 0),
+                Synced       = activity.Synced,
+                AgentVersion = activity.AgentVersion ?? "",
+                DeviceName   = activity.DeviceName ?? "",
+                Collector    = activity.Collector ?? "",
+                EventId      = activity.EventId ?? "",
+                Sequence     = activity.Sequence ?? 0,
+                BatchId      = activity.BatchId ?? "",
+                SourcePlatform = activity.SourcePlatform ?? ""
+            };
+
+            if (activity.UserId.HasValue)
+                reply.UserId = activity.UserId.Value;
+            if (activity.AgentId.HasValue)
+                reply.AgentId = activity.AgentId.Value;
+
+            return reply;
+        }
 
         private static AnomalyReply MapToReply(Anomaly anomaly) => new()
         {
@@ -429,5 +464,10 @@ namespace ActivityService.Services
             Description = anomaly.Description ?? "",
             DetectedAt  = anomaly.DetectedAt.ToString("O")
         };
+
+        private static string? EmptyToNull(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
     }
 }

@@ -7,7 +7,16 @@ CREATE TABLE agents (
     config_version  VARCHAR(20),
     offline_since   TIMESTAMP NULL,
     desired_version VARCHAR(20),
-    desired_version_set_at TIMESTAMP
+    desired_version_set_at TIMESTAMP,
+    health_json TEXT NOT NULL DEFAULT '{}',
+    queue_size INTEGER NOT NULL DEFAULT 0,
+    last_collected_at TIMESTAMP NULL,
+    last_sent_at TIMESTAMP NULL,
+    last_error VARCHAR(500) NOT NULL DEFAULT '',
+    policy_version VARCHAR(50) NULL,
+    capabilities_json TEXT NOT NULL DEFAULT '{}',
+    collector_statuses_json TEXT NOT NULL DEFAULT '{}',
+    source_platform VARCHAR(50) NULL
 );
 
 CREATE TABLE sync_batches (
@@ -22,6 +31,16 @@ CREATE TABLE sync_batches (
 CREATE UNIQUE INDEX idx_agents_computer_id ON agents(computer_id);
 CREATE INDEX idx_sync_batches_agent_id ON sync_batches(agent_id);
 CREATE INDEX idx_sync_batches_batch_id ON sync_batches(batch_id);
+
+ALTER TABLE IF EXISTS agents ADD COLUMN IF NOT EXISTS health_json TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE IF EXISTS agents ADD COLUMN IF NOT EXISTS queue_size INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE IF EXISTS agents ADD COLUMN IF NOT EXISTS last_collected_at TIMESTAMP NULL;
+ALTER TABLE IF EXISTS agents ADD COLUMN IF NOT EXISTS last_sent_at TIMESTAMP NULL;
+ALTER TABLE IF EXISTS agents ADD COLUMN IF NOT EXISTS last_error VARCHAR(500) NOT NULL DEFAULT '';
+ALTER TABLE IF EXISTS agents ADD COLUMN IF NOT EXISTS policy_version VARCHAR(50) NULL;
+ALTER TABLE IF EXISTS agents ADD COLUMN IF NOT EXISTS capabilities_json TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE IF EXISTS agents ADD COLUMN IF NOT EXISTS collector_statuses_json TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE IF EXISTS agents ADD COLUMN IF NOT EXISTS source_platform VARCHAR(50) NULL;
 
 CREATE TABLE agent_policies (
     id                              SERIAL PRIMARY KEY,

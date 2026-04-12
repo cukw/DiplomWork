@@ -320,6 +320,8 @@ services:
         condition: service_healthy
     environment:
       ActivityService__Url: "http://activityservice:5001"
+      AgentAuth__HeaderName: "${AGENT_AUTH_HEADER:-x-agent-token}"
+      AgentAuth__Token: "${AGENT_AUTH_TOKEN:-}"
       Agent__ComputerId: "1"
       Agent__CollectionInterval: "5000"
       Agent__Enabled: "true"

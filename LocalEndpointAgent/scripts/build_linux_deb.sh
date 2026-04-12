@@ -38,7 +38,7 @@ python -m pip install --upgrade pip
 python -m pip install pyinstaller grpcio grpcio-tools protobuf psutil pyyaml pydantic
 python -m pip install -e . --no-deps
 bash scripts/generate_protos.sh
-python -m PyInstaller --noconfirm --clean --onefile --name endpoint-agent-linux --paths src scripts/pyinstaller_entry.py --distpath dist/linux --workpath build/linux/work --specpath build/linux/spec
+python -m PyInstaller --noconfirm --clean --onefile --name endpoint-agent-linux --paths src --collect-submodules endpoint_agent.generated scripts/pyinstaller_entry.py --distpath dist/linux --workpath build/linux/work --specpath build/linux/spec
 chmod +x dist/linux/endpoint-agent-linux
 PKGROOT=/tmp/endpoint-agent-pkg
 rm -rf \"\$PKGROOT\"

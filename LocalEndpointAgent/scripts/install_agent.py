@@ -10,6 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Iterable
+from urllib.parse import urlparse
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -283,6 +284,23 @@ collectors:
   idle_time:
     enabled: true
     idle_threshold_sec: 120
+  network:
+    enabled: true
+    snapshot_limit: 50
+  file_activity:
+    enabled: true
+    paths: []
+    max_files_per_scan: 200
+  usb_devices:
+    enabled: true
+    poll_interval_sec: 30
+  inventory:
+    enabled: true
+    interval_sec: 3600
+    max_apps: 200
+    max_processes: 200
+  session:
+    enabled: true
 
 risk:
   local_high_risk_threshold: 85.0
@@ -529,6 +547,19 @@ def _capability_note() -> str:
     return "Platform support is best-effort; Python collectors may still work."
 
 
+def _looks_like_loopback_endpoint(raw: str) -> bool:
+    value = (raw or "").strip()
+    if not value:
+        return False
+
+    parsed = urlparse(value if "://" in value else f"grpc://{value}")
+    host = (parsed.hostname or "").strip().lower()
+    if not host and parsed.path:
+        host = parsed.path.split(":", 1)[0].strip().lower()
+
+    return host in {"localhost", "127.0.0.1", "::1"}
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Cross-platform installer for LocalEndpointAgent")
     parser.add_argument("--computer-id", type=int, required=True, help="Computer ID (1:1 mapping with user workstation in your system)")
@@ -552,6 +583,24 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+
+    if not (args.agent_auth_token or "").strip():
+        _print(
+            "WARNING: --agent-auth-token is empty. "
+            "If backend services enforce AgentAuth__Token, this agent will not be able to send/heartbeat."
+        )
+
+    if _looks_like_loopback_endpoint(args.activity_service_url):
+        _print(
+            "WARNING: --activity-service-url points to loopback. "
+            "Use server IP/DNS if this agent runs on another host."
+        )
+
+    if _looks_like_loopback_endpoint(args.agent_management_url):
+        _print(
+            "WARNING: --agent-management-url points to loopback. "
+            "Use server IP/DNS if this agent runs on another host."
+        )
 
     install_root = Path(args.install_dir).expanduser().resolve() if args.install_dir else _default_install_dir()
     app_dir = install_root / "app"

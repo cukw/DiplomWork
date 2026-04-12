@@ -28,6 +28,13 @@ public class AgentDbContext : DbContext
             entity.Property(e => e.Status).IsRequired().HasMaxLength(20).HasDefaultValue("online");
             entity.Property(e => e.ConfigVersion).HasMaxLength(20);
             entity.Property(e => e.DesiredVersion).HasMaxLength(20);
+            entity.Property(e => e.LastError).HasMaxLength(500).HasDefaultValue(string.Empty);
+            entity.Property(e => e.PolicyVersion).HasMaxLength(50);
+            entity.Property(e => e.SourcePlatform).HasMaxLength(50);
+            entity.Property(e => e.HealthJson).HasColumnType("text").HasDefaultValue("{}");
+            entity.Property(e => e.CapabilitiesJson).HasColumnType("text").HasDefaultValue("{}");
+            entity.Property(e => e.CollectorStatusesJson).HasColumnType("text").HasDefaultValue("{}");
+            entity.Property(e => e.QueueSize).HasDefaultValue(0);
             entity.HasIndex(e => e.ComputerId).IsUnique();
         });
 

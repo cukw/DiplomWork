@@ -104,6 +104,10 @@ public sealed class ControlPlaneSigningService
         AppendString(sb, "blocked_reason", p.BlockedReason);
         AppendString(sb, "updated_at", p.UpdatedAt);
         AppendStringList(sb, "browsers", p.Browsers);
+        AppendBool(sb, "enable_whitelist", p.EnableWhitelist);
+        AppendBool(sb, "enable_blacklist", p.EnableBlacklist);
+        AppendStringList(sb, "whitelist_apps", p.WhitelistApps);
+        AppendStringList(sb, "blacklist_apps", p.BlacklistApps);
         return Encoding.UTF8.GetBytes(sb.ToString());
     }
 

@@ -41,11 +41,43 @@ class IdleCollectorConfig(BaseModel):
     idle_threshold_sec: int = 120
 
 
+class NetworkCollectorConfig(BaseModel):
+    enabled: bool = True
+    snapshot_limit: int = 50
+
+
+class FileActivityCollectorConfig(BaseModel):
+    enabled: bool = True
+    paths: list[str] = Field(default_factory=list)
+    max_files_per_scan: int = 200
+
+
+class UsbCollectorConfig(BaseModel):
+    enabled: bool = True
+    poll_interval_sec: int = 30
+
+
+class InventoryCollectorConfig(BaseModel):
+    enabled: bool = True
+    interval_sec: int = 3600
+    max_apps: int = 200
+    max_processes: int = 200
+
+
+class SessionCollectorConfig(BaseModel):
+    enabled: bool = True
+
+
 class CollectorsConfig(BaseModel):
     processes: ProcessCollectorConfig = Field(default_factory=ProcessCollectorConfig)
     browser_history: BrowserCollectorConfig = Field(default_factory=BrowserCollectorConfig)
     active_window: ActiveWindowCollectorConfig = Field(default_factory=ActiveWindowCollectorConfig)
     idle_time: IdleCollectorConfig = Field(default_factory=IdleCollectorConfig)
+    network: NetworkCollectorConfig = Field(default_factory=NetworkCollectorConfig)
+    file_activity: FileActivityCollectorConfig = Field(default_factory=FileActivityCollectorConfig)
+    usb_devices: UsbCollectorConfig = Field(default_factory=UsbCollectorConfig)
+    inventory: InventoryCollectorConfig = Field(default_factory=InventoryCollectorConfig)
+    session: SessionCollectorConfig = Field(default_factory=SessionCollectorConfig)
 
 
 class RiskConfig(BaseModel):
@@ -99,11 +131,27 @@ DEFAULT_POLICY: dict[str, Any] = {
     "enable_browser_collection": True,
     "enable_active_window_collection": True,
     "enable_idle_collection": True,
+    "enable_network_collection": True,
+    "enable_file_collection": True,
+    "enable_usb_collection": True,
+    "enable_inventory_collection": True,
+    "enable_session_collection": True,
     "idle_threshold_sec": 120,
     "browser_poll_interval_sec": 10,
     "process_snapshot_limit": 50,
+    "network_snapshot_limit": 50,
+    "file_watch_paths": [],
+    "file_watch_max_files": 200,
+    "usb_poll_interval_sec": 30,
+    "inventory_interval_sec": 3600,
+    "inventory_max_apps": 200,
+    "inventory_max_processes": 200,
     "high_risk_threshold": 85.0,
     "auto_lock_enabled": True,
+    "enable_whitelist": False,
+    "enable_blacklist": False,
+    "whitelist_apps": [],
+    "blacklist_apps": [],
     "admin_blocked": False,
     "blocked_reason": None,
 }

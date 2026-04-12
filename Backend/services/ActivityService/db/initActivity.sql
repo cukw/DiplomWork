@@ -14,7 +14,16 @@ CREATE TABLE activities (
     -- от 0.0 до 100.0, соответствует decimal в коде
     risk_score      NUMERIC(5,2),
     -- флаг, что запись уже синхронизирована с центральным хранилищем / аналитикой
-    Synced          BOOLEAN DEFAULT FALSE
+    Synced          BOOLEAN DEFAULT FALSE,
+    user_id         BIGINT NULL,
+    agent_id        BIGINT NULL,
+    agent_version   VARCHAR(50),
+    device_name     VARCHAR(255),
+    collector       VARCHAR(100),
+    event_id        VARCHAR(100),
+    sequence        BIGINT,
+    batch_id        VARCHAR(100),
+    source_platform VARCHAR(50)
 );
 
 CREATE INDEX idx_activities_computer_id ON activities(computer_id);
@@ -22,6 +31,10 @@ CREATE INDEX idx_activities_timestamp ON activities(timestamp);
 CREATE INDEX idx_activities_activity_type ON activities(activity_type);
 CREATE INDEX idx_activities_is_blocked ON activities(is_blocked);
 CREATE INDEX idx_activities_risk_score ON activities(risk_score) WHERE risk_score IS NOT NULL;
+CREATE INDEX idx_activities_user_id ON activities(user_id);
+CREATE INDEX idx_activities_agent_id ON activities(agent_id);
+CREATE INDEX idx_activities_event_id ON activities(event_id);
+CREATE INDEX idx_activities_batch_id ON activities(batch_id);
 
 -- Архив активностей для retention-политики
 CREATE TABLE activities_archive (
@@ -37,6 +50,15 @@ CREATE TABLE activities_archive (
     is_blocked          BOOLEAN DEFAULT FALSE,
     risk_score          NUMERIC(5,2),
     synced              BOOLEAN DEFAULT FALSE,
+    user_id             BIGINT NULL,
+    agent_id            BIGINT NULL,
+    agent_version       VARCHAR(50),
+    device_name         VARCHAR(255),
+    collector           VARCHAR(100),
+    event_id            VARCHAR(100),
+    sequence            BIGINT,
+    batch_id            VARCHAR(100),
+    source_platform     VARCHAR(50),
     archived_at         TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 

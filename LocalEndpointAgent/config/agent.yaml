@@ -1,8 +1,61 @@
-computer_id: 1
-version: "0.2.0"
-config_version: "1"
-activity_service_endpoint: "localhost:5001"
-agent_mgmt_endpoint: "localhost:5015"
-log_level: "INFO"
-signing_secret: ""
-lock_on_high_risk: true
+agent:
+  computer_id: 1
+  user_id: null
+  version: "0.1.0"
+  device_name: "unknown-device"
+
+services:
+  activity_service_url: "localhost:5001"
+  agent_management_url: "localhost:5015"
+
+runtime:
+  state_dir: "./state"
+  heartbeat_interval_sec: 15
+  policy_refresh_interval_sec: 30
+  flush_interval_sec: 5
+  collection_interval_sec: 5
+  max_batch_size: 100
+
+collectors:
+  processes:
+    enabled: true
+    snapshot_limit: 50
+  browser_history:
+    enabled: true
+    poll_interval_sec: 10
+    browsers: ["chrome", "edge", "firefox"]
+  active_window:
+    enabled: true
+  idle_time:
+    enabled: true
+    idle_threshold_sec: 120
+  network:
+    enabled: true
+    snapshot_limit: 50
+  file_activity:
+    enabled: true
+    paths: []
+    max_files_per_scan: 200
+  usb_devices:
+    enabled: true
+    poll_interval_sec: 30
+  inventory:
+    enabled: true
+    interval_sec: 3600
+    max_apps: 200
+    max_processes: 200
+  session:
+    enabled: true
+
+risk:
+  local_high_risk_threshold: 85.0
+  enable_auto_lock: true
+
+security:
+  agent_transport_auth:
+    token: ""
+    header_name: "x-agent-token"
+  control_plane_signing:
+    secret: ""
+    key_id: "default"
+    allow_unsigned: true

@@ -38,6 +38,33 @@ namespace ActivityService.Services.Models
         
         [Column("synced")]
         public bool Synced { get; set; }
+
+        [Column("user_id")]
+        public long? UserId { get; set; }
+
+        [Column("agent_id")]
+        public long? AgentId { get; set; }
+
+        [Column("agent_version"), MaxLength(50)]
+        public string? AgentVersion { get; set; }
+
+        [Column("device_name"), MaxLength(255)]
+        public string? DeviceName { get; set; }
+
+        [Column("collector"), MaxLength(100)]
+        public string? Collector { get; set; }
+
+        [Column("event_id"), MaxLength(100)]
+        public string? EventId { get; set; }
+
+        [Column("sequence")]
+        public long? Sequence { get; set; }
+
+        [Column("batch_id"), MaxLength(100)]
+        public string? BatchId { get; set; }
+
+        [Column("source_platform"), MaxLength(50)]
+        public string? SourcePlatform { get; set; }
         
         // Navigation property
         public virtual ICollection<Anomaly> Anomalies { get; set; } = new List<Anomaly>();

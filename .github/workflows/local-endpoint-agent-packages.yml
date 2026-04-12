@@ -2,7 +2,26 @@ name: Local Endpoint Agent Packages
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Publish artifacts to GitHub Release"
+        type: boolean
+        default: false
+      release_tag:
+        description: "Release tag for manual publish (e.g. v0.2.0)"
+        required: false
+        type: string
+      release_name:
+        description: "Optional custom release title"
+        required: false
+        type: string
+      prerelease:
+        description: "Mark manual release as prerelease"
+        type: boolean
+        default: false
   push:
+    tags:
+      - "v*"
     paths:
       - "LocalEndpointAgent/**"
       - ".github/workflows/local-endpoint-agent-packages.yml"
@@ -10,6 +29,9 @@ on:
     paths:
       - "LocalEndpointAgent/**"
       - ".github/workflows/local-endpoint-agent-packages.yml"
+
+permissions:
+  contents: read
 
 jobs:
   build-linux-deb:
@@ -92,3 +114,84 @@ jobs:
           path: LocalEndpointAgent/dist/windows/endpoint-agent-windows.exe
           if-no-files-found: error
           retention-days: 14
+
+  publish-release:
+    name: Publish Release Assets
+    needs:
+      - build-linux-deb
+      - build-macos
+      - build-windows-exe
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_release == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: local-endpoint-agent-linux
+          path: _release/linux
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: local-endpoint-agent-macos
+          path: _release/macos
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: local-endpoint-agent-windows
+          path: _release/windows
+
+      - name: Generate checksums
+        run: |
+          set -euo pipefail
+          cd _release
+          find . -type f | sed 's|^\./||' | sort | while read -r file; do
+            sha256sum "$file"
+          done > SHA256SUMS.txt
+
+      - name: Resolve release metadata
+        id: meta
+        env:
+          INPUT_RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+          INPUT_RELEASE_NAME: ${{ github.event.inputs.release_name }}
+          INPUT_PRERELEASE: ${{ github.event.inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tag="${GITHUB_REF_NAME}"
+          else
+            tag="${INPUT_RELEASE_TAG}"
+          fi
+
+          if [[ -z "${tag}" ]]; then
+            echo "release_tag is required for workflow_dispatch publish" >&2
+            exit 1
+          fi
+
+          name="${INPUT_RELEASE_NAME:-Local Endpoint Agent ${tag}}"
+          prerelease="false"
+          if [[ "${GITHUB_REF_TYPE}" != "tag" && "${INPUT_PRERELEASE}" == "true" ]]; then
+            prerelease="true"
+          fi
+
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "name=${name}" >> "${GITHUB_OUTPUT}"
+          echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
+
+      - name: Create or update GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ steps.meta.outputs.prerelease }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            _release/linux/*
+            _release/macos/*
+            _release/windows/*
+            _release/SHA256SUMS.txt

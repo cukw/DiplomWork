@@ -149,6 +149,8 @@ public partial class AgentManagementServiceImpl : AgentManagementService.AgentMa
             if (!string.IsNullOrEmpty(request.ConfigVersion))
                 agent.ConfigVersion = request.ConfigVersion;
 
+            ApplyHealthSnapshot(agent, request);
+
             // Update offline timestamp if status changed to offline
             if (previousStatus != "offline" && request.Status == "offline")
             {
@@ -642,8 +644,69 @@ public partial class AgentManagementServiceImpl : AgentManagementService.AgentMa
             ConfigVersion = agent.ConfigVersion ?? "",
             OfflineSince = agent.OfflineSince?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? "",
             DesiredVersion = agent.DesiredVersion ?? "",
-            DesiredVersionSetAt = agent.DesiredVersionSetAt?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? ""
+            DesiredVersionSetAt = agent.DesiredVersionSetAt?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? "",
+            HealthJson = agent.HealthJson ?? "{}",
+            QueueSize = agent.QueueSize,
+            LastCollectedAt = agent.LastCollectedAt?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? "",
+            LastSentAt = agent.LastSentAt?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? "",
+            LastError = agent.LastError ?? string.Empty,
+            PolicyVersion = agent.PolicyVersion ?? string.Empty,
+            CapabilitiesJson = agent.CapabilitiesJson ?? "{}",
+            CollectorStatusesJson = agent.CollectorStatusesJson ?? "{}",
+            SourcePlatform = agent.SourcePlatform ?? string.Empty
         };
+    }
+
+    private static void ApplyHealthSnapshot(Models.Agent agent, UpdateAgentStatusRequest request)
+    {
+        var hasSnapshot =
+            request.QueueSize > 0 ||
+            !string.IsNullOrWhiteSpace(request.HealthJson) ||
+            !string.IsNullOrWhiteSpace(request.CapabilitiesJson) ||
+            !string.IsNullOrWhiteSpace(request.CollectorStatusesJson) ||
+            !string.IsNullOrWhiteSpace(request.LastCollectedAt) ||
+            !string.IsNullOrWhiteSpace(request.LastSentAt) ||
+            !string.IsNullOrWhiteSpace(request.LastError) ||
+            !string.IsNullOrWhiteSpace(request.PolicyVersion) ||
+            !string.IsNullOrWhiteSpace(request.SourcePlatform);
+
+        if (!hasSnapshot)
+            return;
+
+        agent.QueueSize = Math.Max(0, request.QueueSize);
+        agent.LastCollectedAt = ParseOptionalUtc(request.LastCollectedAt);
+        agent.LastSentAt = ParseOptionalUtc(request.LastSentAt);
+        agent.LastError = TrimTo(request.LastError, 500);
+        agent.PolicyVersion = TrimToNullable(request.PolicyVersion, 50);
+        agent.SourcePlatform = TrimToNullable(request.SourcePlatform, 50);
+        agent.HealthJson = NormalizeJsonText(request.HealthJson, "{}");
+        agent.CapabilitiesJson = NormalizeJsonText(request.CapabilitiesJson, "{}");
+        agent.CollectorStatusesJson = NormalizeJsonText(request.CollectorStatusesJson, "{}");
+    }
+
+    private static DateTime? ParseOptionalUtc(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+        return DateTimeOffset.TryParse(value, out var parsed) ? parsed.UtcDateTime : null;
+    }
+
+    private static string TrimTo(string? value, int maxLength)
+    {
+        var trimmed = (value ?? string.Empty).Trim();
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+    }
+
+    private static string? TrimToNullable(string? value, int maxLength)
+    {
+        var trimmed = TrimTo(value, maxLength);
+        return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
+    }
+
+    private static string NormalizeJsonText(string? value, string fallback)
+    {
+        var trimmed = (value ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(trimmed) ? fallback : trimmed;
     }
 
     private static ProtoSyncBatch MapSyncBatchToProto(Models.SyncBatch syncBatch)

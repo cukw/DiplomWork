@@ -182,7 +182,16 @@ public class ReportsController : ControllerBase
         timestamp    = a.Timestamp,
         activityType = a.ActivityType,
         isBlocked    = a.IsBlocked,
-        riskScore    = a.RiskScore
+        riskScore    = a.RiskScore,
+        userId       = a.HasUserId ? (long?)a.UserId : null,
+        agentId      = a.HasAgentId ? (long?)a.AgentId : null,
+        agentVersion = a.AgentVersion,
+        deviceName   = a.DeviceName,
+        collector    = a.Collector,
+        eventId      = a.EventId,
+        sequence     = a.Sequence,
+        batchId      = a.BatchId,
+        sourcePlatform = a.SourcePlatform
     };
 
     private static DateTime ToUtc(DateOnly date, TimeOnly time)
