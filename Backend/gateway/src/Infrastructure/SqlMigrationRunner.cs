@@ -2,6 +2,7 @@ using System.Data;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Backend.Common.Infrastructure;
 
@@ -63,7 +64,7 @@ public static class SqlMigrationRunner
                 serviceName);
 
             await using var tx = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-            await dbContext.Database.ExecuteSqlRawAsync(script, cancellationToken);
+            await ExecuteScriptAsync(dbContext, script, cancellationToken);
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
                 $"INSERT INTO schema_migrations (service, version, description, checksum) VALUES ({serviceName}, {migration.Version}, {migration.Description}, {checksum})",
                 cancellationToken);
@@ -146,5 +147,34 @@ public static class SqlMigrationRunner
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(script));
         return Convert.ToHexString(bytes);
+    }
+
+    private static async Task ExecuteScriptAsync(
+        DbContext dbContext,
+        string script,
+        CancellationToken cancellationToken)
+    {
+        var connection = dbContext.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+        if (shouldClose)
+            await connection.OpenAsync(cancellationToken);
+
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = script;
+            command.CommandType = CommandType.Text;
+
+            var currentTransaction = dbContext.Database.CurrentTransaction;
+            if (currentTransaction is not null)
+                command.Transaction = currentTransaction.GetDbTransaction();
+
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+        finally
+        {
+            if (shouldClose)
+                await connection.CloseAsync();
+        }
     }
 }
