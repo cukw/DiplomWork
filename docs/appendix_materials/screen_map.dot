@@ -1,0 +1,21 @@
+digraph Screens {
+  rankdir=TB;
+  graph [fontname="Times New Roman", fontsize=12, splines=ortho];
+  node [shape=box, style="rounded,filled", fillcolor="#FFFDF6", color="#8E6F1D", fontname="Times New Roman", fontsize=11];
+  edge [color="#5E5E5E", arrowsize=0.8];
+
+  Login [label="Логин\n/login"];
+  Dashboard [label="Dashboard\n/dashboard"];
+  Agents [label="Agents\n/agents"];
+  Analytics [label="Analytics\n/analytics"];
+  Reports [label="Reports\n/reports"];
+  Settings [label="Settings\n/settings"];
+  Users [label="Users\n/users"];
+
+  Login -> Dashboard;
+  Dashboard -> Agents;
+  Dashboard -> Analytics;
+  Dashboard -> Reports;
+  Dashboard -> Settings;
+  Dashboard -> Users;
+}

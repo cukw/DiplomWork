@@ -141,6 +141,13 @@ public class NotificationController : ControllerBase
         message  = n.Message,
         isRead   = n.IsRead,
         sentAt   = n.SentAt,
-        channel  = n.Channel
+        channel  = n.Channel,
+        recipientEmail = n.RecipientEmail,
+        deliveryStatus = n.DeliveryStatus,
+        deliveryAttempts = n.DeliveryAttempts,
+        maxDeliveryAttempts = n.MaxDeliveryAttempts,
+        nextRetryAt = n.NextRetryAt,
+        deliveredAt = n.DeliveredAt,
+        lastDeliveryError = n.LastDeliveryError
     };
 }

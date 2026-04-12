@@ -36,11 +36,22 @@ CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
 INSERT INTO roles (name, description) VALUES
 ('admin', 'Администратор системы'),
 ('user', 'Обычный пользователь'),
-('moderator', 'Модератор')
+('moderator', 'Модератор'),
+('auditor', 'Аудитор безопасности')
 ON CONFLICT (name) DO NOTHING;
 
--- Добавление тестового пользователя (пароль: password123)
--- Хеш пароля для 'password123' (предполагается использование bcrypt)
-INSERT INTO auth_users (username, password_hash, email, role_id, is_active) VALUES
-('testuser', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'test@example.com', 2, TRUE)
-ON CONFLICT (username) DO NOTHING;
+-- Bootstrap-администратор (логин: admin, пароль: admin123)
+INSERT INTO auth_users (username, password_hash, email, role_id, is_active)
+SELECT
+    'admin',
+    '$2a$11$mXf13ykig4wVVezgIbc7s.sMDKw2XDkIZXpnYeDElZTZcyyNc1CCm',
+    'admin@local',
+    r.id,
+    TRUE
+FROM roles r
+WHERE r.name = 'admin'
+ON CONFLICT (username) DO UPDATE SET
+    password_hash = EXCLUDED.password_hash,
+    email = EXCLUDED.email,
+    role_id = EXCLUDED.role_id,
+    is_active = TRUE;

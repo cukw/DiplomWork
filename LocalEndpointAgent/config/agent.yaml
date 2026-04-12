@@ -1,0 +1,8 @@
+computer_id: 1
+version: "0.2.0"
+config_version: "1"
+activity_service_endpoint: "localhost:5001"
+agent_mgmt_endpoint: "localhost:5015"
+log_level: "INFO"
+signing_secret: ""
+lock_on_high_risk: true

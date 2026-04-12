@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: activities
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: pass
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
       - "5432:5432"
     volumes:
@@ -28,7 +28,7 @@ services:
     environment:
       POSTGRES_DB: auth
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: pass
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
       - "5433:5432"
     volumes:
@@ -50,7 +50,7 @@ services:
     environment:
       POSTGRES_DB: users
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: pass
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
       - "5434:5432"
     volumes:
@@ -72,7 +72,7 @@ services:
     environment:
       POSTGRES_DB: metrics
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: pass
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
       - "5435:5432"
     volumes:
@@ -94,7 +94,7 @@ services:
     environment:
       POSTGRES_DB: notifications
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: pass
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
       - "5436:5432"
     volumes:
@@ -116,7 +116,7 @@ services:
     environment:
       POSTGRES_DB: reports
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: pass
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
       - "5437:5432"
     volumes:
@@ -138,7 +138,7 @@ services:
     environment:
       POSTGRES_DB: agents
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: pass
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
       - "5438:5432"
     volumes:
@@ -160,8 +160,8 @@ services:
     ports:
       - "127.0.0.1:15672:15672"   # Web UI (local admin only)
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-ams_rabbit}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-ChangeMeRabbitPass123!}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:?RABBITMQ_PASS is required}
       RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
@@ -184,15 +184,20 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      userservice:
+        condition: service_started
     environment:
-      ConnectionStrings__DefaultConnection: "Host=postgres-activity;Database=activities;Username=postgres;Password=pass;TrustServerCertificate=true"
+      ConnectionStrings__DefaultConnection: "Host=postgres-activity;Database=activities;Username=postgres;Password=${DB_PASSWORD:?DB_PASSWORD is required};TrustServerCertificate=true"
+      AgentAuth__HeaderName: "${AGENT_AUTH_HEADER:-x-agent-token}"
+      AgentAuth__Token: "${AGENT_AUTH_TOKEN:-}"
       RabbitMQ__Host: "rabbitmq"
-      RabbitMQ__User: ${RABBITMQ_USER:-ams_rabbit}
-      RabbitMQ__Password: ${RABBITMQ_PASS:-ChangeMeRabbitPass123!}
+      RabbitMQ__User: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RabbitMQ__Password: ${RABBITMQ_PASS:?RABBITMQ_PASS is required}
       RabbitMQ__VHost: ${RABBITMQ_VHOST:-/}
       RabbitMQ__PublishRetryLimit: "3"
       RabbitMQ__DispatcherPollMs: "1000"
       RabbitMQ__DispatcherBatchSize: "100"
+      Services__User: "http://userservice:5004"
     ports:
       - "5001:5001"   # gRPC
       - "5002:5002"   # health / http
@@ -209,7 +214,14 @@ services:
       postgres-auth:
         condition: service_healthy
     environment:
-      ConnectionStrings__DefaultConnection: "Host=postgres-auth;Database=auth;Username=postgres;Password=pass;TrustServerCertificate=true"
+      ConnectionStrings__DefaultConnection: "Host=postgres-auth;Database=auth;Username=postgres;Password=${DB_PASSWORD:?DB_PASSWORD is required};TrustServerCertificate=true"
+      Jwt__Key: "${JWT_KEYS_V1:?JWT_KEYS_V1 is required}"
+      Jwt__ActiveKeyId: "${JWT_ACTIVE_KEY_ID:-v1}"
+      Jwt__Keys__v1: "${JWT_KEYS_V1:?JWT_KEYS_V1 is required}"
+      Jwt__Keys__v2: "${JWT_KEYS_V2:-}"
+      Jwt__RequireHttpsMetadata: "${JWT_REQUIRE_HTTPS_METADATA:-true}"
+      Cors__AllowedOrigins__0: "http://localhost:3000"
+      Cors__AllowedOrigins__1: "https://localhost:3443"
     ports:
       - "5003:5003"   # gRPC
       - "5007:5007"   # REST
@@ -226,7 +238,7 @@ services:
       postgres-user:
         condition: service_healthy
     environment:
-      ConnectionStrings__DefaultConnection: "Host=postgres-user;Database=users;Username=postgres;Password=pass;TrustServerCertificate=true"
+      ConnectionStrings__DefaultConnection: "Host=postgres-user;Database=users;Username=postgres;Password=${DB_PASSWORD:?DB_PASSWORD is required};TrustServerCertificate=true"
       ASPNETCORE_URLS: "http://+:5004;http://+:5005"
     ports:
       - "5004:5004"   # gRPC
@@ -246,10 +258,10 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      ConnectionStrings__DefaultConnection: "Host=postgres-metrics;Database=metrics;Username=postgres;Password=pass;TrustServerCertificate=true"
+      ConnectionStrings__DefaultConnection: "Host=postgres-metrics;Database=metrics;Username=postgres;Password=${DB_PASSWORD:?DB_PASSWORD is required};TrustServerCertificate=true"
       RabbitMQ__Host: "rabbitmq"
-      RabbitMQ__User: ${RABBITMQ_USER:-ams_rabbit}
-      RabbitMQ__Password: ${RABBITMQ_PASS:-ChangeMeRabbitPass123!}
+      RabbitMQ__User: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RabbitMQ__Password: ${RABBITMQ_PASS:?RABBITMQ_PASS is required}
       RabbitMQ__VHost: ${RABBITMQ_VHOST:-/}
       RabbitMQ__PrefetchCount: "16"
       RabbitMQ__RetryLimit: "5"
@@ -271,14 +283,26 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      userservice:
+        condition: service_started
+      authservice:
+        condition: service_started
     environment:
-      ConnectionStrings__DefaultConnection: "Host=postgres-notification;Database=notifications;Username=postgres;Password=pass;TrustServerCertificate=true"
+      ConnectionStrings__DefaultConnection: "Host=postgres-notification;Database=notifications;Username=postgres;Password=${DB_PASSWORD:?DB_PASSWORD is required};TrustServerCertificate=true"
       RabbitMQ__Host: "rabbitmq"
-      RabbitMQ__User: ${RABBITMQ_USER:-ams_rabbit}
-      RabbitMQ__Password: ${RABBITMQ_PASS:-ChangeMeRabbitPass123!}
+      RabbitMQ__User: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RabbitMQ__Password: ${RABBITMQ_PASS:?RABBITMQ_PASS is required}
       RabbitMQ__VHost: ${RABBITMQ_VHOST:-/}
       RabbitMQ__PrefetchCount: "16"
       RabbitMQ__RetryLimit: "5"
+      Delivery__Retry__Enabled: "true"
+      Delivery__Retry__MaxAttempts: "5"
+      Delivery__Retry__InitialDelaySeconds: "30"
+      Delivery__Retry__MaxDelaySeconds: "900"
+      Delivery__Retry__PollIntervalSeconds: "15"
+      Delivery__Retry__BatchSize: "100"
+      Services__User: "http://userservice:5004"
+      Services__Auth: "http://authservice:5003"
     ports:
       - "5012:5012"   # gRPC
       - "5017:5017"   # REST
@@ -314,10 +338,10 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      ConnectionStrings__DefaultConnection: "Host=postgres-report;Database=reports;Username=postgres;Password=pass;TrustServerCertificate=true"
+      ConnectionStrings__DefaultConnection: "Host=postgres-report;Database=reports;Username=postgres;Password=${DB_PASSWORD:?DB_PASSWORD is required};TrustServerCertificate=true"
       RabbitMQ__Host: "rabbitmq"
-      RabbitMQ__User: ${RABBITMQ_USER:-ams_rabbit}
-      RabbitMQ__Password: ${RABBITMQ_PASS:-ChangeMeRabbitPass123!}
+      RabbitMQ__User: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RabbitMQ__Password: ${RABBITMQ_PASS:?RABBITMQ_PASS is required}
       RabbitMQ__VHost: ${RABBITMQ_VHOST:-/}
       RabbitMQ__PrefetchCount: "16"
       RabbitMQ__RetryLimit: "5"
@@ -340,9 +364,11 @@ services:
       userservice:
         condition: service_started
     environment:
-      ConnectionStrings__DefaultConnection: "Host=postgres-agent;Database=agents;Username=postgres;Password=pass;TrustServerCertificate=true"
+      ConnectionStrings__DefaultConnection: "Host=postgres-agent;Database=agents;Username=postgres;Password=${DB_PASSWORD:?DB_PASSWORD is required};TrustServerCertificate=true"
       ASPNETCORE_URLS: "http://+:5015;http://+:5016"
       Services__User: "http://userservice:5004"
+      AgentAuth__HeaderName: "${AGENT_AUTH_HEADER:-x-agent-token}"
+      AgentAuth__Token: "${AGENT_AUTH_TOKEN:-}"
       AgentSigning__KeyId: "${AGENT_SIGNING_KEY_ID:-default}"
       AgentSigning__Secret: "${AGENT_SIGNING_SECRET:-}"
     ports:
@@ -375,10 +401,16 @@ services:
         condition: service_healthy
     environment:
       ASPNETCORE_URLS: "http://+:8080"
-      Jwt__Key: "ThisIsASecretKeyForJWTTokenGeneration123456789"
+      Jwt__Key: "${JWT_KEYS_V1:?JWT_KEYS_V1 is required}"
+      Jwt__ActiveKeyId: "${JWT_ACTIVE_KEY_ID:-v1}"
+      Jwt__Keys__v1: "${JWT_KEYS_V1:?JWT_KEYS_V1 is required}"
+      Jwt__Keys__v2: "${JWT_KEYS_V2:-}"
       Jwt__Issuer: "ActivityMonitoringSystem"
       Jwt__Audience: "ActivityMonitoringSystem"
-      ASPNETCORE_ENVIRONMENT: "Development"
+      Jwt__RequireHttpsMetadata: "${JWT_REQUIRE_HTTPS_METADATA:-true}"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Production}"
+      Cors__AllowedOrigins__0: "http://localhost:3000"
+      Cors__AllowedOrigins__1: "https://localhost:3443"
       Services__Activity: "http://activityservice:5001"
       Services__Auth: "http://authservice:5003"
       Services__User: "http://userservice:5004"
@@ -386,13 +418,57 @@ services:
       Services__Metrics: "http://metricservice:5010"
       Services__Report: "http://reportservice:5013"
       Services__Agent: "http://agentmanagementservice:5015"
-      ConnectionStrings__GatewayRuntime: "Host=postgres-user;Database=users;Username=postgres;Password=pass;TrustServerCertificate=true"
+      ConnectionStrings__GatewayRuntime: "Host=postgres-user;Database=users;Username=postgres;Password=${DB_PASSWORD:?DB_PASSWORD is required};TrustServerCertificate=true"
     ports:
       - "8080:8080"
     volumes:
       - gateway_data:/app/data
     networks:
       - backend
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/backend-alerts.yml:/etc/prometheus/alerts/backend-alerts.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - backend
+    depends_on:
+      gateway:
+        condition: service_started
+      activityservice:
+        condition: service_started
+      authservice:
+        condition: service_started
+      notificationservice:
+        condition: service_started
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - backend
+    depends_on:
+      - prometheus
 
   frontend:
     build:
@@ -417,7 +493,7 @@ services:
       - REACT_APP_API_URL=/api
       - REACT_APP_ENV=production
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -438,3 +514,5 @@ volumes:
   postgres_agent_data:
   rabbitmq_data:
   gateway_data:
+  prometheus_data:
+  grafana_data:

@@ -1,6 +1,6 @@
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=postgres;Database=activities;Username=postgres;Password=pass;TrustServerCertificate=true"
+    "DefaultConnection": "Host=postgres;Database=activities;Username=postgres;Password=__SET_VIA_ENV__;TrustServerCertificate=true"
   },
   "Logging": {
     "LogLevel": {
@@ -24,15 +24,14 @@
   "RabbitMQ": {
     "Host": "rabbitmq",
     "VirtualHost": "/",
-    "User": "guest",
-    "Password": "guest"
+    "User": "__SET_VIA_ENV__",
+    "Password": "__SET_VIA_ENV__"
   },
   "Jwt": {
-    "Key": "ThisIsASecretKeyForJWTTokenGeneration123456789",
+    "Key": "__SET_VIA_ENV__",
     "Issuer": "ActivityMonitoringSystem",
     "Audience": "ActivityMonitoringSystem",
     "ExpirationMinutes": "60",
     "RefreshTokenExpirationDays": "7"
   }
 }
-

@@ -71,6 +71,10 @@ message GetActivityStatisticsReply {
   int32 anomaly_count = 3;
   map<string, int32> activity_type_counts = 4;
   float average_risk_score = 5;
+  int32 total_users = 6;
+  int32 active_users = 7;
+  int32 total_computers = 8;
+  int32 active_computers = 9;
 }
 
 message ActivityReply {

@@ -1,0 +1,80 @@
+services:
+  postgres-activity:
+    ports: []
+
+  postgres-auth:
+    ports: []
+
+  postgres-user:
+    ports: []
+
+  postgres-metrics:
+    ports: []
+
+  postgres-notification:
+    ports: []
+
+  postgres-report:
+    ports: []
+
+  postgres-agent:
+    ports: []
+
+  rabbitmq:
+    ports: []
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:?RABBITMQ_PASS is required}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+
+  activityservice:
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      AgentAuth__Token: "${AGENT_AUTH_TOKEN:?AGENT_AUTH_TOKEN is required}"
+
+  authservice:
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      Jwt__RequireHttpsMetadata: "true"
+      Cors__AllowedOrigins__0: "${CORS_ORIGIN_0:?CORS_ORIGIN_0 is required}"
+      Cors__AllowedOrigins__1: "${CORS_ORIGIN_1:?CORS_ORIGIN_1 is required}"
+
+  userservice:
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+
+  metricservice:
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+
+  notificationservice:
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+
+  reportservice:
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+
+  agentmanagementservice:
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      AgentAuth__Token: "${AGENT_AUTH_TOKEN:?AGENT_AUTH_TOKEN is required}"
+      AgentSigning__Secret: "${AGENT_SIGNING_SECRET:?AGENT_SIGNING_SECRET is required}"
+
+  activityagent:
+    # Demo-generator agent should not run in production by default.
+    profiles:
+      - demo
+
+  gateway:
+    ports: []
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      Jwt__RequireHttpsMetadata: "true"
+      Cors__AllowedOrigins__0: "${CORS_ORIGIN_0:?CORS_ORIGIN_0 is required}"
+      Cors__AllowedOrigins__1: "${CORS_ORIGIN_1:?CORS_ORIGIN_1 is required}"
+
+  frontend:
+    ports:
+      - "${FRONTEND_HTTP_PORT:-80}:80"
+      - "${FRONTEND_HTTPS_PORT:-443}:443"

@@ -67,11 +67,5 @@ public class AuthDbContext : DbContext
                 .HasForeignKey(e => e.UserId);
         });
 
-        // Seed default roles
-        modelBuilder.Entity<Role>().HasData(
-            new Role { Id = 1, Name = "user", Description = "Regular user with basic permissions" },
-            new Role { Id = 2, Name = "moderator", Description = "Moderator with elevated permissions" },
-            new Role { Id = 3, Name = "admin", Description = "Administrator with full system access" }
-        );
     }
 }

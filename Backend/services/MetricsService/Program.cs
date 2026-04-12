@@ -84,17 +84,6 @@ builder.Services.AddMassTransit(x =>
     });
 });
 
-// Add CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", builder =>
-    {
-        builder.AllowAnyOrigin()
-               .AllowAnyMethod()
-               .AllowAnyHeader();
-    });
-});
-
 var app = builder.Build();
 
 await InitializeDatabaseWithRetryAsync(
@@ -144,8 +133,6 @@ await InitializeDatabaseWithRetryAsync(
     });
 
 // Configure the HTTP request pipeline.
-app.UseCors("AllowAll");
-
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<MetricsServiceImpl>();
 app.MapControllers();

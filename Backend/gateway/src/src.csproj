@@ -17,6 +17,12 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.15.0-beta.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.GrpcNetClient" Version="1.15.0-beta.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,6 +33,13 @@
     <Protobuf Include="Protos/metrics.proto"  GrpcServices="Client" />
     <Protobuf Include="Protos/report.proto"   GrpcServices="Client" />
     <Protobuf Include="Protos/agent.proto"    GrpcServices="Client" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="db/migrations/*.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

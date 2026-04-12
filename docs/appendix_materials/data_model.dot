@@ -1,0 +1,20 @@
+digraph DataModel {
+  rankdir=LR;
+  graph [fontname="Times New Roman", fontsize=12, splines=true];
+  node [shape=record, fontname="Times New Roman", fontsize=10, color="#2F5D9A"];
+  edge [color="#4A4A4A"];
+
+  activities [label="{activities|id\lcomputer_id\ltimestamp\lactivity_type\lrisk_score\l}"];
+  anomalies [label="{anomalies|id\lactivity_id\ltype\ldetected_at\l}"];
+  outbox [label="{activity_outbox|id\levent_type\lactivity_id\lattempt_count\l}"];
+  notifications [label="{notifications|id\luser_id\ltype\ldelivery_status\l}"];
+  inbox [label="{processed_event_inbox|id\lconsumer\levent_key\lprocessed_at\l}"];
+  agents [label="{agents|id\lcomputer_id\lversion\lstatus\l}"];
+  policies [label="{agent_policies|id\lagent_id\lpolicy_version\lupdated_at\l}"];
+  commands [label="{agent_commands|id\lagent_id\lcommand_key\lstatus\l}"];
+
+  anomalies -> activities [label="activity_id"];
+  outbox -> activities [label="activity_id"];
+  policies -> agents [label="agent_id"];
+  commands -> agents [label="agent_id"];
+}

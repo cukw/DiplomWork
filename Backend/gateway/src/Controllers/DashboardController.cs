@@ -23,6 +23,10 @@ public class DashboardController : ControllerBase
             var resp = await _activity.GetActivityStatisticsAsync(new GetActivityStatisticsRequest());
             return Ok(new
             {
+                totalUsers         = resp.TotalUsers,
+                activeUsers        = resp.ActiveUsers,
+                totalComputers     = resp.TotalComputers,
+                activeComputers    = resp.ActiveComputers,
                 totalActivities    = resp.TotalActivities,
                 blockedActivities  = resp.BlockedActivities,
                 anomalyCount       = resp.AnomalyCount,

@@ -12,15 +12,18 @@ public sealed class AppSettingsController : ControllerBase
 {
     private readonly AppSettingsStore _store;
     private readonly PolicyAccessListSyncService _policySyncService;
+    private readonly IAdminAuditLogger _auditLogger;
     private readonly ILogger<AppSettingsController> _logger;
 
     public AppSettingsController(
         AppSettingsStore store,
         PolicyAccessListSyncService policySyncService,
+        IAdminAuditLogger auditLogger,
         ILogger<AppSettingsController> logger)
     {
         _store = store;
         _policySyncService = policySyncService;
+        _auditLogger = auditLogger;
         _logger = logger;
     }
 
@@ -34,8 +37,17 @@ public sealed class AppSettingsController : ControllerBase
     [HttpPut]
     public async Task<IActionResult> Save([FromBody] AppSettingsDocument document, CancellationToken cancellationToken)
     {
+        var actor = User.Identity?.Name ?? "panel";
         var saved = await _store.SaveAsync(document, cancellationToken);
-        _ = await SyncAccessPoliciesAsync(saved, cancellationToken);
+        var syncResult = await SyncAccessPoliciesAsync(saved, cancellationToken);
+        await _auditLogger.LogAsync(new AdminAuditEvent(
+            "app-settings.save",
+            actor,
+            "app-settings",
+            "global",
+            true,
+            200,
+            new { syncResult.TotalAgents, syncResult.SyncedAgents, syncResult.FailedAgents }), cancellationToken);
         return Ok(saved);
     }
 
@@ -49,39 +61,95 @@ public sealed class AppSettingsController : ControllerBase
     [HttpPut("whitelist")]
     public async Task<IActionResult> ReplaceWhitelist([FromBody] List<ApplicationListEntryModel> entries, CancellationToken cancellationToken)
     {
+        var actor = User.Identity?.Name ?? "panel";
         var saved = await _store.ReplaceWhitelistEntriesAsync(entries ?? [], cancellationToken);
-        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        var syncResult = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        await _auditLogger.LogAsync(new AdminAuditEvent(
+            "app-settings.whitelist.replace",
+            actor,
+            "app-settings.whitelist",
+            "global",
+            true,
+            200,
+            new { count = saved.Count, syncResult.TotalAgents, syncResult.FailedAgents }), cancellationToken);
         return Ok(new { entries = saved });
     }
 
     [HttpPost("whitelist")]
     public async Task<IActionResult> CreateWhitelistEntry([FromBody] ApplicationListEntryModel entry, CancellationToken cancellationToken)
     {
+        var actor = User.Identity?.Name ?? "panel";
         if (string.IsNullOrWhiteSpace(entry.Application))
+        {
+            await _auditLogger.LogAsync(new AdminAuditEvent(
+                "app-settings.whitelist.create",
+                actor,
+                "app-settings.whitelist",
+                "global",
+                false,
+                400,
+                new { message = "Application is required" }), cancellationToken);
             return BadRequest(new { message = "Application is required" });
+        }
 
         var saved = await _store.UpsertWhitelistEntryAsync(entry, cancellationToken);
-        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        var syncResult = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        await _auditLogger.LogAsync(new AdminAuditEvent(
+            "app-settings.whitelist.create",
+            actor,
+            "app-settings.whitelist",
+            entry.Application.Trim(),
+            true,
+            200,
+            new { count = saved.Count, syncResult.TotalAgents, syncResult.FailedAgents }), cancellationToken);
         return Ok(new { entries = saved });
     }
 
     [HttpPut("whitelist/{id:long}")]
     public async Task<IActionResult> UpdateWhitelistEntry(long id, [FromBody] ApplicationListEntryModel entry, CancellationToken cancellationToken)
     {
+        var actor = User.Identity?.Name ?? "panel";
         entry.Id = id;
         if (string.IsNullOrWhiteSpace(entry.Application))
+        {
+            await _auditLogger.LogAsync(new AdminAuditEvent(
+                "app-settings.whitelist.update",
+                actor,
+                "app-settings.whitelist",
+                id.ToString(),
+                false,
+                400,
+                new { message = "Application is required" }), cancellationToken);
             return BadRequest(new { message = "Application is required" });
+        }
 
         var saved = await _store.UpsertWhitelistEntryAsync(entry, cancellationToken);
-        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        var syncResult = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        await _auditLogger.LogAsync(new AdminAuditEvent(
+            "app-settings.whitelist.update",
+            actor,
+            "app-settings.whitelist",
+            id.ToString(),
+            true,
+            200,
+            new { application = entry.Application.Trim(), count = saved.Count, syncResult.TotalAgents, syncResult.FailedAgents }), cancellationToken);
         return Ok(new { entries = saved });
     }
 
     [HttpDelete("whitelist/{id:long}")]
     public async Task<IActionResult> DeleteWhitelistEntry(long id, CancellationToken cancellationToken)
     {
+        var actor = User.Identity?.Name ?? "panel";
         var saved = await _store.DeleteWhitelistEntryAsync(id, cancellationToken);
-        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        var syncResult = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        await _auditLogger.LogAsync(new AdminAuditEvent(
+            "app-settings.whitelist.delete",
+            actor,
+            "app-settings.whitelist",
+            id.ToString(),
+            true,
+            200,
+            new { count = saved.Count, syncResult.TotalAgents, syncResult.FailedAgents }), cancellationToken);
         return Ok(new { entries = saved });
     }
 
@@ -95,46 +163,111 @@ public sealed class AppSettingsController : ControllerBase
     [HttpPut("blacklist")]
     public async Task<IActionResult> ReplaceBlacklist([FromBody] List<ApplicationListEntryModel> entries, CancellationToken cancellationToken)
     {
+        var actor = User.Identity?.Name ?? "panel";
         var saved = await _store.ReplaceBlacklistEntriesAsync(entries ?? [], cancellationToken);
-        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        var syncResult = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        await _auditLogger.LogAsync(new AdminAuditEvent(
+            "app-settings.blacklist.replace",
+            actor,
+            "app-settings.blacklist",
+            "global",
+            true,
+            200,
+            new { count = saved.Count, syncResult.TotalAgents, syncResult.FailedAgents }), cancellationToken);
         return Ok(new { entries = saved });
     }
 
     [HttpPost("blacklist")]
     public async Task<IActionResult> CreateBlacklistEntry([FromBody] ApplicationListEntryModel entry, CancellationToken cancellationToken)
     {
+        var actor = User.Identity?.Name ?? "panel";
         if (string.IsNullOrWhiteSpace(entry.Application))
+        {
+            await _auditLogger.LogAsync(new AdminAuditEvent(
+                "app-settings.blacklist.create",
+                actor,
+                "app-settings.blacklist",
+                "global",
+                false,
+                400,
+                new { message = "Application is required" }), cancellationToken);
             return BadRequest(new { message = "Application is required" });
+        }
 
         var saved = await _store.UpsertBlacklistEntryAsync(entry, cancellationToken);
-        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        var syncResult = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        await _auditLogger.LogAsync(new AdminAuditEvent(
+            "app-settings.blacklist.create",
+            actor,
+            "app-settings.blacklist",
+            entry.Application.Trim(),
+            true,
+            200,
+            new { count = saved.Count, syncResult.TotalAgents, syncResult.FailedAgents }), cancellationToken);
         return Ok(new { entries = saved });
     }
 
     [HttpPut("blacklist/{id:long}")]
     public async Task<IActionResult> UpdateBlacklistEntry(long id, [FromBody] ApplicationListEntryModel entry, CancellationToken cancellationToken)
     {
+        var actor = User.Identity?.Name ?? "panel";
         entry.Id = id;
         if (string.IsNullOrWhiteSpace(entry.Application))
+        {
+            await _auditLogger.LogAsync(new AdminAuditEvent(
+                "app-settings.blacklist.update",
+                actor,
+                "app-settings.blacklist",
+                id.ToString(),
+                false,
+                400,
+                new { message = "Application is required" }), cancellationToken);
             return BadRequest(new { message = "Application is required" });
+        }
 
         var saved = await _store.UpsertBlacklistEntryAsync(entry, cancellationToken);
-        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        var syncResult = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        await _auditLogger.LogAsync(new AdminAuditEvent(
+            "app-settings.blacklist.update",
+            actor,
+            "app-settings.blacklist",
+            id.ToString(),
+            true,
+            200,
+            new { application = entry.Application.Trim(), count = saved.Count, syncResult.TotalAgents, syncResult.FailedAgents }), cancellationToken);
         return Ok(new { entries = saved });
     }
 
     [HttpDelete("blacklist/{id:long}")]
     public async Task<IActionResult> DeleteBlacklistEntry(long id, CancellationToken cancellationToken)
     {
+        var actor = User.Identity?.Name ?? "panel";
         var saved = await _store.DeleteBlacklistEntryAsync(id, cancellationToken);
-        _ = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        var syncResult = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        await _auditLogger.LogAsync(new AdminAuditEvent(
+            "app-settings.blacklist.delete",
+            actor,
+            "app-settings.blacklist",
+            id.ToString(),
+            true,
+            200,
+            new { count = saved.Count, syncResult.TotalAgents, syncResult.FailedAgents }), cancellationToken);
         return Ok(new { entries = saved });
     }
 
     [HttpPost("sync/policies")]
     public async Task<IActionResult> SyncPolicies(CancellationToken cancellationToken)
     {
+        var actor = User.Identity?.Name ?? "panel";
         var syncResult = await SyncAccessPoliciesFromStoreAsync(cancellationToken);
+        await _auditLogger.LogAsync(new AdminAuditEvent(
+            "app-settings.sync-policies",
+            actor,
+            "app-settings",
+            "global",
+            syncResult.Success,
+            200,
+            new { syncResult.TotalAgents, syncResult.SyncedAgents, syncResult.FailedAgents }), cancellationToken);
         return Ok(syncResult);
     }
 

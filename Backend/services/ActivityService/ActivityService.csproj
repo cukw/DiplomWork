@@ -8,10 +8,12 @@
 
   <ItemGroup>
     <Protobuf Include="Protos\Activity.proto" GrpcServices="Server" />
+    <Protobuf Include="Protos\user.lookup.proto" GrpcServices="Client" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.65.0" />
+    <PackageReference Include="Grpc.Net.ClientFactory" Version="2.65.0" />
     <PackageReference Include="Grpc.Tools" Version="2.65.0" PrivateAssets="all" />
     <PackageReference Include="Google.Protobuf" Version="3.27.0" />
     <PackageReference Include="Grpc.AspNetCore.Server.Reflection" Version="2.65.0" />
@@ -22,5 +24,18 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
     <PackageReference Include="MassTransit" Version="8.2.5" />
     <PackageReference Include="MassTransit.RabbitMQ" Version="8.2.5" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.15.0-beta.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.GrpcNetClient" Version="1.15.0-beta.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="db/migrations/*.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 </Project>

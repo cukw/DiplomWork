@@ -76,17 +76,24 @@ public class ActivityWorker : BackgroundService
             {
                 _logger.LogDebug("Collecting activity...");
                 
-                var activity = await _activityCollector.CollectActivityAsync();
-                
-                var success = await _activitySender.SendActivityAsync(activity);
-                
-                if (success)
+                var activities = await _activityCollector.CollectActivitiesAsync(stoppingToken);
+                if (activities.Count == 0)
                 {
-                    _logger.LogDebug("Activity sent successfully: {ActivityType}", activity.ActivityType);
+                    _logger.LogDebug("Collector returned empty activity batch");
+                }
+
+                var sentCount = await _activitySender.SendActivitiesAsync(activities, stoppingToken);
+
+                if (sentCount == activities.Count)
+                {
+                    _logger.LogDebug("Activity batch sent successfully. Count={Count}", sentCount);
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to send activity: {ActivityType}", activity.ActivityType);
+                    _logger.LogWarning(
+                        "Activity batch partially sent. Sent={SentCount}, Total={TotalCount}",
+                        sentCount,
+                        activities.Count);
                 }
             }
             catch (Exception ex)

@@ -7,46 +7,45 @@ namespace ActivityAgent.Services;
 
 public interface IActivitySender
 {
-    Task<bool> SendActivityAsync(ActivityReply activity);
+    Task<int> SendActivitiesAsync(IEnumerable<ActivityReply> activities, CancellationToken cancellationToken = default);
 }
 
 public class ActivitySender : IActivitySender
 {
     private readonly ILogger<ActivitySender> _logger;
-    private readonly IConfiguration _configuration;
     private readonly GrpcChannel _channel;
+    private readonly ActivityGrpcService.ActivityGrpcServiceClient _client;
 
     public ActivitySender(ILogger<ActivitySender> logger, IConfiguration configuration)
     {
         _logger = logger;
-        _configuration = configuration;
         
-        var activityServiceUrl = _configuration.GetValue<string>("ActivityService:Url") ?? "http://activityservice:5001";
+        var activityServiceUrl = configuration.GetValue<string>("ActivityService:Url") ?? "http://activityservice:5001";
         _channel = GrpcChannel.ForAddress(activityServiceUrl);
+        _client = new ActivityGrpcService.ActivityGrpcServiceClient(_channel);
     }
 
-    public async Task<bool> SendActivityAsync(ActivityReply activity)
+    public async Task<int> SendActivitiesAsync(IEnumerable<ActivityReply> activities, CancellationToken cancellationToken = default)
     {
-        try
+        var sentCount = 0;
+        foreach (var activity in activities)
         {
-            var client = new ActivityService.ActivityGrpcService.ActivityGrpcServiceClient(_channel);
-            
-            var request = new CreateActivityRequest
+            try
             {
-                Activity = activity
-            };
-            
-            var response = await client.CreateActivityAsync(request);
-            
-            _logger.LogInformation("Activity sent successfully: {ActivityId}, Type: {ActivityType}", 
-                response.Id, activity.ActivityType);
-                
-            return true;
+                cancellationToken.ThrowIfCancellationRequested();
+                var response = await _client.CreateActivityAsync(
+                    new CreateActivityRequest { Activity = activity },
+                    cancellationToken: cancellationToken);
+
+                sentCount++;
+                _logger.LogDebug("Activity sent successfully: {ActivityId}, Type: {ActivityType}", response.Id, activity.ActivityType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send activity batch item. Type: {ActivityType}", activity.ActivityType);
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error sending activity to ActivityService");
-            return false;
-        }
+
+        return sentCount;
     }
 }

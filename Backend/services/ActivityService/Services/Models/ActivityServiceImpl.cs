@@ -5,6 +5,7 @@ using ActivityService.Services.Events;
 using Microsoft.EntityFrameworkCore;
 using Google.Protobuf.Collections;
 using System.Globalization;
+using UserLookup = UserService;
 
 namespace ActivityService.Services
 {
@@ -13,15 +14,18 @@ namespace ActivityService.Services
         private readonly AppDbContext _db;
         private readonly ILogger<ActivityServiceImpl> _logger;
         private readonly IAnomalyDetectionService _anomalyDetectionService;
+        private readonly UserLookup.UserService.UserServiceClient _userServiceClient;
 
         public ActivityServiceImpl(
             AppDbContext db,
             ILogger<ActivityServiceImpl> logger,
-            IAnomalyDetectionService anomalyDetectionService)
+            IAnomalyDetectionService anomalyDetectionService,
+            UserLookup.UserService.UserServiceClient userServiceClient)
         {
             _db = db;
             _logger = logger;
             _anomalyDetectionService = anomalyDetectionService;
+            _userServiceClient = userServiceClient;
         }
 
         public override async Task<GetActivitiesReply> GetActivities(GetActivitiesRequest request, ServerCallContext context)
@@ -270,17 +274,99 @@ namespace ActivityService.Services
                 .Where(a => a.RiskScore.HasValue)
                 .AverageAsync(a => (decimal?)a.RiskScore!.Value, context.CancellationToken))
                 ?? 0m;
+            var (totalUsers, activeUsers, totalComputers, activeComputers) =
+                await GetUserAndComputerStatsAsync(context.CancellationToken);
 
             var reply = new GetActivityStatisticsReply
             {
                 TotalActivities   = totalActivities,
                 BlockedActivities = blockedActivities,
                 AnomalyCount      = anomalyCount,
-                AverageRiskScore  = (float)avgRiskScore
+                AverageRiskScore  = (float)avgRiskScore,
+                TotalUsers        = totalUsers,
+                ActiveUsers       = activeUsers,
+                TotalComputers    = totalComputers,
+                ActiveComputers   = activeComputers
             };
             reply.ActivityTypeCounts.Add(typeCountsMap);
 
             return reply;
+        }
+
+        private async Task<(int TotalUsers, int ActiveUsers, int TotalComputers, int ActiveComputers)> GetUserAndComputerStatsAsync(CancellationToken cancellationToken)
+        {
+            const int pageSize = 500;
+            var page = 1;
+            var users = new List<UserLookup.UserProfile>();
+            int? totalUsersFromService = null;
+
+            try
+            {
+                while (true)
+                {
+                    var response = await _userServiceClient.GetAllUsersAsync(
+                        new UserLookup.GetAllUsersRequest
+                        {
+                            Page = page,
+                            PageSize = pageSize
+                        },
+                        cancellationToken: cancellationToken);
+
+                    if (!response.Success)
+                    {
+                        _logger.LogWarning("UserService returned unsuccessful response in GetAllUsers: {Message}", response.Message);
+                        break;
+                    }
+
+                    if (totalUsersFromService is null && response.TotalCount > 0)
+                        totalUsersFromService = response.TotalCount;
+
+                    if (response.Users.Count == 0)
+                        break;
+
+                    users.AddRange(response.Users);
+
+                    if (response.Users.Count < pageSize)
+                        break;
+
+                    if (totalUsersFromService.HasValue && users.Count >= totalUsersFromService.Value)
+                        break;
+
+                    page++;
+                }
+            }
+            catch (RpcException ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "UserService GetAllUsers failed while building activity statistics. Status={StatusCode}",
+                    ex.StatusCode);
+            }
+
+            var totalUsers = totalUsersFromService.GetValueOrDefault(users.Count);
+            if (totalUsers < users.Count)
+                totalUsers = users.Count;
+
+            var activeUsers = 0;
+            var totalComputerIds = new HashSet<long>();
+            var activeComputerIds = new HashSet<long>();
+            var activeCutoffUtc = DateTime.UtcNow.AddHours(-24);
+
+            foreach (var user in users)
+            {
+                if (user?.Computer is null || user.Computer.Id <= 0)
+                    continue;
+
+                totalComputerIds.Add(user.Computer.Id);
+
+                if (!IsActiveComputer(user.Computer, activeCutoffUtc))
+                    continue;
+
+                activeUsers++;
+                activeComputerIds.Add(user.Computer.Id);
+            }
+
+            return (totalUsers, activeUsers, totalComputerIds.Count, activeComputerIds.Count);
         }
 
         private static bool TryParseUtcTimestamp(string value, out DateTime utcDateTime)
@@ -297,6 +383,15 @@ namespace ActivityService.Services
 
             utcDateTime = default;
             return false;
+        }
+
+        private static bool IsActiveComputer(UserLookup.ComputerInfo computer, DateTime activeCutoffUtc)
+        {
+            var status = (computer.Status ?? string.Empty).Trim().ToLowerInvariant();
+            if (status is "online" or "active")
+                return true;
+
+            return TryParseUtcTimestamp(computer.LastSeen, out var lastSeenUtc) && lastSeenUtc >= activeCutoffUtc;
         }
 
         private static string NormalizeActivityType(string? value)

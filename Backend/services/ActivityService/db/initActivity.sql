@@ -23,6 +23,28 @@ CREATE INDEX idx_activities_activity_type ON activities(activity_type);
 CREATE INDEX idx_activities_is_blocked ON activities(is_blocked);
 CREATE INDEX idx_activities_risk_score ON activities(risk_score) WHERE risk_score IS NOT NULL;
 
+-- Архив активностей для retention-политики
+CREATE TABLE activities_archive (
+    id                  BIGSERIAL PRIMARY KEY,
+    original_activity_id BIGINT NOT NULL UNIQUE,
+    computer_id         INTEGER NOT NULL,
+    timestamp           TIMESTAMPTZ NOT NULL,
+    activity_type       VARCHAR(50) NOT NULL,
+    details             JSONB,
+    duration_ms         INTEGER,
+    url                 VARCHAR(500),
+    process_name        VARCHAR(255),
+    is_blocked          BOOLEAN DEFAULT FALSE,
+    risk_score          NUMERIC(5,2),
+    synced              BOOLEAN DEFAULT FALSE,
+    archived_at         TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_activities_archive_original_id ON activities_archive(original_activity_id);
+CREATE INDEX idx_activities_archive_computer_id ON activities_archive(computer_id);
+CREATE INDEX idx_activities_archive_timestamp ON activities_archive(timestamp);
+CREATE INDEX idx_activities_archive_archived_at ON activities_archive(archived_at);
+
 -- Таблица аномалий / странной активности
 CREATE TABLE anomalies (
     id              SERIAL PRIMARY KEY,
@@ -52,9 +74,3 @@ CREATE TABLE activity_outbox (
 
 CREATE INDEX idx_activity_outbox_pending ON activity_outbox(processed_at, available_at);
 CREATE INDEX idx_activity_outbox_activity_id ON activity_outbox(activity_id);
-
--- Тест данные 
-INSERT INTO activities (computer_id, activity_type, details, risk_score) VALUES
-    (1, 'process_open', '{"app": "chrome.exe"}', 10.5),
-    (1, 'site_visit', '{"url": "https://example.com"}', 5.0),
-    (2, 'file_access', '{"path": "/etc/passwd"}', 85.0);

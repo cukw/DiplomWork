@@ -6,6 +6,7 @@ namespace ActivityService.Services.Data
     public class AppDbContext : DbContext
     {
         public DbSet<Activity> Activities => Set<Activity>();
+        public DbSet<ActivityArchive> ActivitiesArchive => Set<ActivityArchive>();
         public DbSet<Anomaly> Anomalies => Set<Anomaly>();
         public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
         
@@ -21,6 +22,17 @@ namespace ActivityService.Services.Data
                 entity.HasIndex(e => e.Timestamp).HasDatabaseName("idx_activities_timestamp");
                 entity.HasIndex(e => e.ActivityType).HasDatabaseName("idx_activities_activity_type");
                 entity.HasIndex(e => e.IsBlocked).HasDatabaseName("idx_activities_is_blocked");
+            });
+
+            modelBuilder.Entity<ActivityArchive>(entity =>
+            {
+                entity.ToTable("activities_archive");
+                entity.Property(e => e.Details).HasColumnType("jsonb");
+                entity.Property(e => e.ArchivedAt).HasDefaultValueSql("NOW()");
+                entity.HasIndex(e => e.OriginalActivityId).IsUnique().HasDatabaseName("idx_activities_archive_original_id");
+                entity.HasIndex(e => e.ComputerId).HasDatabaseName("idx_activities_archive_computer_id");
+                entity.HasIndex(e => e.Timestamp).HasDatabaseName("idx_activities_archive_timestamp");
+                entity.HasIndex(e => e.ArchivedAt).HasDatabaseName("idx_activities_archive_archived_at");
             });
             
             modelBuilder.Entity<Anomaly>(entity =>

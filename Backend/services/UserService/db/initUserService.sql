@@ -22,5 +22,3 @@ CREATE TABLE computers (
 
 CREATE INDEX idx_computers_user_id ON computers(user_id);
 CREATE INDEX idx_computers_hostname ON computers(hostname);
-
--- Тестовые данные будут добавлены позже через скрипт add_test_user.sql

@@ -28,17 +28,6 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<UserDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Add CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", builder =>
-    {
-        builder.AllowAnyOrigin()
-               .AllowAnyMethod()
-               .AllowAnyHeader();
-    });
-});
-
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -58,8 +47,6 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
-app.UseCors("AllowAll");
-
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<UserServiceImpl>();
 app.MapControllers();

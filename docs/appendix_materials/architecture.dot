@@ -1,0 +1,51 @@
+digraph G {
+  rankdir=LR;
+  graph [fontname="Times New Roman", fontsize=12, splines=true, overlap=false];
+  node  [shape=box, style="rounded,filled", fillcolor="#F9FBFF", color="#2F5D9A", fontname="Times New Roman", fontsize=11];
+  edge  [color="#4A4A4A", fontname="Times New Roman", fontsize=10];
+
+  FE [label="Frontend"];
+  GW [label="API Gateway"];
+  ACT [label="ActivityService"];
+  AUTH [label="AuthService"];
+  USER [label="UserService"];
+  MET [label="MetricsService"];
+  NOTIF [label="NotificationService"];
+  REP [label="ReportService"];
+  AGM [label="AgentManagementService"];
+  AGENT [label="LocalEndpointAgent"];
+  MQ [label="RabbitMQ", shape=ellipse, fillcolor="#FFF8E5", color="#AA7A00"];
+
+  DBACT [label="DB Activity"];
+  DBAUTH [label="DB Auth"];
+  DBUSER [label="DB User"];
+  DBMET [label="DB Metrics"];
+  DBNOTIF [label="DB Notification"];
+  DBREP [label="DB Report"];
+  DBAGM [label="DB Agent"];
+
+  FE -> GW;
+  GW -> ACT;
+  GW -> AUTH;
+  GW -> USER;
+  GW -> MET;
+  GW -> NOTIF;
+  GW -> REP;
+  GW -> AGM;
+
+  AGENT -> ACT [label="CreateActivity"];
+  AGENT -> AGM [label="policy / commands / heartbeat"];
+
+  ACT -> MQ [label="domain events"];
+  MQ -> MET;
+  MQ -> NOTIF;
+  MQ -> REP;
+
+  ACT -> DBACT;
+  AUTH -> DBAUTH;
+  USER -> DBUSER;
+  MET -> DBMET;
+  NOTIF -> DBNOTIF;
+  REP -> DBREP;
+  AGM -> DBAGM;
+}

@@ -1,0 +1,15 @@
+@startuml
+skinparam defaultFontName "Times New Roman"
+rectangle "Администратор" as Admin
+rectangle "Frontend" as FE
+rectangle "Gateway" as GW
+rectangle "AgentManagementService" as AGM
+rectangle "Endpoint Agent" as Agent
+
+Admin --> FE : настройка политик
+FE --> GW : REST API
+GW --> AGM : gRPC
+AGM --> Agent : policy / command
+Agent --> AGM : heartbeat / ack
+AGM --> FE : state / results
+@enduml

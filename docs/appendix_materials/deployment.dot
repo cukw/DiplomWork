@@ -1,0 +1,65 @@
+digraph Deployment {
+  rankdir=LR;
+  graph [fontname="Times New Roman", fontsize=12, splines=ortho];
+  node [shape=box, style="rounded,filled", fontname="Times New Roman", fontsize=10];
+  edge [color="#4A4A4A"];
+
+  client [label="Пользовательский браузер", fillcolor="#F4F9FF", color="#2563EB"];
+  frontend [label="Frontend\nReact + Nginx\n3000 / 3443", fillcolor="#F4F9FF", color="#2563EB"];
+  gateway [label="Gateway\nASP.NET Core\n8080", fillcolor="#FFF8E5", color="#AA7A00"];
+  rabbit [label="RabbitMQ\n15672", fillcolor="#FFF8E5", color="#AA7A00"];
+  prometheus [label="Prometheus\n9090", fillcolor="#F3FFF6", color="#228B4E"];
+  grafana [label="Grafana\n3001", fillcolor="#F3FFF6", color="#228B4E"];
+
+  subgraph cluster_services {
+    label="Backend services";
+    color="#D6E4FF";
+    style="rounded";
+    activity [label="ActivityService\n5001 / 5002", fillcolor="#FFFFFF", color="#2F5D9A"];
+    auth [label="AuthService\n5003 / 5007", fillcolor="#FFFFFF", color="#2F5D9A"];
+    user [label="UserService\n5004 / 5005", fillcolor="#FFFFFF", color="#2F5D9A"];
+    metrics [label="MetricsService\n5010 / 5011", fillcolor="#FFFFFF", color="#2F5D9A"];
+    notification [label="NotificationService\n5012 / 5017", fillcolor="#FFFFFF", color="#2F5D9A"];
+    report [label="ReportService\n5013 / 5014", fillcolor="#FFFFFF", color="#2F5D9A"];
+    agentmgmt [label="AgentManagementService\n5015 / 5016", fillcolor="#FFFFFF", color="#2F5D9A"];
+  }
+
+  subgraph cluster_db {
+    label="PostgreSQL";
+    color="#FFE5E5";
+    style="rounded";
+    db1 [label="activities", shape=cylinder, fillcolor="#FFFFFF", color="#A14B4B"];
+    db2 [label="auth", shape=cylinder, fillcolor="#FFFFFF", color="#A14B4B"];
+    db3 [label="users", shape=cylinder, fillcolor="#FFFFFF", color="#A14B4B"];
+    db4 [label="metrics", shape=cylinder, fillcolor="#FFFFFF", color="#A14B4B"];
+    db5 [label="notifications", shape=cylinder, fillcolor="#FFFFFF", color="#A14B4B"];
+    db6 [label="reports", shape=cylinder, fillcolor="#FFFFFF", color="#A14B4B"];
+    db7 [label="agents", shape=cylinder, fillcolor="#FFFFFF", color="#A14B4B"];
+  }
+
+  client -> frontend;
+  frontend -> gateway;
+  gateway -> activity;
+  gateway -> auth;
+  gateway -> user;
+  gateway -> metrics;
+  gateway -> notification;
+  gateway -> report;
+  gateway -> agentmgmt;
+  activity -> rabbit;
+  rabbit -> metrics;
+  rabbit -> notification;
+  rabbit -> report;
+  activity -> db1;
+  auth -> db2;
+  user -> db3;
+  metrics -> db4;
+  notification -> db5;
+  report -> db6;
+  agentmgmt -> db7;
+  prometheus -> gateway;
+  prometheus -> activity;
+  prometheus -> auth;
+  prometheus -> notification;
+  grafana -> prometheus;
+}

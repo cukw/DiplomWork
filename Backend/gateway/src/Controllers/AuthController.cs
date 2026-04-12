@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Grpc.Core;
 using AuthClient = Gateway.Protos.Auth.AuthService.AuthServiceClient;
 using Gateway.Protos.Auth;
@@ -8,6 +9,7 @@ namespace Gateway.Controllers;
 
 [ApiController]
 [Route("api/auth")]
+[EnableRateLimiting("AuthEndpoints")]
 public class AuthController : ControllerBase
 {
     private readonly AuthClient _auth;

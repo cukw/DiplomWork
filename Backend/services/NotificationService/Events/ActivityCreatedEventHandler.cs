@@ -2,6 +2,7 @@ using MassTransit;
 using NotificationService.Data;
 using Microsoft.EntityFrameworkCore;
 using ActivityService.Services.Events;
+using NotificationService.Services;
 using NotificationEntity = NotificationService.Models.Notification;
 using ProcessedEventInboxEntryEntity = NotificationService.Models.ProcessedEventInboxEntry;
 
@@ -10,13 +11,16 @@ namespace NotificationService.Events;
 public class ActivityCreatedEventHandler : IConsumer<ActivityCreatedEvent>
 {
     private readonly NotificationDbContext _db;
+    private readonly INotificationRecipientResolver _recipientResolver;
     private readonly ILogger<ActivityCreatedEventHandler> _logger;
 
     public ActivityCreatedEventHandler(
         NotificationDbContext db,
+        INotificationRecipientResolver recipientResolver,
         ILogger<ActivityCreatedEventHandler> logger)
     {
         _db = db;
+        _recipientResolver = recipientResolver;
         _logger = logger;
     }
 
@@ -28,10 +32,13 @@ public class ActivityCreatedEventHandler : IConsumer<ActivityCreatedEvent>
 
         try
         {
-            // Get user associated with this computer
-            // In a real implementation, you would call UserService to get the user
-            // For now, we'll use a default admin user ID (1)
-            var userId = 1; // Default admin user
+            var recipient = await _recipientResolver.ResolveByComputerIdAsync(@event.ComputerId, context.CancellationToken);
+            if (recipient.UserId is null)
+            {
+                _logger.LogWarning(
+                    "ActivityCreatedEvent recipient could not be mapped for computer {ComputerId}. Notification will be stored without user binding.",
+                    @event.ComputerId);
+            }
 
             // Check if this activity type requires notification
             var notificationTypes = new[] { "MALWARE", "DATA_EXFILTRATION", "UNAUTHORIZED_ACCESS", "SUSPICIOUS_ACTIVITY" };
@@ -42,11 +49,12 @@ public class ActivityCreatedEventHandler : IConsumer<ActivityCreatedEvent>
                 var eventKey = EventProcessingHelper.ActivityCreatedKey(@event);
                 var notification = new NotificationEntity
                 {
-                    UserId = userId,
+                    UserId = recipient.UserId,
                     Type = "SECURITY_ALERT",
                     Title = $"Security Alert: {@event.ActivityType}",
                     Message = $"Suspicious activity '{@event.ActivityType}' detected on computer {@event.ComputerId}. Activity ID: {@event.ActivityId}",
                     Channel = "email",
+                    RecipientEmail = recipient.Email,
                     SentAt = DateTime.UtcNow,
                     IsRead = false
                 };

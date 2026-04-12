@@ -30,16 +30,18 @@ public sealed class AlertRulesController : ControllerBase
     };
 
     private readonly AlertRuleStore _store;
+    private readonly IAdminAuditLogger _auditLogger;
 
-    public AlertRulesController(AlertRuleStore store)
+    public AlertRulesController(AlertRuleStore store, IAdminAuditLogger auditLogger)
     {
         _store = store;
+        _auditLogger = auditLogger;
     }
 
     [HttpGet]
-    public IActionResult GetRules()
+    public async Task<IActionResult> GetRules(CancellationToken cancellationToken)
     {
-        var rules = _store.GetAll();
+        var rules = await _store.GetAllAsync(cancellationToken);
         return Ok(new { rules, totalCount = rules.Count, timestamp = DateTime.UtcNow });
     }
 
@@ -68,45 +70,129 @@ public sealed class AlertRulesController : ControllerBase
     }
 
     [HttpPost]
-    public IActionResult CreateRule([FromBody] AlertRuleUpsertRequest request)
+    public async Task<IActionResult> CreateRule([FromBody] AlertRuleUpsertRequest request, CancellationToken cancellationToken)
     {
+        var actor = User.Identity?.Name ?? "panel";
         var validationError = ValidateRequest(request);
         if (validationError is not null)
+        {
+            await _auditLogger.LogAsync(new AdminAuditEvent(
+                "alert-rule.create",
+                actor,
+                "alert-rule",
+                "new",
+                false,
+                400,
+                new { message = validationError }), cancellationToken);
             return BadRequest(new { message = validationError });
+        }
 
-        var created = _store.Create(MapNewRule(request));
+        var created = await _store.CreateAsync(MapNewRule(request), cancellationToken);
+        await _auditLogger.LogAsync(new AdminAuditEvent(
+            "alert-rule.create",
+            actor,
+            "alert-rule",
+            created.Id.ToString(),
+            true,
+            201,
+            new { created.Name, created.Metric, created.Threshold }), cancellationToken);
         return CreatedAtAction(nameof(GetRule), new { id = created.Id }, created);
     }
 
     [HttpGet("{id:guid}")]
-    public IActionResult GetRule(Guid id)
+    public async Task<IActionResult> GetRule(Guid id, CancellationToken cancellationToken)
     {
-        var rule = _store.Get(id);
+        var rule = await _store.GetAsync(id, cancellationToken);
         return rule is null ? NotFound(new { message = "Alert rule not found" }) : Ok(rule);
     }
 
     [HttpPut("{id:guid}")]
-    public IActionResult UpdateRule(Guid id, [FromBody] AlertRuleUpsertRequest request)
+    public async Task<IActionResult> UpdateRule(Guid id, [FromBody] AlertRuleUpsertRequest request, CancellationToken cancellationToken)
     {
+        var actor = User.Identity?.Name ?? "panel";
         var validationError = ValidateRequest(request);
         if (validationError is not null)
+        {
+            await _auditLogger.LogAsync(new AdminAuditEvent(
+                "alert-rule.update",
+                actor,
+                "alert-rule",
+                id.ToString(),
+                false,
+                400,
+                new { message = validationError }), cancellationToken);
             return BadRequest(new { message = validationError });
+        }
 
-        var updated = _store.Update(id, rule => ApplyRule(rule, request));
-        return updated is null ? NotFound(new { message = "Alert rule not found" }) : Ok(updated);
+        var updated = await _store.UpdateAsync(id, rule => ApplyRule(rule, request), cancellationToken);
+        if (updated is null)
+        {
+            await _auditLogger.LogAsync(new AdminAuditEvent(
+                "alert-rule.update",
+                actor,
+                "alert-rule",
+                id.ToString(),
+                false,
+                404,
+                new { message = "Alert rule not found" }), cancellationToken);
+            return NotFound(new { message = "Alert rule not found" });
+        }
+
+        await _auditLogger.LogAsync(new AdminAuditEvent(
+            "alert-rule.update",
+            actor,
+            "alert-rule",
+            id.ToString(),
+            true,
+            200,
+            new { updated.Name, updated.Enabled, updated.Threshold }), cancellationToken);
+        return Ok(updated);
     }
 
     [HttpPatch("{id:guid}/enabled")]
-    public IActionResult SetEnabled(Guid id, [FromBody] ToggleAlertRuleRequest request)
+    public async Task<IActionResult> SetEnabled(Guid id, [FromBody] ToggleAlertRuleRequest request, CancellationToken cancellationToken)
     {
-        var updated = _store.Update(id, rule => rule.Enabled = request.Enabled);
-        return updated is null ? NotFound(new { message = "Alert rule not found" }) : Ok(updated);
+        var actor = User.Identity?.Name ?? "panel";
+        var updated = await _store.UpdateAsync(id, rule => rule.Enabled = request.Enabled, cancellationToken);
+        if (updated is null)
+        {
+            await _auditLogger.LogAsync(new AdminAuditEvent(
+                "alert-rule.toggle-enabled",
+                actor,
+                "alert-rule",
+                id.ToString(),
+                false,
+                404,
+                new { message = "Alert rule not found", enabled = request.Enabled }), cancellationToken);
+            return NotFound(new { message = "Alert rule not found" });
+        }
+
+        await _auditLogger.LogAsync(new AdminAuditEvent(
+            "alert-rule.toggle-enabled",
+            actor,
+            "alert-rule",
+            id.ToString(),
+            true,
+            200,
+            new { updated.Enabled }), cancellationToken);
+        return Ok(updated);
     }
 
     [HttpDelete("{id:guid}")]
-    public IActionResult DeleteRule(Guid id)
+    public async Task<IActionResult> DeleteRule(Guid id, CancellationToken cancellationToken)
     {
-        return _store.Delete(id)
+        var actor = User.Identity?.Name ?? "panel";
+        var deleted = await _store.DeleteAsync(id, cancellationToken);
+        await _auditLogger.LogAsync(new AdminAuditEvent(
+            "alert-rule.delete",
+            actor,
+            "alert-rule",
+            id.ToString(),
+            deleted,
+            deleted ? 200 : 404,
+            new { deleted }), cancellationToken);
+
+        return deleted
             ? Ok(new { deleted = true, id })
             : NotFound(new { message = "Alert rule not found" });
     }

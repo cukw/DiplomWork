@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using ReportService.Models;
-using Npgsql;
 
 namespace ReportService.Data;
 
@@ -46,7 +45,13 @@ public class ReportDbContext : DbContext
     {
         if (!optionsBuilder.IsConfigured)
         {
-            optionsBuilder.UseNpgsql("Host=localhost;Database=reports;Username=postgres;Password=pass;TrustServerCertificate=true");
+            var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException("ConnectionStrings__DefaultConnection is required for ReportDbContext.");
+            }
+
+            optionsBuilder.UseNpgsql(connectionString);
         }
     }
 }

@@ -4,7 +4,14 @@ using Grpc.Reflection;
 using ActivityService.Services.Data;
 using ActivityService.Services.Events;
 using ActivityService.Services;
+using ActivityService.Services.Security;
+using Backend.Common.Infrastructure;
 using Microsoft.Extensions.Options;
+using UserLookup = UserService;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using System.Security.Cryptography.X509Certificates;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,16 +34,37 @@ builder.Services.AddControllers();
 builder.Services.AddGrpc(options =>
 {
     options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+    options.Interceptors.Add<AgentAuthInterceptor>();
 });
+
+builder.Services.AddGrpcClient<UserLookup.UserService.UserServiceClient>(options =>
+    options.Address = new Uri(builder.Configuration["Services:User"] ?? "http://userservice:5004"))
+    .ConfigurePrimaryHttpMessageHandler(() => CreateGrpcHttpHandler(builder.Configuration));
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")
         ?? throw new InvalidOperationException("Connection string missing")));
 
+var telemetryServiceName = builder.Configuration["OpenTelemetry:ServiceName"] ?? "activity-service";
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService(telemetryServiceName))
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddGrpcClientInstrumentation())
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddPrometheusExporter());
+
 builder.Services.AddGrpcReflection();
+builder.Services.AddSingleton<AgentAuthInterceptor>();
 
 builder.Services.AddScoped<IAnomalyDetectionService, AnomalyDetectionService>();
 builder.Services.AddHostedService<ActivityOutboxDispatcher>();
+builder.Services.Configure<ActivityRetentionOptions>(builder.Configuration.GetSection("ActivityRetention"));
+builder.Services.AddHostedService<ActivityRetentionWorker>();
 
 builder.Services.AddOptions<MassTransitHostOptions>().Configure(options =>
 {
@@ -74,36 +102,99 @@ await InitializeDatabaseWithRetryAsync(
     async (services, cancellationToken) =>
     {
         var db = services.GetRequiredService<AppDbContext>();
-        await db.Database.MigrateAsync(cancellationToken);
-        await db.Database.ExecuteSqlRawAsync(@"
-            CREATE TABLE IF NOT EXISTS activity_outbox (
-                id BIGSERIAL PRIMARY KEY,
-                event_type VARCHAR(128) NOT NULL,
-                activity_id BIGINT NULL,
-                payload JSONB NOT NULL,
-                headers JSONB NULL,
-                attempt_count INTEGER NOT NULL DEFAULT 0,
-                available_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                processed_at TIMESTAMPTZ NULL,
-                last_error TEXT NULL,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_activity_outbox_pending
-                ON activity_outbox(processed_at, available_at);
-            CREATE INDEX IF NOT EXISTS idx_activity_outbox_activity_id
-                ON activity_outbox(activity_id);
-        ", cancellationToken);
+        var migrationsDirectory = ResolveMigrationsDirectory(app.Environment.ContentRootPath);
+        await SqlMigrationRunner.ApplyAsync(
+            db,
+            "activity-runtime",
+            migrationsDirectory,
+            app.Logger,
+            cancellationToken);
     });
+
+app.Use(async (context, next) =>
+{
+    var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault()
+        ?? context.TraceIdentifier
+        ?? Guid.NewGuid().ToString("N");
+    context.TraceIdentifier = correlationId;
+    context.Response.Headers["X-Correlation-ID"] = correlationId;
+
+    using (app.Logger.BeginScope(new Dictionary<string, object?>
+    {
+        ["CorrelationId"] = correlationId
+    }))
+    {
+        await next();
+    }
+});
 
 if (app.Environment.IsDevelopment())
     app.MapGrpcReflectionService();
 
 app.MapGrpcService<ActivityServiceImpl>();
 app.MapControllers();
+app.MapPrometheusScrapingEndpoint("/metrics");
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "ActivityService", timestamp = DateTime.UtcNow }));
 
 app.Run();
+
+static HttpMessageHandler CreateGrpcHttpHandler(IConfiguration configuration)
+{
+    var mtlsEnabled = configuration.GetValue<bool>("Services:Mtls:Enabled");
+    if (!mtlsEnabled)
+    {
+        return new SocketsHttpHandler
+        {
+            EnableMultipleHttp2Connections = true,
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2)
+        };
+    }
+
+    var handler = new HttpClientHandler();
+    var certificatePath = configuration["Services:Mtls:ClientCertificate:Path"];
+    var certificatePassword = configuration["Services:Mtls:ClientCertificate:Password"];
+    if (!string.IsNullOrWhiteSpace(certificatePath) && File.Exists(certificatePath))
+    {
+        handler.ClientCertificates.Add(LoadClientCertificate(certificatePath, certificatePassword));
+    }
+
+    var allowedThumbprints = configuration
+        .GetSection("Services:Mtls:ServerThumbprints")
+        .Get<string[]>()?
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Select(x => x.Replace(" ", string.Empty, StringComparison.Ordinal).ToUpperInvariant())
+        .ToHashSet(StringComparer.Ordinal)
+        ?? new HashSet<string>(StringComparer.Ordinal);
+
+    handler.ServerCertificateCustomValidationCallback = (_, certificate, _, errors) =>
+    {
+        if (errors == System.Net.Security.SslPolicyErrors.None)
+            return true;
+        if (certificate is null)
+            return false;
+
+        var thumbprint = certificate.GetCertHashString().Replace(" ", string.Empty, StringComparison.Ordinal).ToUpperInvariant();
+        return allowedThumbprints.Contains(thumbprint);
+    };
+
+    return handler;
+}
+
+static X509Certificate2 LoadClientCertificate(string certificatePath, string? certificatePassword)
+{
+    return string.IsNullOrWhiteSpace(certificatePassword)
+        ? X509CertificateLoader.LoadCertificateFromFile(certificatePath)
+        : X509CertificateLoader.LoadPkcs12FromFile(certificatePath, certificatePassword, X509KeyStorageFlags.DefaultKeySet);
+}
+
+static string ResolveMigrationsDirectory(string contentRootPath)
+{
+    var contentRootCandidate = Path.Combine(contentRootPath, "db", "migrations");
+    if (Directory.Exists(contentRootCandidate))
+        return contentRootCandidate;
+
+    return Path.Combine(AppContext.BaseDirectory, "db", "migrations");
+}
 
 static async Task InitializeDatabaseWithRetryAsync(
     IServiceProvider rootServices,

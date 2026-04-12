@@ -1,0 +1,132 @@
+syntax = "proto3";
+
+option csharp_namespace = "UserService";
+
+package user;
+
+service UserService {
+  rpc GetUserProfile (GetUserProfileRequest) returns (GetUserProfileResponse);
+  rpc UpdateUserProfile (UpdateUserProfileRequest) returns (UpdateUserProfileResponse);
+  rpc GetComputerInfo (GetComputerInfoRequest) returns (GetComputerInfoResponse);
+  rpc UpdateComputerInfo (UpdateComputerInfoRequest) returns (UpdateComputerInfoResponse);
+  rpc GetUsersByDepartment (GetUsersByDepartmentRequest) returns (GetUsersByDepartmentResponse);
+  rpc GetAllUsers (GetAllUsersRequest) returns (GetAllUsersResponse);
+  rpc CreateUser (CreateUserRequest) returns (CreateUserResponse);
+  rpc DeleteUser (DeleteUserRequest) returns (DeleteUserResponse);
+}
+
+message GetUserProfileRequest {
+  int64 user_id = 1;
+}
+
+message GetUserProfileResponse {
+  bool success = 1;
+  string message = 2;
+  UserProfile user_profile = 3;
+}
+
+message UpdateUserProfileRequest {
+  int64 user_id = 1;
+  string full_name = 2;
+  string department = 3;
+}
+
+message UpdateUserProfileResponse {
+  bool success = 1;
+  string message = 2;
+  UserProfile user_profile = 3;
+}
+
+message GetComputerInfoRequest {
+  int64 computer_id = 1;
+}
+
+message GetComputerInfoResponse {
+  bool success = 1;
+  string message = 2;
+  ComputerInfo computer = 3;
+}
+
+message UpdateComputerInfoRequest {
+  int64 computer_id = 1;
+  string hostname = 2;
+  string os_version = 3;
+  string ip_address = 4;
+  string mac_address = 5;
+  string status = 6;
+}
+
+message UpdateComputerInfoResponse {
+  bool success = 1;
+  string message = 2;
+  ComputerInfo computer = 3;
+}
+
+message GetUsersByDepartmentRequest {
+  string department = 1;
+}
+
+message GetUsersByDepartmentResponse {
+  bool success = 1;
+  string message = 2;
+  repeated UserProfile users = 3;
+}
+
+message GetAllUsersRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message GetAllUsersResponse {
+  bool success = 1;
+  string message = 2;
+  repeated UserProfile users = 3;
+  int32 total_count = 4;
+}
+
+message CreateUserRequest {
+  int64 auth_user_id = 1;
+  string full_name = 2;
+  string department = 3;
+  string hostname = 4;
+  string os_version = 5;
+  string ip_address = 6;
+  string mac_address = 7;
+}
+
+message CreateUserResponse {
+  bool success = 1;
+  string message = 2;
+  UserProfile user_profile = 3;
+  ComputerInfo computer = 4;
+}
+
+message DeleteUserRequest {
+  int64 user_id = 1;
+}
+
+message DeleteUserResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message UserProfile {
+  int64 id = 1;
+  int64 auth_user_id = 2;
+  string full_name = 3;
+  string department = 4;
+  string created_at = 5;
+  ComputerInfo computer = 6;
+}
+
+message ComputerInfo {
+  int64 id = 1;
+  int64 user_id = 2;
+  string hostname = 3;
+  string os_version = 4;
+  string ip_address = 5;
+  string mac_address = 6;
+  string status = 7;
+  string last_seen = 8;
+  string created_at = 9;
+}

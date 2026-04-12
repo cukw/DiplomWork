@@ -3,8 +3,15 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Primitives;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
+using System.Threading.RateLimiting;
+using System.Security.Cryptography.X509Certificates;
 using Gateway.Services;
 using Gateway.Data;
+using Gateway.Security;
+using Backend.Common.Infrastructure;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 // Алиасы для gRPC-клиентов
 using ActivityClient     = Gateway.Protos.Activity.ActivityGrpcService.ActivityGrpcServiceClient;
@@ -21,31 +28,87 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
+var jwtKeyRing = BuildJwtKeyRing(builder.Configuration);
+
 // ─── gRPC-клиенты (всё общение через gRPC) ───────────────────────────────────
 builder.Services.AddGrpcClient<ActivityClient>(o =>
-    o.Address = new Uri(builder.Configuration["Services:Activity"] ?? "http://activityservice:5001"));
+    o.Address = new Uri(builder.Configuration["Services:Activity"] ?? "http://activityservice:5001"))
+    .ConfigurePrimaryHttpMessageHandler(() => CreateGrpcHttpHandler(builder.Configuration));
 
 builder.Services.AddGrpcClient<AuthClient>(o =>
-    o.Address = new Uri(builder.Configuration["Services:Auth"] ?? "http://authservice:5003"));
+    o.Address = new Uri(builder.Configuration["Services:Auth"] ?? "http://authservice:5003"))
+    .ConfigurePrimaryHttpMessageHandler(() => CreateGrpcHttpHandler(builder.Configuration));
 
 builder.Services.AddGrpcClient<UserClient>(o =>
-    o.Address = new Uri(builder.Configuration["Services:User"] ?? "http://userservice:5004"));
+    o.Address = new Uri(builder.Configuration["Services:User"] ?? "http://userservice:5004"))
+    .ConfigurePrimaryHttpMessageHandler(() => CreateGrpcHttpHandler(builder.Configuration));
 
 builder.Services.AddGrpcClient<NotificationClient>(o =>
-    o.Address = new Uri(builder.Configuration["Services:Notification"] ?? "http://notificationservice:5012"));
+    o.Address = new Uri(builder.Configuration["Services:Notification"] ?? "http://notificationservice:5012"))
+    .ConfigurePrimaryHttpMessageHandler(() => CreateGrpcHttpHandler(builder.Configuration));
 
 builder.Services.AddGrpcClient<MetricsClient>(o =>
-    o.Address = new Uri(builder.Configuration["Services:Metrics"] ?? "http://metricservice:5010"));
+    o.Address = new Uri(builder.Configuration["Services:Metrics"] ?? "http://metricservice:5010"))
+    .ConfigurePrimaryHttpMessageHandler(() => CreateGrpcHttpHandler(builder.Configuration));
 
 builder.Services.AddGrpcClient<ReportClient>(o =>
-    o.Address = new Uri(builder.Configuration["Services:Report"] ?? "http://reportservice:5013"));
+    o.Address = new Uri(builder.Configuration["Services:Report"] ?? "http://reportservice:5013"))
+    .ConfigurePrimaryHttpMessageHandler(() => CreateGrpcHttpHandler(builder.Configuration));
 
 builder.Services.AddGrpcClient<AgentClient>(o =>
-    o.Address = new Uri(builder.Configuration["Services:Agent"] ?? "http://agentmanagementservice:5015"));
+    o.Address = new Uri(builder.Configuration["Services:Agent"] ?? "http://agentmanagementservice:5015"))
+    .ConfigurePrimaryHttpMessageHandler(() => CreateGrpcHttpHandler(builder.Configuration));
 
 // ─── REST + Auth ──────────────────────────────────────────────────────────────
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ActionPermissionFilter>();
+});
 builder.Services.AddHttpClient();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        var principal = context.User?.Identity?.Name;
+        var key = string.IsNullOrWhiteSpace(principal)
+            ? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous"
+            : principal;
+
+        return RateLimitPartition.GetTokenBucketLimiter(key, _ => new TokenBucketRateLimiterOptions
+        {
+            TokenLimit = 120,
+            QueueLimit = 0,
+            TokensPerPeriod = 120,
+            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+            AutoReplenishment = true
+        });
+    });
+    options.AddPolicy("AuthEndpoints", context =>
+    {
+        var key = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 20,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        });
+    });
+});
+
+var telemetryServiceName = builder.Configuration["OpenTelemetry:ServiceName"] ?? "gateway";
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService(telemetryServiceName))
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddGrpcClientInstrumentation())
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddPrometheusExporter());
 
 var gatewayRuntimeConnection = builder.Configuration.GetConnectionString("GatewayRuntime")
     ?? builder.Configuration.GetConnectionString("DefaultConnection");
@@ -60,12 +123,19 @@ builder.Services.AddDbContextFactory<GatewayRuntimeDbContext>(options =>
 
 builder.Services.AddSingleton<AlertRuleStore>();
 builder.Services.AddSingleton<AppSettingsStore>();
+builder.Services.AddSingleton<RolePermissionStore>();
 builder.Services.AddSingleton<DownloadFileStore>();
+builder.Services.AddSingleton<IAdminAuditLogger, AdminAuditLogger>();
 builder.Services.AddScoped<PolicyAccessListSyncService>();
+builder.Services.AddScoped<ActionPermissionFilter>();
+builder.Services.AddSingleton<PermissionEvaluator>();
+builder.Services.Configure<AuthorizationMatrixOptions>(builder.Configuration.GetSection("AuthorizationMatrix"));
 
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
+        var requireHttpsMetadata = builder.Configuration.GetValue<bool?>("Jwt:RequireHttpsMetadata")
+            ?? !builder.Environment.IsDevelopment();
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -74,13 +144,10 @@ builder.Services.AddAuthentication("Bearer")
             ValidAudience = builder.Configuration["Jwt:Audience"],
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(
-                    builder.Configuration["Jwt:Key"]
-                    ?? throw new InvalidOperationException("JWT Key not configured"))),
+            IssuerSigningKeyResolver = (_, _, kid, _) => ResolveSigningKeys(jwtKeyRing, kid),
             ClockSkew = TimeSpan.Zero
         };
-        options.RequireHttpsMetadata = false;
+        options.RequireHttpsMetadata = requireHttpsMetadata;
         options.UseSecurityTokenValidators = true;
         
         // Configure token retrieval from Authorization header
@@ -190,8 +257,31 @@ builder.Services.AddAuthentication("Bearer")
 builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
-    options.AddPolicy("AllowAll", p =>
-        p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+{
+    var configuredOrigins = builder.Configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>()?
+        .Where(origin => !string.IsNullOrWhiteSpace(origin))
+        .Select(origin => origin.Trim())
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray()
+        ?? [];
+
+    var defaultOrigins = new[]
+    {
+        "http://localhost:3000",
+        "https://localhost:3443",
+        "http://127.0.0.1:3000",
+        "https://127.0.0.1:3443"
+    };
+
+    var allowedOrigins = configuredOrigins.Length > 0 ? configuredOrigins : defaultOrigins;
+    options.AddPolicy("Frontend", policy =>
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials());
+});
 
 var app = builder.Build();
 
@@ -202,32 +292,42 @@ await InitializeDatabaseWithRetryAsync(
     {
         var runtimeDbFactory = services.GetRequiredService<IDbContextFactory<GatewayRuntimeDbContext>>();
         await using var runtimeDb = await runtimeDbFactory.CreateDbContextAsync(cancellationToken);
-        await runtimeDb.Database.ExecuteSqlRawAsync(@"
-            CREATE TABLE IF NOT EXISTS app_settings_documents (
-                id           INTEGER PRIMARY KEY,
-                payload_json TEXT NOT NULL,
-                updated_at   TIMESTAMP NOT NULL DEFAULT NOW()
-            );
-        ", cancellationToken);
+        var migrationsDirectory = ResolveMigrationsDirectory(app.Environment.ContentRootPath);
+        await SqlMigrationRunner.ApplyAsync(
+            runtimeDb,
+            "gateway-runtime",
+            migrationsDirectory,
+            app.Logger,
+            cancellationToken);
     });
 
-app.UseCors("AllowAll");
+app.UseCors("Frontend");
+app.UseRateLimiter();
 
 // Correlation-ID логирование
 app.Use(async (context, next) =>
 {
     var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault()
-                        ?? Guid.NewGuid().ToString();
+        ?? context.TraceIdentifier
+        ?? Guid.NewGuid().ToString("N");
+    context.TraceIdentifier = correlationId;
     context.Response.Headers["X-Correlation-ID"] = correlationId;
-    app.Logger.LogInformation("Request: {Method} {Path} - CorrelationId: {CorrelationId}",
-        context.Request.Method, context.Request.Path, correlationId);
-    await next();
+
+    using (app.Logger.BeginScope(new Dictionary<string, object?>
+    {
+        ["CorrelationId"] = correlationId
+    }))
+    {
+        app.Logger.LogInformation("Request: {Method} {Path}", context.Request.Method, context.Request.Path);
+        await next();
+    }
 });
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapPrometheusScrapingEndpoint("/metrics");
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }));
 app.MapGet("/gateway/info", () => Results.Ok(new
@@ -263,6 +363,97 @@ static string NormalizeGatewayRuntimeConnectionString(string connectionString)
     }
 
     return connectionString;
+}
+
+static string ResolveMigrationsDirectory(string contentRootPath)
+{
+    var contentRootCandidate = Path.Combine(contentRootPath, "db", "migrations");
+    if (Directory.Exists(contentRootCandidate))
+        return contentRootCandidate;
+
+    return Path.Combine(AppContext.BaseDirectory, "db", "migrations");
+}
+
+static IReadOnlyDictionary<string, string> BuildJwtKeyRing(IConfiguration configuration)
+{
+    var keyRing = configuration
+        .GetSection("Jwt:Keys")
+        .GetChildren()
+        .Where(section => !string.IsNullOrWhiteSpace(section.Key) && !string.IsNullOrWhiteSpace(section.Value))
+        .ToDictionary(section => section.Key.Trim(), section => section.Value!.Trim(), StringComparer.Ordinal);
+
+    if (keyRing.Count > 0)
+        return keyRing;
+
+    var legacyKey = configuration["Jwt:Key"];
+    if (string.IsNullOrWhiteSpace(legacyKey))
+        throw new InvalidOperationException("JWT keys are not configured. Set Jwt:Keys or Jwt:Key.");
+
+    return new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["legacy"] = legacyKey.Trim()
+    };
+}
+
+static IEnumerable<SecurityKey> ResolveSigningKeys(
+    IReadOnlyDictionary<string, string> keyRing,
+    string? keyId)
+{
+    if (!string.IsNullOrWhiteSpace(keyId) && keyRing.TryGetValue(keyId, out var secret))
+        return [new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))];
+
+    return keyRing.Values
+        .Select(secret => new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)))
+        .ToArray();
+}
+
+static HttpMessageHandler CreateGrpcHttpHandler(IConfiguration configuration)
+{
+    var mtlsEnabled = configuration.GetValue<bool>("Services:Mtls:Enabled");
+    if (!mtlsEnabled)
+    {
+        return new SocketsHttpHandler
+        {
+            EnableMultipleHttp2Connections = true,
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2)
+        };
+    }
+
+    var handler = new HttpClientHandler();
+    var certificatePath = configuration["Services:Mtls:ClientCertificate:Path"];
+    var certificatePassword = configuration["Services:Mtls:ClientCertificate:Password"];
+    if (!string.IsNullOrWhiteSpace(certificatePath) && File.Exists(certificatePath))
+    {
+        handler.ClientCertificates.Add(LoadClientCertificate(certificatePath, certificatePassword));
+    }
+
+    var allowedThumbprints = configuration
+        .GetSection("Services:Mtls:ServerThumbprints")
+        .Get<string[]>()?
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Select(x => x.Replace(" ", string.Empty, StringComparison.Ordinal).ToUpperInvariant())
+        .ToHashSet(StringComparer.Ordinal)
+        ?? new HashSet<string>(StringComparer.Ordinal);
+
+    handler.ServerCertificateCustomValidationCallback = (_, certificate, _, errors) =>
+    {
+        if (errors == System.Net.Security.SslPolicyErrors.None)
+            return true;
+        if (certificate is null)
+            return false;
+
+        var thumbprint = certificate.GetCertHashString().Replace(" ", string.Empty, StringComparison.Ordinal).ToUpperInvariant();
+        return allowedThumbprints.Contains(thumbprint);
+    };
+
+    return handler;
+}
+
+static X509Certificate2 LoadClientCertificate(string certificatePath, string? certificatePassword)
+{
+    return string.IsNullOrWhiteSpace(certificatePassword)
+        ? X509CertificateLoader.LoadCertificateFromFile(certificatePath)
+        : X509CertificateLoader.LoadPkcs12FromFile(certificatePath, certificatePassword, X509KeyStorageFlags.DefaultKeySet);
 }
 
 static async Task InitializeDatabaseWithRetryAsync(

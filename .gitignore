@@ -40,6 +40,13 @@ LocalEndpointAgent/src/endpoint_agent/protos/__pycache__/
 # Logs
 *.log
 logs/
+state/
+backups/
+
+# Local environment files (keep only templates in git)
+.env
+.env.*
+!.env.production.example
 
 # macOS / editor
 .DS_Store

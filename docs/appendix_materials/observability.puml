@@ -1,0 +1,20 @@
+@startuml
+skinparam defaultFontName "Times New Roman"
+rectangle "Gateway" as GW
+rectangle "ActivityService" as ACT
+rectangle "AuthService" as AUTH
+rectangle "NotificationService" as NOTIF
+rectangle "Prometheus" as PROM
+rectangle "Grafana" as GRAF
+rectangle "Alert Rules" as ALERT
+actor "Администратор" as ADMIN
+
+PROM --> GW : scrape /metrics
+PROM --> ACT : scrape /metrics
+PROM --> AUTH : scrape /metrics
+PROM --> NOTIF : scrape /metrics
+ALERT --> PROM : expressions / thresholds
+GRAF --> PROM : dashboard queries
+ADMIN --> GRAF : monitoring / analysis
+ADMIN --> ALERT : incident response
+@enduml

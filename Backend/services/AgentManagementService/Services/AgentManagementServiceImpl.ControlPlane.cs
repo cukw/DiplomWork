@@ -186,7 +186,13 @@ public partial class AgentManagementServiceImpl
 
     public override async Task<GetAgentCommandsResponse> GetAgentCommands(GetAgentCommandsRequest request, ServerCallContext context)
     {
-        _logger.LogInformation("Get agent commands request for agent ID: {AgentId}, status: {Status}", request.AgentId, request.Status);
+        _logger.LogInformation(
+            "Get agent commands request for agent ID: {AgentId}, status: {Status}, type: {Type}, from: {From}, to: {To}",
+            request.AgentId,
+            request.Status,
+            request.Type,
+            request.CreatedFrom,
+            request.CreatedTo);
 
         try
         {
@@ -197,6 +203,32 @@ public partial class AgentManagementServiceImpl
             {
                 var status = request.Status.Trim().ToLowerInvariant();
                 query = query.Where(c => c.Status == status);
+            }
+            if (!string.IsNullOrWhiteSpace(request.Type))
+            {
+                var commandType = NormalizeCommandType(request.Type);
+                query = query.Where(c => c.Type == commandType);
+            }
+
+            if (!TryParseUtcDateTime(request.CreatedFrom, out var fromUtc))
+            {
+                return new GetAgentCommandsResponse { Success = false, Message = "Invalid created_from value. Expected ISO-8601 date/time." };
+            }
+            if (!TryParseUtcDateTime(request.CreatedTo, out var toUtc))
+            {
+                return new GetAgentCommandsResponse { Success = false, Message = "Invalid created_to value. Expected ISO-8601 date/time." };
+            }
+            if (fromUtc is not null && toUtc is not null && fromUtc > toUtc)
+            {
+                return new GetAgentCommandsResponse { Success = false, Message = "created_from must be less than or equal to created_to" };
+            }
+            if (fromUtc is not null)
+            {
+                query = query.Where(c => c.CreatedAt >= fromUtc.Value);
+            }
+            if (toUtc is not null)
+            {
+                query = query.Where(c => c.CreatedAt <= toUtc.Value);
             }
 
             var totalCount = await query.CountAsync();
@@ -357,6 +389,80 @@ public partial class AgentManagementServiceImpl
         {
             _logger.LogError(ex, "Error acknowledging command ID: {CommandId}", request.CommandId);
             return new AckAgentCommandResponse { Success = false, Message = "An error occurred while acknowledging command" };
+        }
+    }
+
+    public override async Task<RetryAgentCommandResponse> RetryAgentCommand(RetryAgentCommandRequest request, ServerCallContext context)
+    {
+        _logger.LogInformation("Retry agent command request for agent ID: {AgentId}, command ID: {CommandId}", request.AgentId, request.CommandId);
+
+        try
+        {
+            if (request.AgentId <= 0 || request.AgentId > int.MaxValue)
+                return new RetryAgentCommandResponse { Success = false, Message = "Invalid agent ID" };
+
+            if (request.CommandId <= 0 || request.CommandId > int.MaxValue)
+                return new RetryAgentCommandResponse { Success = false, Message = "Invalid command ID" };
+
+            var agentId = (int)request.AgentId;
+            var commandId = (int)request.CommandId;
+
+            var sourceCommand = await _db.AgentCommands.FirstOrDefaultAsync(c => c.Id == commandId);
+            if (sourceCommand is null)
+                return new RetryAgentCommandResponse { Success = false, Message = "Command not found" };
+
+            if (sourceCommand.AgentId != agentId)
+                return new RetryAgentCommandResponse { Success = false, Message = "Command does not belong to specified agent" };
+
+            var sourceStatus = NormalizeCommandStatus(sourceCommand.Status);
+            if (sourceStatus is not ("deadletter" or "timeout" or "failed"))
+            {
+                return new RetryAgentCommandResponse
+                {
+                    Success = false,
+                    Message = $"Command with status '{sourceStatus}' cannot be retried"
+                };
+            }
+
+            var retryCommandType = NormalizeCommandType(sourceCommand.Type);
+            if (string.IsNullOrWhiteSpace(retryCommandType))
+                return new RetryAgentCommandResponse { Success = false, Message = "Source command type is invalid" };
+
+            var retryCommand = new Models.AgentCommand
+            {
+                AgentId = sourceCommand.AgentId,
+                CommandKey = NormalizeCommandKey($"retry-{sourceCommand.Id}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}"),
+                Type = retryCommandType,
+                PayloadJson = NormalizeJsonObjectString(sourceCommand.PayloadJson),
+                Status = "pending",
+                RequestedBy = string.IsNullOrWhiteSpace(request.RequestedBy) ? "panel" : request.RequestedBy.Trim(),
+                ResultMessage = $"Retry of command {sourceCommand.Id}",
+                CreatedAt = DateTime.UtcNow,
+                DeliveryAttempts = 0,
+                MaxDeliveryAttempts = sourceCommand.MaxDeliveryAttempts > 0
+                    ? sourceCommand.MaxDeliveryAttempts
+                    : Math.Max(1, _commandDeliveryOptions.MaxDeliveryAttempts),
+                LastDispatchAt = null,
+                NextRetryAt = null,
+                TimeoutAt = null,
+                AcknowledgedAt = null,
+                DeadLetterReason = string.Empty
+            };
+
+            _db.AgentCommands.Add(retryCommand);
+            await _db.SaveChangesAsync();
+
+            return new RetryAgentCommandResponse
+            {
+                Success = true,
+                Message = "Retry command created successfully",
+                Command = MapCommandToProto(retryCommand)
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrying command ID: {CommandId} for agent ID: {AgentId}", request.CommandId, request.AgentId);
+            return new RetryAgentCommandResponse { Success = false, Message = "An error occurred while retrying command" };
         }
     }
 
@@ -545,6 +651,19 @@ public partial class AgentManagementServiceImpl
         return string.IsNullOrWhiteSpace(type)
             ? string.Empty
             : type.Trim().ToUpperInvariant().Replace(' ', '_');
+    }
+
+    private static bool TryParseUtcDateTime(string? raw, out DateTime? parsedUtc)
+    {
+        parsedUtc = null;
+        if (string.IsNullOrWhiteSpace(raw))
+            return true;
+
+        if (!DateTimeOffset.TryParse(raw, out var dto))
+            return false;
+
+        parsedUtc = dto.UtcDateTime;
+        return true;
     }
 
     private static string NormalizeCommandStatus(string? status)

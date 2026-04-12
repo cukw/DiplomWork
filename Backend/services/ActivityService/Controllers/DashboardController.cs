@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using ActivityService.Services.Data;
 using ActivityService.Services.Models;
 using Microsoft.EntityFrameworkCore;
+using UserLookup = UserService;
 
 namespace ActivityService.Controllers;
 
@@ -11,11 +12,16 @@ public class DashboardController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ILogger<DashboardController> _logger;
+    private readonly UserLookup.UserService.UserServiceClient _userServiceClient;
 
-    public DashboardController(AppDbContext db, ILogger<DashboardController> logger)
+    public DashboardController(
+        AppDbContext db,
+        ILogger<DashboardController> logger,
+        UserLookup.UserService.UserServiceClient userServiceClient)
     {
         _db = db;
         _logger = logger;
+        _userServiceClient = userServiceClient;
     }
 
     [HttpGet("stats")]
@@ -34,27 +40,12 @@ public class DashboardController : ControllerBase
                 .ToListAsync();
 
             // Average risk score
-            var avgRiskScore = await _db.Activities
+            var avgRiskScore = (await _db.Activities
                 .Where(a => a.RiskScore.HasValue)
-                .AverageAsync(a => a.RiskScore!.Value);
+                .AverageAsync(a => (decimal?)a.RiskScore!.Value)) ?? 0m;
 
-            // Get unique computers count
-            var totalComputers = await _db.Activities
-                .Select(a => a.ComputerId)
-                .Distinct()
-                .CountAsync();
-
-            // Get active computers (with activity in last 24 hours)
-            var oneDayAgo = DateTime.UtcNow.AddDays(-1);
-            var activeComputers = await _db.Activities
-                .Where(a => a.Timestamp >= oneDayAgo)
-                .Select(a => a.ComputerId)
-                .Distinct()
-                .CountAsync();
-
-            // Mock user data (in real implementation, you'd get this from UserService)
-            var totalUsers = 150;
-            var activeUsers = 89;
+            var (totalUsers, activeUsers, totalComputers, activeComputers) =
+                await GetUserAndComputerStatsAsync(HttpContext.RequestAborted);
 
             var stats = new
             {
@@ -150,5 +141,96 @@ public class DashboardController : ControllerBase
             "REPEATED_ACTIVITY" => "Medium",
             _ => "Low"
         };
+    }
+
+    private async Task<(int TotalUsers, int ActiveUsers, int TotalComputers, int ActiveComputers)> GetUserAndComputerStatsAsync(CancellationToken cancellationToken)
+    {
+        const int pageSize = 500;
+        var page = 1;
+        var users = new List<UserLookup.UserProfile>();
+        int? totalUsersFromService = null;
+
+        try
+        {
+            while (true)
+            {
+                var response = await _userServiceClient.GetAllUsersAsync(
+                    new UserLookup.GetAllUsersRequest { Page = page, PageSize = pageSize },
+                    cancellationToken: cancellationToken);
+
+                if (!response.Success)
+                {
+                    _logger.LogWarning("UserService returned unsuccessful response in GetAllUsers: {Message}", response.Message);
+                    break;
+                }
+
+                if (totalUsersFromService is null && response.TotalCount > 0)
+                    totalUsersFromService = response.TotalCount;
+
+                if (response.Users.Count == 0)
+                    break;
+
+                users.AddRange(response.Users);
+
+                if (response.Users.Count < pageSize)
+                    break;
+
+                if (totalUsersFromService.HasValue && users.Count >= totalUsersFromService.Value)
+                    break;
+
+                page++;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch users from UserService for dashboard stats");
+        }
+
+        var totalUsers = totalUsersFromService.GetValueOrDefault(users.Count);
+        if (totalUsers < users.Count)
+            totalUsers = users.Count;
+
+        var activeUsers = 0;
+        var totalComputerIds = new HashSet<long>();
+        var activeComputerIds = new HashSet<long>();
+        var activeCutoffUtc = DateTime.UtcNow.AddHours(-24);
+
+        foreach (var user in users)
+        {
+            if (user?.Computer is null || user.Computer.Id <= 0)
+                continue;
+
+            totalComputerIds.Add(user.Computer.Id);
+
+            if (!IsActiveComputer(user.Computer, activeCutoffUtc))
+                continue;
+
+            activeUsers++;
+            activeComputerIds.Add(user.Computer.Id);
+        }
+
+        return (totalUsers, activeUsers, totalComputerIds.Count, activeComputerIds.Count);
+    }
+
+    private static bool IsActiveComputer(UserLookup.ComputerInfo computer, DateTime cutoffUtc)
+    {
+        var status = (computer.Status ?? string.Empty).Trim().ToLowerInvariant();
+        if (status is "online" or "active")
+            return true;
+
+        if (string.IsNullOrWhiteSpace(computer.LastSeen))
+            return false;
+
+        if (!DateTime.TryParse(computer.LastSeen, out var parsed))
+            return false;
+
+        var asUtc = parsed.Kind switch
+        {
+            DateTimeKind.Utc => parsed,
+            DateTimeKind.Local => parsed.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(parsed, DateTimeKind.Utc)
+        };
+
+        return asUtc >= cutoffUtc;
     }
 }

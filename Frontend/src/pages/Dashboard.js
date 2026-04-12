@@ -43,6 +43,10 @@ import { activityAPI, dashboardAPI } from '../services/api';
 import AlertDetailsDialog from '../components/AlertDetailsDialog';
 
 const initialStats = {
+  totalUsers: 0,
+  activeUsers: 0,
+  totalComputers: 0,
+  activeComputers: 0,
   totalActivities: 0,
   blockedActivities: 0,
   anomalyCount: 0,
@@ -72,6 +76,10 @@ const titleCaseActivity = (value) => {
 };
 
 const normalizeStats = (data) => ({
+  totalUsers: Number(data?.totalUsers ?? data?.total_users ?? 0),
+  activeUsers: Number(data?.activeUsers ?? data?.active_users ?? 0),
+  totalComputers: Number(data?.totalComputers ?? data?.total_computers ?? 0),
+  activeComputers: Number(data?.activeComputers ?? data?.active_computers ?? 0),
   totalActivities: Number(data?.totalActivities ?? data?.total_activities ?? 0),
   blockedActivities: Number(data?.blockedActivities ?? data?.blocked_activities ?? 0),
   anomalyCount: Number(data?.anomalyCount ?? data?.anomaliesCount ?? data?.anomaly_count ?? 0),
@@ -397,6 +405,7 @@ const Dashboard = () => {
 
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} mt={2.2}>
                 <Chip icon={<NotificationsActive />} label={`${unreadCount} непрочитанных уведомлений`} color="primary" variant="outlined" />
+                <Chip icon={<Computer />} label={`Активных ПК: ${stats.activeComputers}/${stats.totalComputers}`} color="info" variant="outlined" />
                 <Chip icon={<ShieldOutlined />} label={`${stats.blockedActivities} заблокированных действий`} color="warning" variant="outlined" />
                 <Chip icon={<WarningAmber />} label={`${stats.anomalyCount} аномалий`} color="error" variant="outlined" />
               </Stack>
@@ -462,10 +471,24 @@ const Dashboard = () => {
       <Grid container spacing={2.5} sx={{ mb: 3 }}>
         {[
           {
+            title: 'Пользователи',
+            value: `${stats.activeUsers}/${stats.totalUsers}`,
+            caption: 'Активные / всего',
+            icon: <Timeline />,
+            color: 'secondary',
+          },
+          {
+            title: 'Компьютеры',
+            value: `${stats.activeComputers}/${stats.totalComputers}`,
+            caption: 'Активные / всего',
+            icon: <Computer />,
+            color: 'info',
+          },
+          {
             title: 'Всего активностей',
             value: stats.totalActivities,
             caption: 'Обработано событий',
-            icon: <Timeline />,
+            icon: <Bolt />,
             color: 'primary',
           },
           {
@@ -487,7 +510,7 @@ const Dashboard = () => {
             value: stats.averageRiskScore.toFixed(1),
             caption: 'По всем событиям',
             icon: <AutoGraph />,
-            color: 'info',
+            color: 'success',
           },
         ].map((item) => (
           <Grid item xs={12} sm={6} lg={3} key={item.title}>

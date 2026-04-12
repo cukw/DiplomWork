@@ -179,6 +179,117 @@ public partial class AgentManagementServiceImpl : AgentManagementService.AgentMa
         }
     }
 
+    public override async Task<SetAgentDesiredVersionResponse> SetAgentDesiredVersion(SetAgentDesiredVersionRequest request, ServerCallContext context)
+    {
+        _logger.LogInformation(
+            "Set desired version request for agent ID: {AgentId}, desiredVersion: {DesiredVersion}, enqueue: {Enqueue}",
+            request.AgentId,
+            request.DesiredVersion,
+            request.EnqueueSelfUpdate);
+
+        try
+        {
+            if (request.AgentId <= 0 || request.AgentId > int.MaxValue)
+            {
+                return new SetAgentDesiredVersionResponse
+                {
+                    Success = false,
+                    Message = "Invalid agent ID"
+                };
+            }
+
+            var agent = await _db.Agents.FindAsync((int)request.AgentId);
+            if (agent is null)
+            {
+                return new SetAgentDesiredVersionResponse
+                {
+                    Success = false,
+                    Message = "Agent not found"
+                };
+            }
+
+            var desiredVersion = string.IsNullOrWhiteSpace(request.DesiredVersion)
+                ? string.Empty
+                : request.DesiredVersion.Trim();
+
+            if (desiredVersion.Length > 20)
+            {
+                return new SetAgentDesiredVersionResponse
+                {
+                    Success = false,
+                    Message = "Desired version is too long (max 20 characters)"
+                };
+            }
+
+            if (string.IsNullOrWhiteSpace(desiredVersion))
+            {
+                agent.DesiredVersion = null;
+                agent.DesiredVersionSetAt = null;
+                await _db.SaveChangesAsync(context.CancellationToken);
+
+                return new SetAgentDesiredVersionResponse
+                {
+                    Success = true,
+                    Message = "Desired version cleared",
+                    Agent = MapAgentToProto(agent)
+                };
+            }
+
+            agent.DesiredVersion = desiredVersion;
+            agent.DesiredVersionSetAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(context.CancellationToken);
+
+            global::AgentManagementService.AgentCommand? createdCommand = null;
+            if (request.EnqueueSelfUpdate)
+            {
+                var payloadJson = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    targetVersion = desiredVersion
+                });
+
+                var commandResponse = await CreateAgentCommand(new CreateAgentCommandRequest
+                {
+                    AgentId = request.AgentId,
+                    Type = "SELF_UPDATE",
+                    PayloadJson = payloadJson,
+                    RequestedBy = string.IsNullOrWhiteSpace(request.RequestedBy) ? "panel" : request.RequestedBy.Trim(),
+                    CommandKey = NormalizeCommandKey(request.CommandKey)
+                }, context);
+
+                if (!commandResponse.Success)
+                {
+                    return new SetAgentDesiredVersionResponse
+                    {
+                        Success = false,
+                        Message = $"Desired version saved, but self-update command was not created: {commandResponse.Message}",
+                        Agent = MapAgentToProto(agent)
+                    };
+                }
+
+                createdCommand = commandResponse.Command;
+            }
+
+            return new SetAgentDesiredVersionResponse
+            {
+                Success = true,
+                Message = request.EnqueueSelfUpdate
+                    ? "Desired version saved and self-update command queued"
+                    : "Desired version saved",
+                Agent = MapAgentToProto(agent),
+                Command = createdCommand
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting desired version for agent ID: {AgentId}", request.AgentId);
+            return new SetAgentDesiredVersionResponse
+            {
+                Success = false,
+                Message = "An error occurred while setting desired version"
+            };
+        }
+    }
+
     public override async Task<GetAgentResponse> GetAgent(GetAgentRequest request, ServerCallContext context)
     {
         _logger.LogInformation("Get agent request for agent ID: {AgentId}", request.AgentId);
@@ -529,7 +640,9 @@ public partial class AgentManagementServiceImpl : AgentManagementService.AgentMa
             Status = agent.Status,
             LastHeartbeat = agent.LastHeartbeat?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? "",
             ConfigVersion = agent.ConfigVersion ?? "",
-            OfflineSince = agent.OfflineSince?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? ""
+            OfflineSince = agent.OfflineSince?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? "",
+            DesiredVersion = agent.DesiredVersion ?? "",
+            DesiredVersionSetAt = agent.DesiredVersionSetAt?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? ""
         };
     }
 

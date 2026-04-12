@@ -216,6 +216,18 @@ UI/API:
 - Frontend: `http://localhost:3000`
 - Gateway health: `http://localhost:8080/health`
 
+### Production-профиль (без внешней публикации внутренних БД/шины/шлюза)
+
+```bash
+cp .env.production.example .env.production
+# отредактируйте секреты в .env.production
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+```
+
+Примечание:
+- внешний доступ идет через `frontend` (`80/443`);
+- `gateway`, Postgres и RabbitMQ остаются только во внутренней docker-сети.
+
 ### Остановка
 
 ```bash
@@ -231,6 +243,9 @@ docker compose down
   - `RABBITMQ_USER`
   - `RABBITMQ_PASS`
   - `RABBITMQ_VHOST`
+- агентская gRPC-аутентификация:
+  - `AGENT_AUTH_HEADER`
+  - `AGENT_AUTH_TOKEN`
 - Gateway service discovery:
   - `Services__Activity`, `Services__Auth`, `Services__User`, `Services__Metrics`, `Services__Notification`, `Services__Report`, `Services__Agent`
 
@@ -250,17 +265,30 @@ docker compose logs -f activityservice
 - `http://127.0.0.1:15672`
 - логин/пароль из `RABBITMQ_USER` / `RABBITMQ_PASS`
 
-## 10. Что важно учитывать сейчас
+## 10. Backup/Restore БД
 
-1. `LocalEndpointAgent` (Python/Rust) в текущей ветке не представлен исходниками.
-2. `ActivityAgent` содержит demo-фрагменты сбора активности; для production endpoint agent нужна полноценная OS-native реализация для Linux/macOS/Windows.
+Полный backup всех Postgres:
+
+```bash
+bash /Users/cukw/FinalWork/scripts/ops/backup_all_postgres.sh
+```
+
+Полный restore всех Postgres:
+
+```bash
+bash /Users/cukw/FinalWork/scripts/ops/restore_all_postgres.sh /Users/cukw/FinalWork/backups/<timestamp>
+```
+
+## 11. Что важно учитывать сейчас
+
+1. `LocalEndpointAgent` (Python/Rust) реализован и вынесен в `/Users/cukw/FinalWork/LocalEndpointAgent`, включая кроссплатформенный installer и упаковку.
+2. `ActivityAgent` (C#) оставлен как demo-генератор событий; в production его лучше отключать (см. `docker-compose.prod.yml`).
 3. Событийный контур RabbitMQ + outbox/inbox уже реализован и является базой консистентности между сервисами.
 
-## 11. Полезные пути в репозитории
+## 12. Полезные пути в репозитории
 
 - Gateway: `/Users/cukw/FinalWork/Backend/gateway/src`
 - Frontend: `/Users/cukw/FinalWork/Frontend/src`
 - ActivityService: `/Users/cukw/FinalWork/Backend/services/ActivityService`
 - AgentManagementService: `/Users/cukw/FinalWork/Backend/services/AgentManagementService`
 - Docker orchestration: `/Users/cukw/FinalWork/docker-compose.yml`
-

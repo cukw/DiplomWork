@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { alpha, useTheme } from '@mui/material/styles';
 import {
   Alert,
@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Divider,
@@ -44,6 +45,7 @@ import {
   ErrorOutline,
   Schedule,
   Policy,
+  Replay,
 } from '@mui/icons-material';
 import { agentAPI } from '../services/api';
 
@@ -84,6 +86,18 @@ const getCommandStatusIcon = (status) => {
   if (s === 'success') return <CheckCircle fontSize="small" color="success" />;
   if (s === 'failed') return <ErrorOutline fontSize="small" color="error" />;
   return <Schedule fontSize="small" color="action" />;
+};
+
+const canRetryCommand = (status) => {
+  const normalized = String(status || '').toLowerCase();
+  return normalized === 'deadletter' || normalized === 'timeout' || normalized === 'failed';
+};
+
+const toUtcIso = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString();
 };
 
 const toBool = (value) => (value === true ? true : value === false ? false : null);
@@ -204,12 +218,32 @@ const Agents = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [commandStatusFilter, setCommandStatusFilter] = useState('all');
+  const [commandTypeFilter, setCommandTypeFilter] = useState('all');
+  const [commandFromFilter, setCommandFromFilter] = useState('');
+  const [commandToFilter, setCommandToFilter] = useState('');
   const [commandPage, setCommandPage] = useState(1);
   const [policyVersionsPage, setPolicyVersionsPage] = useState(1);
+  const [selectedAgentIds, setSelectedAgentIds] = useState([]);
 
   const [customCommandType, setCustomCommandType] = useState('PING');
   const [customCommandPayload, setCustomCommandPayload] = useState('{}');
   const [adminReason, setAdminReason] = useState('Заблокировано администратором');
+
+  const buildCommandQuery = useCallback(({ page = commandPage, pageSize = COMMAND_PAGE_SIZE, status = commandStatusFilter } = {}) => {
+    const query = {
+      page,
+      pageSize,
+      ...(status !== 'all' ? { status } : {}),
+      ...(commandTypeFilter !== 'all' ? { type: commandTypeFilter } : {}),
+    };
+
+    const createdFrom = toUtcIso(commandFromFilter);
+    const createdTo = toUtcIso(commandToFilter);
+    if (createdFrom) query.from = createdFrom;
+    if (createdTo) query.to = createdTo;
+
+    return query;
+  }, [commandPage, commandStatusFilter, commandTypeFilter, commandFromFilter, commandToFilter]);
 
   useEffect(() => {
     let alive = true;
@@ -227,6 +261,10 @@ const Agents = () => {
         if (!alive) return;
         const rows = (response?.agents || []).map(normalizeAgent);
         setAgents(rows);
+        setSelectedAgentIds((prev) => {
+          const allowed = new Set(rows.map((row) => row.id));
+          return (Array.isArray(prev) ? prev : []).filter((id) => allowed.has(id));
+        });
 
         setSelectedAgentId((prev) => {
           if (prev && rows.some((a) => a.id === prev)) return prev;
@@ -247,7 +285,7 @@ const Agents = () => {
   useEffect(() => {
     setCommandPage(1);
     setPolicyVersionsPage(1);
-  }, [selectedAgentId, commandStatusFilter]);
+  }, [selectedAgentId, commandStatusFilter, commandTypeFilter, commandFromFilter, commandToFilter]);
 
   useEffect(() => {
     if (!selectedAgentId) {
@@ -273,11 +311,7 @@ const Agents = () => {
             page: policyVersionsPage,
             pageSize: 10,
           }),
-          agentAPI.getAgentCommands(selectedAgentId, {
-            page: commandPage,
-            pageSize: COMMAND_PAGE_SIZE,
-            ...(commandStatusFilter !== 'all' ? { status: commandStatusFilter } : {}),
-          }),
+          agentAPI.getAgentCommands(selectedAgentId, buildCommandQuery()),
         ]);
 
         if (!alive) return;
@@ -298,7 +332,7 @@ const Agents = () => {
 
     fetchDetails();
     return () => { alive = false; };
-  }, [selectedAgentId, commandStatusFilter, commandPage, policyVersionsPage]);
+  }, [selectedAgentId, policyVersionsPage, buildCommandQuery]);
 
   const filteredAgents = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -315,6 +349,30 @@ const Agents = () => {
       return haystack.includes(query);
     });
   }, [agents, searchTerm]);
+
+  const filteredAgentIds = useMemo(() => filteredAgents.map((agent) => agent.id), [filteredAgents]);
+  const allFilteredSelected = filteredAgentIds.length > 0 && filteredAgentIds.every((id) => selectedAgentIds.includes(id));
+  const selectedAgentCount = selectedAgentIds.length;
+
+  const toggleAgentSelection = (agentId) => {
+    setSelectedAgentIds((prev) => {
+      const current = Array.isArray(prev) ? prev : [];
+      if (current.includes(agentId)) return current.filter((id) => id !== agentId);
+      return [...current, agentId];
+    });
+  };
+
+  const toggleSelectAllFiltered = () => {
+    setSelectedAgentIds((prev) => {
+      const current = new Set(Array.isArray(prev) ? prev : []);
+      if (allFilteredSelected) {
+        filteredAgentIds.forEach((id) => current.delete(id));
+      } else {
+        filteredAgentIds.forEach((id) => current.add(id));
+      }
+      return Array.from(current);
+    });
+  };
 
   const effectiveCapabilities = useMemo(() => buildEffectiveCapabilities(policy), [policy]);
   const reportedCapabilities = useMemo(() => extractReportedCapabilities(selectedAgent), [selectedAgent]);
@@ -334,6 +392,10 @@ const Agents = () => {
       });
       const rows = (listResp?.agents || []).map(normalizeAgent);
       setAgents(rows);
+      setSelectedAgentIds((prev) => {
+        const allowed = new Set(rows.map((row) => row.id));
+        return (Array.isArray(prev) ? prev : []).filter((id) => allowed.has(id));
+      });
       if (selectedAgentId && rows.some((a) => a.id === selectedAgentId)) {
         const [agentResp, policyResp, policyVersionsResp, commandsResp] = await Promise.all([
           agentAPI.getAgentById(selectedAgentId),
@@ -342,11 +404,7 @@ const Agents = () => {
             page: policyVersionsPage,
             pageSize: 10,
           }),
-          agentAPI.getAgentCommands(selectedAgentId, {
-            page: commandPage,
-            pageSize: COMMAND_PAGE_SIZE,
-            ...(commandStatusFilter !== 'all' ? { status: commandStatusFilter } : {}),
-          }),
+          agentAPI.getAgentCommands(selectedAgentId, buildCommandQuery()),
         ]);
         setSelectedAgent(normalizeAgent(agentResp));
         setPolicy(policyResp || null);
@@ -359,6 +417,38 @@ const Agents = () => {
       clearSuccessLater();
     } catch (err) {
       setError(err?.response?.data?.message || err?.message || 'Не удалось обновить данные');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleBulkBlock = async (shouldBlock) => {
+    if (selectedAgentCount === 0) return;
+
+    const actionLabel = shouldBlock ? 'заблокировать' : 'разблокировать';
+    const confirmed = window.confirm(`${actionLabel} ${selectedAgentCount} выбранных агентов?`);
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      setError(null);
+
+      const response = await agentAPI.bulkSetWorkstationState({
+        agentIds: selectedAgentIds,
+        blocked: shouldBlock,
+        reason: adminReason || (shouldBlock ? 'Заблокировано администратором' : 'Разблокировано администратором'),
+      });
+
+      const successCount = Number(response?.successCount) || 0;
+      const failureCount = Number(response?.failureCount) || 0;
+      setSuccess(
+        `${shouldBlock ? 'Блокировка' : 'Разблокировка'}: успешно ${successCount}, с ошибками ${failureCount}`
+      );
+      clearSuccessLater();
+
+      await hardRefresh();
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Не удалось выполнить массовую операцию');
     } finally {
       setActionLoading(false);
     }
@@ -386,11 +476,7 @@ const Agents = () => {
           page: policyVersionsPage,
           pageSize: 10,
         }),
-        agentAPI.getAgentCommands(selectedAgentId, {
-          page: 1,
-          pageSize: COMMAND_PAGE_SIZE,
-          ...(commandStatusFilter !== 'all' ? { status: commandStatusFilter } : {}),
-        }),
+        agentAPI.getAgentCommands(selectedAgentId, buildCommandQuery({ page: 1 })),
       ]);
       setSelectedAgent(normalizeAgent(agentResp));
       setPolicy(policyResp || null);
@@ -425,15 +511,45 @@ const Agents = () => {
       setSuccess(`Команда поставлена в очередь: ${command?.type || customCommandType}`);
       clearSuccessLater();
       setCommandPage(1);
-      const commandsResp = await agentAPI.getAgentCommands(selectedAgentId, {
-        page: 1,
-        pageSize: COMMAND_PAGE_SIZE,
-        ...(commandStatusFilter !== 'all' ? { status: commandStatusFilter } : {}),
-      });
+      const commandsResp = await agentAPI.getAgentCommands(selectedAgentId, buildCommandQuery({ page: 1 }));
       setCommands(commandsResp?.commands || []);
       setCommandsTotal(commandsResp?.totalCount || 0);
     } catch (err) {
       setError(err?.response?.data?.message || err?.message || 'Не удалось создать команду');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRetryCommand = async (commandId) => {
+    if (!selectedAgentId || !commandId) return;
+
+    try {
+      setActionLoading(true);
+      setError(null);
+      const response = await agentAPI.retryAgentCommand(selectedAgentId, commandId);
+
+      setSuccess(response?.message || `Команда #${commandId} поставлена на повтор`);
+      clearSuccessLater();
+
+      const nextFilter =
+        commandStatusFilter === 'all' || commandStatusFilter === 'pending'
+          ? commandStatusFilter
+          : 'all';
+
+      if (nextFilter !== commandStatusFilter) {
+        setCommandStatusFilter(nextFilter);
+      }
+      setCommandPage(1);
+
+      const commandsResp = await agentAPI.getAgentCommands(
+        selectedAgentId,
+        buildCommandQuery({ page: 1, status: nextFilter })
+      );
+      setCommands(commandsResp?.commands || []);
+      setCommandsTotal(commandsResp?.totalCount || 0);
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'Не удалось повторить команду');
     } finally {
       setActionLoading(false);
     }
@@ -452,6 +568,7 @@ const Agents = () => {
       clearSuccessLater();
       const nextAgents = agents.filter((a) => a.id !== selectedAgentId);
       setAgents(nextAgents);
+      setSelectedAgentIds((prev) => (Array.isArray(prev) ? prev.filter((id) => id !== selectedAgentId) : []));
       setSelectedAgentId(nextAgents[0]?.id ?? null);
     } catch (err) {
       setError(err?.response?.data?.message || err?.message || 'Не удалось удалить агента');
@@ -554,6 +671,44 @@ const Agents = () => {
                   </Select>
                 </FormControl>
 
+                <Paper variant="outlined" sx={{ p: 1.25 }}>
+                  <Stack spacing={1}>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between">
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Checkbox
+                          size="small"
+                          checked={allFilteredSelected}
+                          indeterminate={!allFilteredSelected && selectedAgentCount > 0}
+                          onChange={toggleSelectAllFiltered}
+                        />
+                        <Typography variant="body2">Выбрано: {selectedAgentCount}</Typography>
+                      </Stack>
+                    </Stack>
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        startIcon={<Lock />}
+                        disabled={actionLoading || selectedAgentCount === 0}
+                        onClick={() => handleBulkBlock(true)}
+                      >
+                        Блокировать
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="success"
+                        startIcon={<LockOpen />}
+                        disabled={actionLoading || selectedAgentCount === 0}
+                        onClick={() => handleBulkBlock(false)}
+                      >
+                        Разблокировать
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+
                 <Divider />
 
                 {loadingList ? (
@@ -578,6 +733,13 @@ const Agents = () => {
                             backgroundColor: selected ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.14 : 0.06) : 'transparent',
                           }}
                         >
+                          <Checkbox
+                            size="small"
+                            checked={selectedAgentIds.includes(agent.id)}
+                            onClick={(event) => event.stopPropagation()}
+                            onChange={() => toggleAgentSelection(agent.id)}
+                            sx={{ mt: 0.3, mr: 0.5 }}
+                          />
                           <ListItemIcon sx={{ minWidth: 38, mt: 0.3 }}>
                             <Computer color={selected ? 'primary' : 'action'} fontSize="small" />
                           </ListItemIcon>
@@ -932,7 +1094,7 @@ const Agents = () => {
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap" mb={2}>
                     <Typography variant="h6">История команд</Typography>
-                    <Stack direction="row" spacing={1} alignItems="center">
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                       <FormControl size="small" sx={{ minWidth: 170 }}>
                         <InputLabel>Статус</InputLabel>
                         <Select
@@ -945,10 +1107,51 @@ const Agents = () => {
                           <MenuItem value="running">Выполняется</MenuItem>
                           <MenuItem value="success">Успешно</MenuItem>
                           <MenuItem value="failed">Ошибка</MenuItem>
+                          <MenuItem value="timeout">Таймаут</MenuItem>
+                          <MenuItem value="deadletter">В карантине (DLQ)</MenuItem>
                           <MenuItem value="ignored">Игнорировано</MenuItem>
                         </Select>
                       </FormControl>
-                      <Button variant="outlined" startIcon={<Refresh />} onClick={hardRefresh} disabled={actionLoading}>Обновить</Button>
+                      <FormControl size="small" sx={{ minWidth: 210 }}>
+                        <InputLabel>Тип команды</InputLabel>
+                        <Select
+                          label="Тип команды"
+                          value={commandTypeFilter}
+                          onChange={(e) => setCommandTypeFilter(e.target.value)}
+                        >
+                          <MenuItem value="all">Все типы</MenuItem>
+                          <MenuItem value="PING">PING</MenuItem>
+                          <MenuItem value="REFRESH_POLICY">REFRESH_POLICY</MenuItem>
+                          <MenuItem value="BLOCK_WORKSTATION">BLOCK_WORKSTATION</MenuItem>
+                          <MenuItem value="UNBLOCK_WORKSTATION">UNBLOCK_WORKSTATION</MenuItem>
+                          <MenuItem value="SET_COLLECTION_STATE">SET_COLLECTION_STATE</MenuItem>
+                          <MenuItem value="SET_LOG_LEVEL">SET_LOG_LEVEL</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <TextField
+                        size="small"
+                        label="С даты"
+                        type="datetime-local"
+                        value={commandFromFilter}
+                        onChange={(e) => setCommandFromFilter(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                      <TextField
+                        size="small"
+                        label="По дату"
+                        type="datetime-local"
+                        value={commandToFilter}
+                        onChange={(e) => setCommandToFilter(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                      <Button
+                        variant="outlined"
+                        startIcon={<Refresh />}
+                        onClick={hardRefresh}
+                        disabled={actionLoading}
+                      >
+                        Обновить
+                      </Button>
                     </Stack>
                   </Box>
 
@@ -963,12 +1166,13 @@ const Agents = () => {
                           <TableCell>Создано</TableCell>
                           <TableCell>Подтверждено</TableCell>
                           <TableCell>Результат</TableCell>
+                          <TableCell align="right">Действия</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {commands.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={7}>
+                            <TableCell colSpan={8}>
                               <Alert severity="info">Для выбранного фильтра команды не найдены.</Alert>
                             </TableCell>
                           </TableRow>
@@ -999,6 +1203,25 @@ const Agents = () => {
                               <Typography variant="body2" color="text.secondary">
                                 {cmd.resultMessage || '—'}
                               </Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              {canRetryCommand(cmd.status) ? (
+                                <Tooltip title="Поставить команду в очередь повторно">
+                                  <span>
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      startIcon={<Replay fontSize="small" />}
+                                      onClick={() => handleRetryCommand(cmd.id)}
+                                      disabled={actionLoading}
+                                    >
+                                      Повторить
+                                    </Button>
+                                  </span>
+                                </Tooltip>
+                              ) : (
+                                '—'
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}

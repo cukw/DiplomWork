@@ -1,0 +1,22 @@
+@startuml
+skinparam defaultFontName "Times New Roman"
+skinparam sequenceMessageAlign center
+actor "Endpoint Agent" as Agent
+participant "ActivityService" as Act
+database "Activity DB" as DbA
+queue "RabbitMQ" as MQ
+participant "MetricsService" as Met
+participant "NotificationService" as Notif
+participant "ReportService" as Rep
+
+Agent -> Act: CreateActivity
+Act -> DbA: Save activity
+Act -> Act: Run anomaly rules
+Act -> DbA: Save anomaly
+Act -> DbA: Save outbox record
+Act -> MQ: Publish event
+
+MQ -> Met: Update rollups
+MQ -> Notif: Create notification
+MQ -> Rep: Update report projection
+@enduml

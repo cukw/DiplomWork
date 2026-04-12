@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using AgentManagementService.Models;
-using Npgsql;
 
 namespace AgentManagementService.Data;
 
@@ -28,6 +27,7 @@ public class AgentDbContext : DbContext
             entity.Property(e => e.Version).IsRequired().HasMaxLength(20);
             entity.Property(e => e.Status).IsRequired().HasMaxLength(20).HasDefaultValue("online");
             entity.Property(e => e.ConfigVersion).HasMaxLength(20);
+            entity.Property(e => e.DesiredVersion).HasMaxLength(20);
             entity.HasIndex(e => e.ComputerId).IsUnique();
         });
 
@@ -120,7 +120,13 @@ public class AgentDbContext : DbContext
     {
         if (!optionsBuilder.IsConfigured)
         {
-            optionsBuilder.UseNpgsql("Host=localhost;Database=agents;Username=postgres;Password=pass;TrustServerCertificate=true");
+            var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException("ConnectionStrings__DefaultConnection is required for AgentDbContext.");
+            }
+
+            optionsBuilder.UseNpgsql(connectionString);
         }
     }
 }

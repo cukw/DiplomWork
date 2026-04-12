@@ -2,6 +2,7 @@ using MassTransit;
 using NotificationService.Data;
 using Microsoft.EntityFrameworkCore;
 using ActivityService.Services.Events;
+using NotificationService.Services;
 using NotificationEntity = NotificationService.Models.Notification;
 using ProcessedEventInboxEntryEntity = NotificationService.Models.ProcessedEventInboxEntry;
 
@@ -10,13 +11,16 @@ namespace NotificationService.Events;
 public class AnomalyDetectedEventHandler : IConsumer<AnomalyDetectedEvent>
 {
     private readonly NotificationDbContext _db;
+    private readonly INotificationRecipientResolver _recipientResolver;
     private readonly ILogger<AnomalyDetectedEventHandler> _logger;
 
     public AnomalyDetectedEventHandler(
         NotificationDbContext db,
+        INotificationRecipientResolver recipientResolver,
         ILogger<AnomalyDetectedEventHandler> logger)
     {
         _db = db;
+        _recipientResolver = recipientResolver;
         _logger = logger;
     }
 
@@ -28,10 +32,13 @@ public class AnomalyDetectedEventHandler : IConsumer<AnomalyDetectedEvent>
 
         try
         {
-            // Get user associated with this computer
-            // In a real implementation, you would call UserService to get the user
-            // For now, we'll use a default admin user ID (1)
-            var userId = 1; // Default admin user
+            var recipient = await _recipientResolver.ResolveByComputerIdAsync(@event.ComputerId, context.CancellationToken);
+            if (recipient.UserId is null)
+            {
+                _logger.LogWarning(
+                    "AnomalyDetectedEvent recipient could not be mapped for computer {ComputerId}. Notification will be stored without user binding.",
+                    @event.ComputerId);
+            }
 
             // Determine notification priority based on anomaly type
             var priority = GetNotificationPriority(@event.AnomalyType);
@@ -41,11 +48,12 @@ public class AnomalyDetectedEventHandler : IConsumer<AnomalyDetectedEvent>
 
             var notification = new NotificationEntity
             {
-                UserId = userId,
+                UserId = recipient.UserId,
                 Type = "ANOMALY_DETECTED",
                 Title = $"Anomaly Detected: {@event.AnomalyType}",
                 Message = $"Anomaly '{@event.AnomalyType}' detected for activity '{@event.ActivityType}' on computer {@event.ComputerId}. {@event.Description}",
                 Channel = channel,
+                RecipientEmail = recipient.Email,
                 SentAt = DateTime.UtcNow,
                 IsRead = false
             };

@@ -353,6 +353,11 @@ export const agentAPI = {
     return response.data;
   },
 
+  retryAgentCommand: async (id, commandId) => {
+    const response = await api.post(`/agent/agents/${id}/commands/${commandId}/retry`);
+    return response.data;
+  },
+
   blockWorkstation: async (id, reason = 'Blocked by admin') => {
     const response = await api.post(`/agent/agents/${id}/commands/block`, { reason });
     return response.data;
@@ -360,6 +365,49 @@ export const agentAPI = {
 
   unblockWorkstation: async (id, reason = 'Unblocked by admin') => {
     const response = await api.post(`/agent/agents/${id}/commands/unblock`, { reason });
+    return response.data;
+  },
+
+  bulkSetWorkstationState: async ({ agentIds, blocked, reason }) => {
+    const response = await api.post('/agent/agents/commands/bulk-state', {
+      agentIds,
+      blocked,
+      reason,
+    });
+    return response.data;
+  },
+
+  setDesiredVersion: async (id, payload) => {
+    const response = await api.post(`/agent/agents/${id}/desired-version`, payload);
+    return response.data;
+  },
+
+  planRollout: async (payload) => {
+    const response = await api.post('/agent/rollouts/plan', payload);
+    return response.data;
+  },
+
+  executeRollout: async (payload) => {
+    const response = await api.post('/agent/rollouts/execute', payload);
+    return response.data;
+  },
+};
+
+export const auditAPI = {
+  getEvents: async (params = {}) => {
+    const response = await api.get('/audit/events', { params });
+    return response.data;
+  },
+};
+
+export const rbacAPI = {
+  getMatrix: async () => {
+    const response = await api.get('/rbac/matrix');
+    return response.data;
+  },
+
+  saveMatrix: async (rolePermissions) => {
+    const response = await api.put('/rbac/matrix', { rolePermissions });
     return response.data;
   },
 };

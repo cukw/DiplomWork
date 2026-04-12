@@ -22,4 +22,9 @@ public class Agent
     public string? ConfigVersion { get; set; }
     
     public DateTime? OfflineSince { get; set; }
+
+    [MaxLength(20)]
+    public string? DesiredVersion { get; set; }
+
+    public DateTime? DesiredVersionSetAt { get; set; }
 }

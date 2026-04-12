@@ -1,0 +1,27 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts/backend-alerts.yml
+
+scrape_configs:
+  - job_name: gateway
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["gateway:8080"]
+
+  - job_name: activityservice
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["activityservice:5002"]
+
+  - job_name: authservice
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["authservice:5007"]
+
+  - job_name: notificationservice
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["notificationservice:5017"]

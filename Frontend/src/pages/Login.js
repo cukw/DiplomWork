@@ -74,14 +74,6 @@ const Login = () => {
     }
   };
 
-  const fillDemoCredentials = () => {
-    setFormData({
-      username: 'testuser',
-      password: 'password',
-    });
-    setError('');
-  };
-
   if (authLoading) {
     return (
       <Box
@@ -223,16 +215,6 @@ const Login = () => {
                   >
                     {loading ? <CircularProgress size={22} color="inherit" /> : 'Войти'}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outlined"
-                    size="large"
-                    onClick={fillDemoCredentials}
-                    disabled={loading}
-                    sx={{ flex: { sm: 1 } }}
-                  >
-                    Заполнить демо
-                  </Button>
                 </Stack>
               </Box>
 
@@ -242,10 +224,10 @@ const Login = () => {
                 <Security color="primary" sx={{ mt: 0.15, fontSize: 20 }} />
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    Тестовый доступ
+                    Безопасный доступ
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    Используйте `testuser / password` для входа в локальном окружении.
+                    Используйте только учетные записи, созданные через API регистрации.
                   </Typography>
                 </Box>
               </Stack>

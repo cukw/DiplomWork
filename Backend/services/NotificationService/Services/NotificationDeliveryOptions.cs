@@ -3,8 +3,19 @@ namespace NotificationService.Services;
 public sealed class NotificationDeliveryOptions
 {
     public string DefaultChannel { get; set; } = "in_app";
+    public RetryDeliveryOptions Retry { get; set; } = new();
     public SmtpDeliveryOptions Smtp { get; set; } = new();
     public WebhookDeliveryOptions Webhook { get; set; } = new();
+}
+
+public sealed class RetryDeliveryOptions
+{
+    public bool Enabled { get; set; } = true;
+    public int MaxAttempts { get; set; } = 5;
+    public int InitialDelaySeconds { get; set; } = 30;
+    public int MaxDelaySeconds { get; set; } = 900;
+    public int PollIntervalSeconds { get; set; } = 15;
+    public int BatchSize { get; set; } = 100;
 }
 
 public sealed class SmtpDeliveryOptions
@@ -17,6 +28,7 @@ public sealed class SmtpDeliveryOptions
     public bool UseSsl { get; set; } = true;
     public string FromAddress { get; set; } = "noreply@localhost";
     public string FromName { get; set; } = "Activity Monitor";
+    public string FallbackRecipientAddress { get; set; } = string.Empty;
     public int TimeoutSeconds { get; set; } = 10;
 }
 

@@ -1,9 +1,5 @@
-using System.Net;
-using System.Net.Http.Json;
-using System.Net.Mail;
 using Grpc.Core;
 using NotificationService.Data;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NotificationEntity = NotificationService.Models.Notification;
@@ -17,18 +13,21 @@ public class NotificationServiceImpl : NotificationService.NotificationServiceBa
 {
     private readonly NotificationDbContext _db;
     private readonly ILogger<NotificationServiceImpl> _logger;
-    private readonly IHttpClientFactory _httpClientFactory;
     private readonly NotificationDeliveryOptions _deliveryOptions;
+    private readonly INotificationRecipientResolver _recipientResolver;
+    private readonly INotificationDeliveryProcessor _deliveryProcessor;
 
     public NotificationServiceImpl(
         NotificationDbContext db,
         ILogger<NotificationServiceImpl> logger,
-        IHttpClientFactory httpClientFactory,
+        INotificationRecipientResolver recipientResolver,
+        INotificationDeliveryProcessor deliveryProcessor,
         IOptions<NotificationDeliveryOptions> deliveryOptions)
     {
         _db = db;
         _logger = logger;
-        _httpClientFactory = httpClientFactory;
+        _recipientResolver = recipientResolver;
+        _deliveryProcessor = deliveryProcessor;
         _deliveryOptions = deliveryOptions?.Value ?? new NotificationDeliveryOptions();
     }
 
@@ -38,28 +37,48 @@ public class NotificationServiceImpl : NotificationService.NotificationServiceBa
 
         try
         {
+            var requestedRecipientEmail = NormalizeEmail(request.RecipientEmail);
+            if (requestedRecipientEmail is null && request.UserId > 0)
+            {
+                var resolvedRecipient = await _recipientResolver.ResolveByUserIdAsync((int)request.UserId, context.CancellationToken);
+                requestedRecipientEmail = resolvedRecipient.Email;
+            }
+
+            var channel = NormalizeChannel(request.Channel);
+            var maxAttempts = Math.Max(1, _deliveryOptions.Retry.MaxAttempts);
+
             var notification = new NotificationEntity
             {
-                UserId = (int)request.UserId,
+                UserId = request.UserId > 0 ? (int)request.UserId : null,
                 Type = request.Type,
                 Title = request.Title,
                 Message = request.Message,
-                Channel = NormalizeChannel(request.Channel),
+                Channel = channel,
+                RecipientEmail = requestedRecipientEmail,
                 SentAt = DateTime.UtcNow,
-                IsRead = false
+                IsRead = false,
+                DeliveryStatus = channel == "in_app" ? "delivered" : "pending",
+                DeliveryAttempts = 0,
+                MaxDeliveryAttempts = maxAttempts,
+                NextRetryAt = channel == "in_app" ? null : DateTime.UtcNow,
+                DeliveredAt = channel == "in_app" ? DateTime.UtcNow : null,
+                LastDeliveryError = null
             };
 
             _db.Notifications.Add(notification);
-            await _db.SaveChangesAsync();
-
-            // Here you would typically implement the actual notification sending logic
-            // (email, SMS, push notification, etc.)
-            await SendNotificationAsync(notification, context.CancellationToken);
+            await _db.SaveChangesAsync(context.CancellationToken);
+            await _deliveryProcessor.ProcessNewNotificationAsync(notification, context.CancellationToken);
 
             return new SendNotificationResponse
             {
                 Success = true,
-                Message = "Notification sent successfully",
+                Message = notification.DeliveryStatus switch
+                {
+                    "delivered" => "Notification sent successfully",
+                    "failed" => "Notification queued for retry",
+                    "deadletter" => "Notification moved to dead letter queue",
+                    _ => "Notification accepted"
+                },
                 Notification = MapNotificationToProto(notification)
             };
         }
@@ -443,7 +462,14 @@ public class NotificationServiceImpl : NotificationService.NotificationServiceBa
             Message = notification.Message ?? "",
             IsRead = notification.IsRead,
             SentAt = notification.SentAt?.ToUniversalTime().ToString("o") ?? "",
-            Channel = notification.Channel
+            Channel = notification.Channel,
+            RecipientEmail = notification.RecipientEmail ?? string.Empty,
+            DeliveryStatus = notification.DeliveryStatus ?? string.Empty,
+            DeliveryAttempts = notification.DeliveryAttempts,
+            MaxDeliveryAttempts = notification.MaxDeliveryAttempts,
+            NextRetryAt = notification.NextRetryAt?.ToUniversalTime().ToString("o") ?? string.Empty,
+            DeliveredAt = notification.DeliveredAt?.ToUniversalTime().ToString("o") ?? string.Empty,
+            LastDeliveryError = notification.LastDeliveryError ?? string.Empty
         };
     }
 
@@ -456,27 +482,6 @@ public class NotificationServiceImpl : NotificationService.NotificationServiceBa
             Subject = template.Subject ?? "",
             BodyTemplate = template.BodyTemplate ?? ""
         };
-    }
-
-    private async Task SendNotificationAsync(NotificationEntity notification, CancellationToken cancellationToken)
-    {
-        var channel = NormalizeChannel(notification.Channel);
-
-        switch (channel)
-        {
-            case "in_app":
-                _logger.LogInformation("In-app notification stored for user {UserId}: {Title}", notification.UserId, notification.Title);
-                return;
-            case "email":
-                await TrySendEmailAsync(notification, cancellationToken);
-                return;
-            case "webhook":
-                await TrySendWebhookAsync(notification, cancellationToken);
-                return;
-            default:
-                _logger.LogWarning("Unsupported notification channel '{Channel}', fallback to in_app for notification {Id}", channel, notification.Id);
-                return;
-        }
     }
 
     private string NormalizeChannel(string? rawChannel)
@@ -498,103 +503,12 @@ public class NotificationServiceImpl : NotificationService.NotificationServiceBa
         };
     }
 
-    private async Task TrySendEmailAsync(NotificationEntity notification, CancellationToken cancellationToken)
+    private static string? NormalizeEmail(string? rawEmail)
     {
-        var smtp = _deliveryOptions.Smtp;
-        if (!smtp.Enabled || string.IsNullOrWhiteSpace(smtp.Host))
-        {
-            _logger.LogWarning(
-                "Email delivery skipped for notification {Id}: SMTP is disabled or not configured. Stored as in-app only.",
-                notification.Id);
-            return;
-        }
+        if (string.IsNullOrWhiteSpace(rawEmail))
+            return null;
 
-        try
-        {
-            using var message = new MailMessage
-            {
-                Subject = notification.Title ?? string.Empty,
-                Body = notification.Message ?? string.Empty,
-                IsBodyHtml = false,
-                From = new MailAddress(smtp.FromAddress, smtp.FromName)
-            };
-
-            // UserId is internal system id; direct e-mail lookup is not implemented in this service.
-            // Route all operational emails to configured mailbox for now.
-            message.To.Add(smtp.FromAddress);
-
-            using var smtpClient = new SmtpClient(smtp.Host, smtp.Port)
-            {
-                EnableSsl = smtp.UseSsl,
-                DeliveryMethod = SmtpDeliveryMethod.Network,
-                UseDefaultCredentials = false,
-                Credentials = new NetworkCredential(smtp.Username, smtp.Password),
-                Timeout = Math.Clamp(smtp.TimeoutSeconds, 1, 60) * 1000
-            };
-
-            cancellationToken.ThrowIfCancellationRequested();
-            await smtpClient.SendMailAsync(message, cancellationToken);
-
-            _logger.LogInformation("Email notification sent for user {UserId}: {Title}", notification.UserId, notification.Title);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Email delivery failed for notification {Id}. Notification remains stored in-app.", notification.Id);
-        }
-    }
-
-    private async Task TrySendWebhookAsync(NotificationEntity notification, CancellationToken cancellationToken)
-    {
-        var webhook = _deliveryOptions.Webhook;
-        if (!webhook.Enabled || string.IsNullOrWhiteSpace(webhook.Endpoint))
-        {
-            _logger.LogWarning(
-                "Webhook delivery skipped for notification {Id}: webhook is disabled or endpoint is missing. Stored as in-app only.",
-                notification.Id);
-            return;
-        }
-
-        try
-        {
-            var timeout = TimeSpan.FromSeconds(Math.Clamp(webhook.TimeoutSeconds, 1, 60));
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            linkedCts.CancelAfter(timeout);
-
-            var client = _httpClientFactory.CreateClient("NotificationDelivery");
-            using var request = new HttpRequestMessage(HttpMethod.Post, webhook.Endpoint)
-            {
-                Content = JsonContent.Create(new
-                {
-                    notification.Id,
-                    notification.UserId,
-                    notification.Type,
-                    notification.Title,
-                    notification.Message,
-                    notification.Channel,
-                    sentAt = notification.SentAt?.ToUniversalTime().ToString("o")
-                })
-            };
-
-            if (!string.IsNullOrWhiteSpace(webhook.AuthHeaderName) && !string.IsNullOrWhiteSpace(webhook.AuthHeaderValue))
-            {
-                request.Headers.TryAddWithoutValidation(webhook.AuthHeaderName, webhook.AuthHeaderValue);
-            }
-
-            using var response = await client.SendAsync(request, linkedCts.Token);
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning(
-                    "Webhook delivery returned non-success status {StatusCode} for notification {Id}",
-                    (int)response.StatusCode,
-                    notification.Id);
-                return;
-            }
-
-            _logger.LogInformation("Webhook notification sent for user {UserId}: {Title}", notification.UserId, notification.Title);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Webhook delivery failed for notification {Id}. Notification remains stored in-app.", notification.Id);
-        }
+        var normalized = rawEmail.Trim();
+        return normalized.Contains('@', StringComparison.Ordinal) ? normalized : null;
     }
 }

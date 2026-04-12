@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using MetricsService.Models;
-using Npgsql;
 using MetricModel = MetricsService.Models.Metric;
 
 namespace MetricsService.Data;
@@ -69,7 +68,13 @@ public class MetricsDbContext : DbContext
     {
         if (!optionsBuilder.IsConfigured)
         {
-            optionsBuilder.UseNpgsql("Host=localhost;Database=metrics;Username=postgres;Password=pass;TrustServerCertificate=true");
+            var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException("ConnectionStrings__DefaultConnection is required for MetricsDbContext.");
+            }
+
+            optionsBuilder.UseNpgsql(connectionString);
         }
     }
 }

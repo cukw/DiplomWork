@@ -28,7 +28,7 @@ public class JwtService : IJwtService
     public string GenerateToken(AuthUser user)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured"));
+        var (activeKeyId, activeKey) = GetActiveSigningKey();
         
         var claims = new List<Claim>
         {
@@ -44,7 +44,11 @@ public class JwtService : IJwtService
             Expires = DateTime.UtcNow.AddMinutes(double.Parse(_configuration["Jwt:ExpirationMinutes"] ?? "60")),
             Issuer = _configuration["Jwt:Issuer"],
             Audience = _configuration["Jwt:Audience"],
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            SigningCredentials = new SigningCredentials(activeKey, SecurityAlgorithms.HmacSha256Signature),
+            AdditionalHeaderClaims = new Dictionary<string, object>
+            {
+                ["kid"] = activeKeyId
+            }
         };
 
         var token = tokenHandler.CreateToken(tokenDescriptor);
@@ -66,19 +70,10 @@ public class JwtService : IJwtService
 
     public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
     {
-        var tokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateAudience = false,
-            ValidateIssuer = false,
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured"))),
-            ValidateLifetime = false
-        };
-
         var tokenHandler = new JwtSecurityTokenHandler();
         try
         {
-            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
+            var principal = tokenHandler.ValidateToken(token, BuildValidationParameters(validateLifetime: false), out SecurityToken securityToken);
             
             if (securityToken is not JwtSecurityToken jwtSecurityToken || 
                 !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
@@ -99,21 +94,10 @@ public class JwtService : IJwtService
     public bool ValidateToken(string token)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured"));
         
         try
         {
-            tokenHandler.ValidateToken(token, new TokenValidationParameters
-            {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(key),
-                ValidateIssuer = true,
-                ValidIssuer = _configuration["Jwt:Issuer"],
-                ValidateAudience = true,
-                ValidAudience = _configuration["Jwt:Audience"],
-                ValidateLifetime = true,
-                ClockSkew = TimeSpan.Zero
-            }, out SecurityToken validatedToken);
+            tokenHandler.ValidateToken(token, BuildValidationParameters(validateLifetime: true), out SecurityToken validatedToken);
 
             return true;
         }
@@ -122,5 +106,69 @@ public class JwtService : IJwtService
             _logger.LogError(ex, "Token validation failed");
             return false;
         }
+    }
+
+    private TokenValidationParameters BuildValidationParameters(bool validateLifetime)
+    {
+        var keyRing = GetJwtKeyRing();
+        return new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            ValidateIssuer = validateLifetime,
+            ValidIssuer = _configuration["Jwt:Issuer"],
+            ValidateAudience = validateLifetime,
+            ValidAudience = _configuration["Jwt:Audience"],
+            ValidateLifetime = validateLifetime,
+            ClockSkew = TimeSpan.Zero,
+            IssuerSigningKeyResolver = (_, _, kid, _) => ResolveSigningKeys(keyRing, kid)
+        };
+    }
+
+    private (string keyId, SymmetricSecurityKey key) GetActiveSigningKey()
+    {
+        var keyRing = GetJwtKeyRing();
+        var configuredActiveKeyId = _configuration["Jwt:ActiveKeyId"]?.Trim();
+
+        if (!string.IsNullOrWhiteSpace(configuredActiveKeyId) && keyRing.TryGetValue(configuredActiveKeyId, out var configuredSecret))
+        {
+            return (configuredActiveKeyId, BuildSecurityKey(configuredSecret));
+        }
+
+        var first = keyRing.First();
+        return (first.Key, BuildSecurityKey(first.Value));
+    }
+
+    private IDictionary<string, string> GetJwtKeyRing()
+    {
+        var keyRing = _configuration
+            .GetSection("Jwt:Keys")
+            .GetChildren()
+            .Where(section => !string.IsNullOrWhiteSpace(section.Key) && !string.IsNullOrWhiteSpace(section.Value))
+            .ToDictionary(section => section.Key.Trim(), section => section.Value!.Trim(), StringComparer.Ordinal);
+
+        if (keyRing.Count > 0)
+            return keyRing;
+
+        var legacyKey = _configuration["Jwt:Key"];
+        if (string.IsNullOrWhiteSpace(legacyKey))
+            throw new InvalidOperationException("JWT keys are not configured. Set Jwt:Keys or Jwt:Key.");
+
+        return new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["legacy"] = legacyKey.Trim()
+        };
+    }
+
+    private static IEnumerable<SecurityKey> ResolveSigningKeys(IDictionary<string, string> keyRing, string? keyId)
+    {
+        if (!string.IsNullOrWhiteSpace(keyId) && keyRing.TryGetValue(keyId, out var specificSecret))
+            return [BuildSecurityKey(specificSecret)];
+
+        return keyRing.Values.Select(BuildSecurityKey).ToArray();
+    }
+
+    private static SymmetricSecurityKey BuildSecurityKey(string secret)
+    {
+        return new SymmetricSecurityKey(Encoding.ASCII.GetBytes(secret));
     }
 }

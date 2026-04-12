@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NotificationEntity = NotificationService.Models.Notification;
 using NotificationTemplateEntity = NotificationService.Models.NotificationTemplate;
 using ProcessedEventInboxEntryEntity = NotificationService.Models.ProcessedEventInboxEntry;
+using NotificationDeliveryDeadLetterEntity = NotificationService.Models.NotificationDeliveryDeadLetter;
 
 namespace NotificationService.Data;
 
@@ -14,6 +15,7 @@ public class NotificationDbContext : DbContext
     public DbSet<NotificationEntity> Notifications { get; set; }
     public DbSet<NotificationTemplateEntity> NotificationTemplates { get; set; }
     public DbSet<ProcessedEventInboxEntryEntity> ProcessedEventInboxEntries { get; set; }
+    public DbSet<NotificationDeliveryDeadLetterEntity> NotificationDeliveryDeadLetters { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,10 +39,20 @@ public class NotificationDbContext : DbContext
             entity.Property(e => e.Message).HasColumnName("message");
             entity.Property(e => e.IsRead).HasColumnName("is_read").HasDefaultValue(false);
             entity.Property(e => e.SentAt).HasColumnName("sent_at");
+            entity.Property(e => e.RecipientEmail).HasColumnName("recipient_email").HasMaxLength(320);
             entity.Property(e => e.Channel).HasColumnName("channel").HasMaxLength(20).HasDefaultValue("email");
+            entity.Property(e => e.DeliveryStatus).HasColumnName("delivery_status").HasMaxLength(32).HasDefaultValue("pending");
+            entity.Property(e => e.DeliveryAttempts).HasColumnName("delivery_attempts").HasDefaultValue(0);
+            entity.Property(e => e.MaxDeliveryAttempts).HasColumnName("max_delivery_attempts").HasDefaultValue(3);
+            entity.Property(e => e.LastDeliveryError).HasColumnName("last_delivery_error");
+            entity.Property(e => e.NextRetryAt).HasColumnName("next_retry_at");
+            entity.Property(e => e.DeliveredAt).HasColumnName("delivered_at");
             
             entity.HasIndex(e => e.UserId).HasDatabaseName("idx_notifications_user_id");
             entity.HasIndex(e => e.IsRead).HasDatabaseName("idx_notifications_is_read");
+            entity.HasIndex(e => e.RecipientEmail).HasDatabaseName("idx_notifications_recipient_email");
+            entity.HasIndex(e => e.DeliveryStatus).HasDatabaseName("idx_notifications_delivery_status");
+            entity.HasIndex(e => e.NextRetryAt).HasDatabaseName("idx_notifications_next_retry_at");
         });
 
         // Configure NotificationTemplate entity (только индексы)
@@ -66,29 +78,20 @@ public class NotificationDbContext : DbContext
                 .HasDatabaseName("idx_processed_event_inbox_processed_at");
         });
 
-        // Seed default notification templates
-        modelBuilder.Entity<NotificationTemplateEntity>().HasData(
-            new NotificationTemplateEntity 
-            { 
-                Id = 1, 
-                Type = "anomaly", 
-                Subject = "Activity Anomaly Detected", 
-                BodyTemplate = "An anomaly has been detected in user activity. Please review the details and take appropriate action." 
-            },
-            new NotificationTemplateEntity 
-            { 
-                Id = 2, 
-                Type = "report_ready", 
-                Subject = "Activity Report Ready", 
-                BodyTemplate = "Your activity report is ready for download. Please check your dashboard to access the report." 
-            },
-            new NotificationTemplateEntity 
-            { 
-                Id = 3, 
-                Type = "system_alert", 
-                Subject = "System Alert", 
-                BodyTemplate = "A system alert has been generated. Please review the system status and take necessary actions." 
-            }
-        );
+        modelBuilder.Entity<NotificationDeliveryDeadLetterEntity>(entity =>
+        {
+            entity.ToTable("notification_delivery_dlq");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.NotificationId).HasColumnName("notification_id");
+            entity.Property(e => e.Channel).HasColumnName("channel").HasMaxLength(20).HasDefaultValue("in_app");
+            entity.Property(e => e.RecipientEmail).HasColumnName("recipient_email").HasMaxLength(320);
+            entity.Property(e => e.Attempts).HasColumnName("attempts").HasDefaultValue(0);
+            entity.Property(e => e.Reason).HasColumnName("reason").HasDefaultValue(string.Empty);
+            entity.Property(e => e.FailedAt).HasColumnName("failed_at");
+            entity.HasIndex(e => e.NotificationId).IsUnique().HasDatabaseName("uq_notification_delivery_dlq_notification_id");
+            entity.HasIndex(e => e.FailedAt).HasDatabaseName("idx_notification_delivery_dlq_failed_at");
+        });
+
     }
 }

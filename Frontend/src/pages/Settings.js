@@ -48,11 +48,15 @@ import {
   Settings as SettingsIcon,
   Storage,
   NetworkCheck,
-  Refresh
+  Refresh,
+  Replay,
+  FileDownload
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
-import { agentAPI, systemAPI, alertRulesAPI, settingsAPI } from '../services/api';
+import { agentAPI, systemAPI, alertRulesAPI, settingsAPI, auditAPI, rbacAPI } from '../services/api';
+import { buildAuditCsv, formatAuditDetailsPreview } from '../utils/auditTransforms';
+import { mapRolePermissionsToRows, mapRowsToRolePermissions } from '../utils/rbacTransforms';
 
 const DEFAULT_ALERT_RULE_FORM = {
   name: '',
@@ -116,6 +120,7 @@ const AGENT_COMMAND_TYPES = [
   { value: 'REFRESH_POLICY', label: 'Обновить политику (REFRESH_POLICY)' },
   { value: 'BLOCK_WORKSTATION', label: 'Заблокировать ПК (BLOCK_WORKSTATION)' },
   { value: 'UNBLOCK_WORKSTATION', label: 'Разблокировать ПК (UNBLOCK_WORKSTATION)' },
+  { value: 'SELF_UPDATE', label: 'Самообновление агента (SELF_UPDATE)' },
   { value: 'SET_COLLECTION_STATE', label: 'Режим сбора (SET_COLLECTION_STATE)' },
   { value: 'SET_LOG_LEVEL', label: 'Уровень логирования (SET_LOG_LEVEL)' },
 ];
@@ -214,6 +219,18 @@ const isInFlightCommand = (status) => {
   return normalized === 'pending' || normalized === 'running';
 };
 
+const canRetryCommand = (status) => {
+  const normalized = String(status || '').toLowerCase();
+  return normalized === 'deadletter' || normalized === 'timeout' || normalized === 'failed';
+};
+
+const toUtcIso = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString();
+};
+
 const normalizeListEntries = (entries) => (Array.isArray(entries) ? entries : [])
   .map((entry, index) => {
     const parsedId = Number(entry?.id);
@@ -268,9 +285,29 @@ const Settings = () => {
   const [agentCommandsTotal, setAgentCommandsTotal] = useState(0);
   const [agentCommandsRefreshing, setAgentCommandsRefreshing] = useState(false);
   const [agentCommandStatusFilter, setAgentCommandStatusFilter] = useState('');
+  const [agentCommandTypeFilter, setAgentCommandTypeFilter] = useState('');
+  const [agentCommandFromFilter, setAgentCommandFromFilter] = useState('');
+  const [agentCommandToFilter, setAgentCommandToFilter] = useState('');
   const [agentCommandForm, setAgentCommandForm] = useState(DEFAULT_AGENT_COMMAND_FORM);
   const [agentCommandSaving, setAgentCommandSaving] = useState(false);
   const [agentAdminReason, setAgentAdminReason] = useState('');
+  const [desiredAgentVersion, setDesiredAgentVersion] = useState('');
+  const [desiredVersionSaving, setDesiredVersionSaving] = useState(false);
+  const [enqueueSelfUpdateCommand, setEnqueueSelfUpdateCommand] = useState(true);
+  const [rolloutDesiredVersion, setRolloutDesiredVersion] = useState('');
+  const [rolloutStrategy, setRolloutStrategy] = useState('canary');
+  const [rolloutCanaryPercent, setRolloutCanaryPercent] = useState('10');
+  const [rolloutStageSize, setRolloutStageSize] = useState('25');
+  const [rolloutOnlineOnly, setRolloutOnlineOnly] = useState(true);
+  const [rolloutAutoRollback, setRolloutAutoRollback] = useState(true);
+  const [rolloutFailureRateThreshold, setRolloutFailureRateThreshold] = useState('0.3');
+  const [rolloutMaxFailedAgents, setRolloutMaxFailedAgents] = useState('1');
+  const [rolloutObservationSeconds, setRolloutObservationSeconds] = useState('0');
+  const [rolloutPlanning, setRolloutPlanning] = useState(false);
+  const [rolloutExecuting, setRolloutExecuting] = useState(false);
+  const [rolloutPlan, setRolloutPlan] = useState(null);
+  const [selectedRolloutStage, setSelectedRolloutStage] = useState(1);
+  const [rolloutResult, setRolloutResult] = useState(null);
   const [alertRules, setAlertRules] = useState([]);
   const [alertRuleMetadata, setAlertRuleMetadata] = useState(null);
   const [alertRulesLoading, setAlertRulesLoading] = useState(false);
@@ -279,6 +316,24 @@ const Settings = () => {
   const [editingAlertRuleId, setEditingAlertRuleId] = useState(null);
   const [alertRuleSaving, setAlertRuleSaving] = useState(false);
   const [alertRuleForm, setAlertRuleForm] = useState(DEFAULT_ALERT_RULE_FORM);
+  const [auditEvents, setAuditEvents] = useState([]);
+  const [auditTotalCount, setAuditTotalCount] = useState(0);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState(null);
+  const [auditExporting, setAuditExporting] = useState(false);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditPageSize, setAuditPageSize] = useState(25);
+  const [auditActionFilter, setAuditActionFilter] = useState('');
+  const [auditActorFilter, setAuditActorFilter] = useState('');
+  const [auditSearchFilter, setAuditSearchFilter] = useState('');
+  const [auditFromFilter, setAuditFromFilter] = useState('');
+  const [auditToFilter, setAuditToFilter] = useState('');
+  const [rbacRows, setRbacRows] = useState([]);
+  const [rbacAvailablePermissions, setRbacAvailablePermissions] = useState([]);
+  const [rbacLoading, setRbacLoading] = useState(false);
+  const [rbacSaving, setRbacSaving] = useState(false);
+  const [rbacError, setRbacError] = useState(null);
+  const [newRbacRole, setNewRbacRole] = useState('');
 
   // General Settings
   const [generalSettings, setGeneralSettings] = useState({
@@ -417,6 +472,7 @@ const Settings = () => {
       setAgentPolicyForm(DEFAULT_AGENT_POLICY_FORM);
       setAgentCommands([]);
       setAgentCommandsTotal(0);
+      setDesiredAgentVersion('');
       return;
     }
 
@@ -430,11 +486,17 @@ const Settings = () => {
     if (tabValue !== 3 || !selectedMonitoringAgentId) return;
     fetchAgentControlData(selectedMonitoringAgentId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabValue, selectedMonitoringAgentId, agentCommandStatusFilter]);
+  }, [tabValue, selectedMonitoringAgentId, agentCommandStatusFilter, agentCommandTypeFilter, agentCommandFromFilter, agentCommandToFilter]);
 
   useEffect(() => {
     if (tabValue !== 2) return;
     fetchAlertRules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabValue]);
+
+  useEffect(() => {
+    if (tabValue !== 1) return;
+    fetchRbacMatrix();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabValue]);
 
@@ -811,6 +873,68 @@ const Settings = () => {
     setConfirmDialogOpen(true);
   };
 
+  const fetchRbacMatrix = async () => {
+    try {
+      setRbacLoading(true);
+      setRbacError(null);
+      const payload = await rbacAPI.getMatrix();
+      setRbacRows(mapRolePermissionsToRows(payload?.rolePermissions));
+      setRbacAvailablePermissions(Array.isArray(payload?.availablePermissions) ? payload.availablePermissions : []);
+    } catch (err) {
+      setRbacError(err?.response?.data?.message || err?.message || 'Не удалось загрузить RBAC-матрицу');
+    } finally {
+      setRbacLoading(false);
+    }
+  };
+
+  const handleRbacRowChange = (role, value) => {
+    const normalizedRole = String(role || '').trim().toLowerCase();
+    if (!normalizedRole) return;
+
+    setRbacRows((prev) => (Array.isArray(prev) ? prev : []).map((row) => (
+      row.role === normalizedRole
+        ? { ...row, permissionsCsv: value }
+        : row
+    )));
+  };
+
+  const handleAddRbacRole = () => {
+    const normalizedRole = String(newRbacRole || '').trim().toLowerCase();
+    if (!normalizedRole) return;
+
+    setRbacRows((prev) => {
+      const existing = Array.isArray(prev) ? prev : [];
+      if (existing.some((row) => row.role === normalizedRole)) return existing;
+      return [...existing, { role: normalizedRole, permissionsCsv: '' }]
+        .sort((left, right) => left.role.localeCompare(right.role, 'ru-RU'));
+    });
+    setNewRbacRole('');
+  };
+
+  const handleDeleteRbacRole = (role) => {
+    const normalizedRole = String(role || '').trim().toLowerCase();
+    if (!normalizedRole) return;
+    setRbacRows((prev) => (Array.isArray(prev) ? prev : []).filter((row) => row.role !== normalizedRole));
+  };
+
+  const handleSaveRbacMatrix = async () => {
+    try {
+      setRbacSaving(true);
+      setRbacError(null);
+
+      const payload = mapRowsToRolePermissions(rbacRows);
+      const response = await rbacAPI.saveMatrix(payload);
+      setRbacRows(mapRolePermissionsToRows(response?.rolePermissions || payload));
+
+      setSuccess('RBAC-матрица сохранена');
+      setTimeout(() => setSuccess(null), 2500);
+    } catch (err) {
+      setRbacError(err?.response?.data?.message || err?.message || 'Не удалось сохранить RBAC-матрицу');
+    } finally {
+      setRbacSaving(false);
+    }
+  };
+
   const fetchMonitoringData = async ({ silent = false } = {}) => {
     try {
       if (!silent) {
@@ -843,6 +967,106 @@ const Settings = () => {
     }
   };
 
+  const buildAuditQuery = useCallback((overrides = {}) => {
+    const query = {
+      page: overrides.page ?? auditPage,
+      pageSize: overrides.pageSize ?? auditPageSize,
+    };
+
+    const actionFilter = overrides.action ?? auditActionFilter;
+    const actorFilter = overrides.actor ?? auditActorFilter;
+    const searchFilter = overrides.q ?? auditSearchFilter;
+    const fromFilter = overrides.fromRaw ?? auditFromFilter;
+    const toFilter = overrides.toRaw ?? auditToFilter;
+
+    if (actionFilter) query.action = actionFilter;
+    if (actorFilter) query.actor = actorFilter;
+    if (searchFilter) query.q = searchFilter;
+
+    const fromIso = toUtcIso(fromFilter);
+    const toIso = toUtcIso(toFilter);
+    if (fromIso) query.from = fromIso;
+    if (toIso) query.to = toIso;
+
+    return query;
+  }, [
+    auditPage,
+    auditPageSize,
+    auditActionFilter,
+    auditActorFilter,
+    auditSearchFilter,
+    auditFromFilter,
+    auditToFilter,
+  ]);
+
+  const fetchAuditEvents = useCallback(async ({ silent = false, page, pageSize, queryOverrides } = {}) => {
+    try {
+      if (!silent) setAuditLoading(true);
+      setAuditError(null);
+
+      const response = await auditAPI.getEvents(buildAuditQuery({ page, pageSize, ...(queryOverrides || {}) }));
+      setAuditEvents(response?.events || []);
+      setAuditTotalCount(response?.totalCount || 0);
+    } catch (err) {
+      setAuditError(err?.response?.data?.message || err?.message || 'Не удалось загрузить журнал аудита');
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [buildAuditQuery]);
+
+  useEffect(() => {
+    if (tabValue !== 5) return;
+    fetchAuditEvents();
+  }, [tabValue, auditPage, auditPageSize, fetchAuditEvents]);
+
+  const handleApplyAuditFilters = () => {
+    setAuditPage(1);
+    fetchAuditEvents({ page: 1 });
+  };
+
+  const handleResetAuditFilters = () => {
+    setAuditActionFilter('');
+    setAuditActorFilter('');
+    setAuditSearchFilter('');
+    setAuditFromFilter('');
+    setAuditToFilter('');
+    setAuditPage(1);
+    fetchAuditEvents({
+      page: 1,
+      queryOverrides: {
+        action: '',
+        actor: '',
+        q: '',
+        fromRaw: '',
+        toRaw: '',
+      },
+    });
+  };
+
+  const handleExportAuditCsv = async () => {
+    try {
+      setAuditExporting(true);
+      setAuditError(null);
+
+      const response = await auditAPI.getEvents(buildAuditQuery({ page: 1, pageSize: 1000 }));
+      const rows = response?.events || [];
+      const csvText = buildAuditCsv(rows);
+      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `audit-events-${new Date().toISOString().slice(0, 19).replaceAll(':', '-')}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setAuditError(err?.response?.data?.message || err?.message || 'Не удалось экспортировать журнал аудита');
+    } finally {
+      setAuditExporting(false);
+    }
+  };
+
   const upsertCommandInState = useCallback((command) => {
     if (!command || typeof command !== 'object') return;
 
@@ -858,6 +1082,19 @@ const Settings = () => {
     });
   }, []);
 
+  const buildAgentCommandQuery = useCallback(() => {
+    const query = { page: 1, pageSize: 30 };
+    if (agentCommandStatusFilter) query.status = agentCommandStatusFilter;
+    if (agentCommandTypeFilter) query.type = agentCommandTypeFilter;
+
+    const createdFrom = toUtcIso(agentCommandFromFilter);
+    const createdTo = toUtcIso(agentCommandToFilter);
+    if (createdFrom) query.from = createdFrom;
+    if (createdTo) query.to = createdTo;
+
+    return query;
+  }, [agentCommandStatusFilter, agentCommandTypeFilter, agentCommandFromFilter, agentCommandToFilter]);
+
   const fetchAgentCommands = useCallback(async (agentId, { silent = false } = {}) => {
     if (!agentId) return;
 
@@ -865,10 +1102,7 @@ const Settings = () => {
       if (!silent) setAgentCommandsRefreshing(true);
       setAgentControlError(null);
 
-      const commandQuery = { page: 1, pageSize: 30 };
-      if (agentCommandStatusFilter) commandQuery.status = agentCommandStatusFilter;
-
-      const commandsResponse = await agentAPI.getAgentCommands(agentId, commandQuery);
+      const commandsResponse = await agentAPI.getAgentCommands(agentId, buildAgentCommandQuery());
       setAgentCommands(commandsResponse?.commands || []);
       setAgentCommandsTotal(commandsResponse?.totalCount || 0);
     } catch (err) {
@@ -876,7 +1110,7 @@ const Settings = () => {
     } finally {
       setAgentCommandsRefreshing(false);
     }
-  }, [agentCommandStatusFilter]);
+  }, [buildAgentCommandQuery]);
 
   const fetchAgentControlData = async (agentId, { silent = false } = {}) => {
     if (!agentId) return;
@@ -885,12 +1119,9 @@ const Settings = () => {
       if (!silent) setAgentControlLoading(true);
       setAgentControlError(null);
 
-      const commandQuery = { page: 1, pageSize: 30 };
-      if (agentCommandStatusFilter) commandQuery.status = agentCommandStatusFilter;
-
       const [policyResult, commandsResult] = await Promise.allSettled([
         agentAPI.getAgentPolicy(agentId),
-        agentAPI.getAgentCommands(agentId, commandQuery),
+        agentAPI.getAgentCommands(agentId, buildAgentCommandQuery()),
       ]);
 
       if (policyResult.status === 'fulfilled') {
@@ -1065,6 +1296,155 @@ const Settings = () => {
     }
   };
 
+  const handleRetryAgentCommand = async (command) => {
+    if (!selectedMonitoringAgentId || !command?.id) return;
+
+    try {
+      setAgentActionLoading(true);
+      setAgentControlError(null);
+
+      const response = await agentAPI.retryAgentCommand(selectedMonitoringAgentId, command.id);
+      if (agentCommandStatusFilter) {
+        setAgentCommandStatusFilter('');
+      }
+      if (response?.command) {
+        upsertCommandInState(response.command);
+      }
+
+      setSuccess(response?.message || `Команда #${command.id} поставлена на повтор`);
+      setTimeout(() => setSuccess(null), 3000);
+      await fetchAgentCommands(selectedMonitoringAgentId, { silent: true });
+    } catch (err) {
+      setAgentControlError(err?.response?.data?.message || err?.message || 'Не удалось поставить команду на повтор');
+    } finally {
+      setAgentActionLoading(false);
+    }
+  };
+
+  const handleSaveDesiredAgentVersion = async () => {
+    if (!selectedMonitoringAgentId) return;
+
+    try {
+      setDesiredVersionSaving(true);
+      setAgentControlError(null);
+
+      const desiredVersion = String(desiredAgentVersion || '').trim();
+      const response = await agentAPI.setDesiredVersion(selectedMonitoringAgentId, {
+        desiredVersion,
+        enqueueSelfUpdate: desiredVersion ? enqueueSelfUpdateCommand : false,
+      });
+
+      if (response?.agent) {
+        setMonitoringAgents((prev) => (Array.isArray(prev) ? prev : []).map((item) => (
+          item.id === selectedMonitoringAgentId
+            ? { ...item, ...response.agent }
+            : item
+        )));
+        setDesiredAgentVersion(response.agent.desiredVersion || '');
+      }
+
+      if (response?.command) {
+        if (agentCommandStatusFilter) {
+          setAgentCommandStatusFilter('');
+        }
+        upsertCommandInState(response.command);
+      }
+
+      setSuccess(response?.message || 'Целевая версия агента обновлена');
+      setTimeout(() => setSuccess(null), 3000);
+      await fetchAgentCommands(selectedMonitoringAgentId, { silent: true });
+    } catch (err) {
+      setAgentControlError(err?.response?.data?.message || err?.message || 'Не удалось обновить целевую версию агента');
+    } finally {
+      setDesiredVersionSaving(false);
+    }
+  };
+
+  const handlePlanRollout = async () => {
+    const desiredVersion = String(rolloutDesiredVersion || '').trim();
+    if (!desiredVersion) {
+      setAgentControlError('Укажите целевую версию для rollout');
+      return;
+    }
+
+    try {
+      setRolloutPlanning(true);
+      setAgentControlError(null);
+      setRolloutResult(null);
+
+      const plan = await agentAPI.planRollout({
+        desiredVersion,
+        strategy: rolloutStrategy,
+        canaryPercent: Math.max(1, Number(rolloutCanaryPercent) || 10),
+        stageSize: Math.max(1, Number(rolloutStageSize) || 25),
+        onlineOnly: rolloutOnlineOnly,
+      });
+
+      setRolloutPlan(plan || null);
+      setSelectedRolloutStage(1);
+      setSuccess('План rollout рассчитан');
+      setTimeout(() => setSuccess(null), 2000);
+    } catch (err) {
+      setAgentControlError(err?.response?.data?.message || err?.message || 'Не удалось рассчитать rollout');
+    } finally {
+      setRolloutPlanning(false);
+    }
+  };
+
+  const handleExecuteRollout = async () => {
+    const desiredVersion = String(rolloutDesiredVersion || '').trim();
+    if (!desiredVersion) {
+      setAgentControlError('Укажите целевую версию для rollout');
+      return;
+    }
+
+    const stages = Array.isArray(rolloutPlan?.stages) ? rolloutPlan.stages : [];
+    const selectedStage = stages.find((stage) => Number(stage?.stage) === Number(selectedRolloutStage))
+      || stages[0];
+
+    if (!selectedStage || !Array.isArray(selectedStage.agentIds) || selectedStage.agentIds.length === 0) {
+      setAgentControlError('Нет выбранного этапа rollout с агентами');
+      return;
+    }
+
+    try {
+      setRolloutExecuting(true);
+      setAgentControlError(null);
+
+      const result = await agentAPI.executeRollout({
+        desiredVersion,
+        agentIds: selectedStage.agentIds,
+        autoRollbackEnabled: rolloutAutoRollback,
+        observationSeconds: Math.max(0, Number(rolloutObservationSeconds) || 0),
+        failureRateThreshold: Math.max(0.01, Number(rolloutFailureRateThreshold) || 0.3),
+        maxFailedAgents: Math.max(0, Number(rolloutMaxFailedAgents) || 1),
+        enqueueSelfUpdate: true,
+      });
+
+      setRolloutResult(result || null);
+      setSuccess(
+        result?.autoRollback?.rollbackTriggered
+          ? `Этап ${selectedStage.stage} выполнен, инициирован rollback`
+          : `Этап ${selectedStage.stage} выполнен`
+      );
+      setTimeout(() => setSuccess(null), 3000);
+
+      const nextStage = stages.find((stage) => Number(stage?.stage) > Number(selectedStage.stage));
+      if (nextStage) {
+        setSelectedRolloutStage(Number(nextStage.stage));
+      }
+
+      await fetchMonitoringData({ silent: true });
+      if (selectedMonitoringAgentId) {
+        await fetchAgentCommands(selectedMonitoringAgentId, { silent: true });
+      }
+    } catch (err) {
+      setAgentControlError(err?.response?.data?.message || err?.message || 'Не удалось выполнить rollout');
+    } finally {
+      setRolloutExecuting(false);
+    }
+  };
+
   const healthServices = systemHealth?.services || [];
   const healthyServicesCount = healthServices.filter((service) => service.status === 'healthy').length;
   const selectedMonitoringAgent = monitoringAgents.find((agent) => agent.id === selectedMonitoringAgentId) || null;
@@ -1076,6 +1456,21 @@ const Settings = () => {
   const alertRuleMetrics = alertRuleMetadata?.metrics || Object.entries(ALERT_RULE_LABELS).map(([key, label]) => ({ key, label }));
   const alertRuleOperators = alertRuleMetadata?.operators || Object.entries(OPERATOR_LABELS).map(([key, label]) => ({ key, label }));
   const alertRuleSeverities = alertRuleMetadata?.severities || ['low', 'medium', 'high', 'critical'];
+  const auditActionOptions = Array.from(new Set((auditEvents || []).map((event) => event?.action).filter(Boolean))).sort();
+  const auditActorOptions = Array.from(new Set((auditEvents || []).map((event) => event?.actor).filter(Boolean))).sort();
+  const auditTotalPages = Math.max(1, Math.ceil((auditTotalCount || 0) / (auditPageSize || 25)));
+  const rolloutStages = Array.isArray(rolloutPlan?.stages) ? rolloutPlan.stages : [];
+
+  useEffect(() => {
+    if (tabValue !== 3) return;
+    setDesiredAgentVersion(selectedMonitoringAgent?.desiredVersion || '');
+  }, [tabValue, selectedMonitoringAgentId, selectedMonitoringAgent?.desiredVersion]);
+
+  useEffect(() => {
+    if (tabValue !== 3) return;
+    if (String(rolloutDesiredVersion || '').trim()) return;
+    setRolloutDesiredVersion(selectedMonitoringAgent?.desiredVersion || '');
+  }, [tabValue, selectedMonitoringAgentId, selectedMonitoringAgent?.desiredVersion, rolloutDesiredVersion]);
 
   return (
     <Box>
@@ -1139,6 +1534,7 @@ const Settings = () => {
         <Tab label="Уведомления" icon={<Notifications />} />
         <Tab label="Мониторинг" icon={<NetworkCheck />} />
         <Tab label="Белый/черный список" icon={<Storage />} />
+        <Tab label="Аудит" icon={<Security />} />
       </Tabs>
 
       {/* General Settings */}
@@ -1293,6 +1689,104 @@ const Settings = () => {
                 Сохранить настройки безопасности
               </Button>
             </Box>
+
+            <Divider sx={{ my: 3 }} />
+
+            <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2} mb={2}>
+              <Box>
+                <Typography variant="h6">RBAC матрица ролей</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Управление правами ролей в БД gateway runtime.
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  variant="outlined"
+                  startIcon={<Refresh />}
+                  onClick={() => fetchRbacMatrix()}
+                  disabled={rbacLoading || rbacSaving}
+                >
+                  Обновить
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<Save />}
+                  onClick={handleSaveRbacMatrix}
+                  disabled={rbacLoading || rbacSaving}
+                >
+                  {rbacSaving ? 'Сохранение...' : 'Сохранить RBAC'}
+                </Button>
+              </Stack>
+            </Box>
+
+            {rbacError && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                {rbacError}
+              </Alert>
+            )}
+
+            {rbacLoading && <LinearProgress sx={{ mb: 2, borderRadius: 999 }} />}
+
+            <Stack spacing={1.5} sx={{ mb: 2 }}>
+              {rbacRows.length === 0 ? (
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Роли не настроены. Добавьте роль и задайте права.
+                  </Typography>
+                </Paper>
+              ) : (
+                rbacRows.map((row) => (
+                  <Paper key={row.role} variant="outlined" sx={{ p: 2 }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" gap={1} mb={1}>
+                      <Chip label={row.role} color="primary" variant="outlined" />
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => handleDeleteRbacRole(row.role)}
+                        disabled={rbacSaving}
+                      >
+                        Удалить роль
+                      </Button>
+                    </Box>
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={2}
+                      label="Права (через запятую)"
+                      placeholder="dashboard.*, audit.getevents, reports.*"
+                      value={row.permissionsCsv}
+                      onChange={(e) => handleRbacRowChange(row.role, e.target.value)}
+                    />
+                  </Paper>
+                ))
+              )}
+            </Stack>
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2 }}>
+              <TextField
+                size="small"
+                label="Новая роль"
+                value={newRbacRole}
+                onChange={(e) => setNewRbacRole(e.target.value)}
+                placeholder="например, auditor"
+              />
+              <Button variant="outlined" startIcon={<Add />} onClick={handleAddRbacRole} disabled={rbacSaving}>
+                Добавить роль
+              </Button>
+            </Stack>
+
+            {rbacAvailablePermissions.length > 0 && (
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Доступные permissions из API контроллеров
+                </Typography>
+                <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
+                  {rbacAvailablePermissions.map((permission) => (
+                    <Chip key={permission} size="small" label={permission} />
+                  ))}
+                </Stack>
+              </Paper>
+            )}
           </CardContent>
         </Card>
       )}
@@ -1737,6 +2231,16 @@ const Settings = () => {
                             />
                             <Chip
                               size="small"
+                              variant="outlined"
+                              color={selectedMonitoringAgent?.desiredVersion ? 'warning' : 'default'}
+                              label={
+                                selectedMonitoringAgent?.desiredVersion
+                                  ? `Целевая версия: ${selectedMonitoringAgent.desiredVersion}`
+                                  : 'Целевая версия не задана'
+                              }
+                            />
+                            <Chip
+                              size="small"
                               color={agentPolicyForm.adminBlocked ? 'error' : 'success'}
                               label={agentPolicyForm.adminBlocked ? 'ЗАБЛОКИРОВАН АДМИНИСТРАТОРОМ' : 'НЕ ЗАБЛОКИРОВАН'}
                             />
@@ -1745,6 +2249,13 @@ const Settings = () => {
                                 size="small"
                                 variant="outlined"
                                 label={`Последний сигнал heartbeat: ${new Date(selectedMonitoringAgent.lastHeartbeat).toLocaleTimeString('ru-RU')}`}
+                              />
+                            )}
+                            {selectedMonitoringAgent?.desiredVersionSetAt && (
+                              <Chip
+                                size="small"
+                                variant="outlined"
+                                label={`Назначено: ${new Date(selectedMonitoringAgent.desiredVersionSetAt).toLocaleString('ru-RU')}`}
                               />
                             )}
                           </Stack>
@@ -1975,6 +2486,254 @@ const Settings = () => {
 
                     <Grid item xs={12} lg={5}>
                       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+                        <Typography variant="subtitle1" gutterBottom>Версия агента и self-update</Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={12}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="Текущая версия"
+                              value={selectedMonitoringAgent?.version || '—'}
+                              InputProps={{ readOnly: true }}
+                            />
+                          </Grid>
+                          <Grid item xs={12}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="Целевая версия"
+                              placeholder="например, 2.1.0"
+                              value={desiredAgentVersion}
+                              onChange={(e) => setDesiredAgentVersion(e.target.value)}
+                              helperText="Пустое значение очищает целевую версию без постановки команды."
+                            />
+                          </Grid>
+                          <Grid item xs={12}>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={enqueueSelfUpdateCommand}
+                                  onChange={(e) => setEnqueueSelfUpdateCommand(e.target.checked)}
+                                  disabled={!String(desiredAgentVersion || '').trim()}
+                                />
+                              }
+                              label="Сразу поставить команду SELF_UPDATE"
+                            />
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Button
+                              size="small"
+                              variant="contained"
+                              startIcon={<Replay />}
+                              onClick={handleSaveDesiredAgentVersion}
+                              disabled={!selectedMonitoringAgentId || desiredVersionSaving}
+                            >
+                              {desiredVersionSaving ? 'Сохранение...' : 'Сохранить целевую версию'}
+                            </Button>
+                          </Grid>
+
+                          <Grid item xs={12}>
+                            <Divider sx={{ my: 1 }} />
+                            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                              Rollout обновлений (canary / staged / auto-rollback)
+                            </Typography>
+                          </Grid>
+
+                          <Grid item xs={12}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="Версия для rollout"
+                              placeholder="например, 2.1.0"
+                              value={rolloutDesiredVersion}
+                              onChange={(e) => setRolloutDesiredVersion(e.target.value)}
+                            />
+                          </Grid>
+
+                          <Grid item xs={12} sm={6}>
+                            <FormControl fullWidth size="small">
+                              <InputLabel>Стратегия rollout</InputLabel>
+                              <Select
+                                label="Стратегия rollout"
+                                value={rolloutStrategy}
+                                onChange={(e) => setRolloutStrategy(e.target.value)}
+                              >
+                                <MenuItem value="canary">Canary</MenuItem>
+                                <MenuItem value="staged">Staged</MenuItem>
+                                <MenuItem value="all">Полный rollout</MenuItem>
+                              </Select>
+                            </FormControl>
+                          </Grid>
+
+                          <Grid item xs={12} sm={6}>
+                            {rolloutStrategy === 'canary' ? (
+                              <TextField
+                                fullWidth
+                                size="small"
+                                type="number"
+                                label="Canary (%)"
+                                value={rolloutCanaryPercent}
+                                onChange={(e) => setRolloutCanaryPercent(e.target.value)}
+                                inputProps={{ min: 1, max: 50 }}
+                              />
+                            ) : rolloutStrategy === 'staged' ? (
+                              <TextField
+                                fullWidth
+                                size="small"
+                                type="number"
+                                label="Размер этапа"
+                                value={rolloutStageSize}
+                                onChange={(e) => setRolloutStageSize(e.target.value)}
+                                inputProps={{ min: 1, max: 500 }}
+                              />
+                            ) : (
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Параметры стратегии"
+                                value="Все агенты в одном этапе"
+                                InputProps={{ readOnly: true }}
+                              />
+                            )}
+                          </Grid>
+
+                          <Grid item xs={12}>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={rolloutOnlineOnly}
+                                  onChange={(e) => setRolloutOnlineOnly(e.target.checked)}
+                                />
+                              }
+                              label="Только online/active агенты"
+                            />
+                          </Grid>
+
+                          <Grid item xs={12}>
+                            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={handlePlanRollout}
+                                disabled={rolloutPlanning || rolloutExecuting}
+                              >
+                                {rolloutPlanning ? 'Расчет...' : 'Рассчитать план'}
+                              </Button>
+                              {rolloutStages.length > 0 && (
+                                <FormControl size="small" sx={{ minWidth: 190 }}>
+                                  <InputLabel>Этап</InputLabel>
+                                  <Select
+                                    label="Этап"
+                                    value={selectedRolloutStage}
+                                    onChange={(e) => setSelectedRolloutStage(Number(e.target.value))}
+                                  >
+                                    {rolloutStages.map((stage) => (
+                                      <MenuItem key={stage.stage} value={stage.stage}>
+                                        Этап {stage.stage}: {stage.count} агентов
+                                      </MenuItem>
+                                    ))}
+                                  </Select>
+                                </FormControl>
+                              )}
+                            </Stack>
+                          </Grid>
+
+                          {rolloutStages.length > 0 && (
+                            <Grid item xs={12}>
+                              <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
+                                {rolloutStages.map((stage) => (
+                                  <Chip
+                                    key={stage.stage}
+                                    size="small"
+                                    variant={Number(stage.stage) === Number(selectedRolloutStage) ? 'filled' : 'outlined'}
+                                    color={Number(stage.stage) === Number(selectedRolloutStage) ? 'primary' : 'default'}
+                                    label={`Этап ${stage.stage}: ${stage.count}`}
+                                  />
+                                ))}
+                              </Stack>
+                            </Grid>
+                          )}
+
+                          <Grid item xs={12}>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={rolloutAutoRollback}
+                                  onChange={(e) => setRolloutAutoRollback(e.target.checked)}
+                                />
+                              }
+                              label="Auto-rollback при превышении порогов ошибок"
+                            />
+                          </Grid>
+
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              type="number"
+                              inputProps={{ min: 0.01, max: 1, step: 0.01 }}
+                              label="Порог failure rate"
+                              value={rolloutFailureRateThreshold}
+                              onChange={(e) => setRolloutFailureRateThreshold(e.target.value)}
+                              disabled={!rolloutAutoRollback}
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              type="number"
+                              inputProps={{ min: 0, step: 1 }}
+                              label="Макс. failed агентов"
+                              value={rolloutMaxFailedAgents}
+                              onChange={(e) => setRolloutMaxFailedAgents(e.target.value)}
+                              disabled={!rolloutAutoRollback}
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              type="number"
+                              inputProps={{ min: 0, max: 180, step: 1 }}
+                              label="Окно наблюдения (сек)"
+                              value={rolloutObservationSeconds}
+                              onChange={(e) => setRolloutObservationSeconds(e.target.value)}
+                              disabled={!rolloutAutoRollback}
+                            />
+                          </Grid>
+
+                          <Grid item xs={12}>
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="warning"
+                              onClick={handleExecuteRollout}
+                              disabled={rolloutExecuting || rolloutPlanning || rolloutStages.length === 0}
+                            >
+                              {rolloutExecuting ? 'Выполнение...' : 'Запустить выбранный этап rollout'}
+                            </Button>
+                          </Grid>
+
+                          {rolloutResult && (
+                            <Grid item xs={12}>
+                              <Alert
+                                severity={rolloutResult?.autoRollback?.rollbackTriggered ? 'warning' : 'success'}
+                                sx={{ mb: 0 }}
+                              >
+                                <Typography variant="body2" fontWeight={600}>
+                                  Rollout: успешно {rolloutResult?.succeededCount ?? 0}, ошибок {rolloutResult?.failedCount ?? 0}
+                                </Typography>
+                                <Typography variant="caption" display="block">
+                                  Auto-rollback: {rolloutResult?.autoRollback?.rollbackTriggered ? 'выполнен' : 'не потребовался'}
+                                </Typography>
+                              </Alert>
+                            </Grid>
+                          )}
+                        </Grid>
+                      </Paper>
+
+                      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
                         <Typography variant="subtitle1" gutterBottom>Команды администратора</Typography>
                         <Grid container spacing={2}>
                           <Grid item xs={12} sm={6}>
@@ -2073,6 +2832,37 @@ const Settings = () => {
                                 ))}
                               </Select>
                             </FormControl>
+                            <FormControl size="small" sx={{ minWidth: 190 }}>
+                              <InputLabel>Тип</InputLabel>
+                              <Select
+                                label="Тип"
+                                value={agentCommandTypeFilter}
+                                onChange={(e) => setAgentCommandTypeFilter(e.target.value)}
+                              >
+                                <MenuItem value="">Все</MenuItem>
+                                {AGENT_COMMAND_TYPES.map((option) => (
+                                  <MenuItem key={option.value} value={option.value}>
+                                    {option.value}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                            <TextField
+                              size="small"
+                              label="С даты"
+                              type="datetime-local"
+                              value={agentCommandFromFilter}
+                              onChange={(e) => setAgentCommandFromFilter(e.target.value)}
+                              InputLabelProps={{ shrink: true }}
+                            />
+                            <TextField
+                              size="small"
+                              label="По дату"
+                              type="datetime-local"
+                              value={agentCommandToFilter}
+                              onChange={(e) => setAgentCommandToFilter(e.target.value)}
+                              InputLabelProps={{ shrink: true }}
+                            />
                             <Button
                               size="small"
                               variant="outlined"
@@ -2088,20 +2878,21 @@ const Settings = () => {
                         <TableContainer component={Paper} variant="outlined">
                           <Table size="small">
                             <TableHead>
-                              <TableRow>
-                                <TableCell>ID</TableCell>
-                                <TableCell>Тип</TableCell>
-                                <TableCell>Статус</TableCell>
-                                <TableCell>Доставка</TableCell>
-                                <TableCell>Жизненный цикл</TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {agentCommands.length === 0 ? (
                                 <TableRow>
-                                  <TableCell colSpan={5} align="center">Команды не найдены</TableCell>
+                                  <TableCell>ID</TableCell>
+                                  <TableCell>Тип</TableCell>
+                                  <TableCell>Статус</TableCell>
+                                  <TableCell>Доставка</TableCell>
+                                  <TableCell>Жизненный цикл</TableCell>
+                                  <TableCell align="right">Действия</TableCell>
                                 </TableRow>
-                              ) : agentCommands.map((command) => (
+                              </TableHead>
+                              <TableBody>
+                                {agentCommands.length === 0 ? (
+                                  <TableRow>
+                                    <TableCell colSpan={6} align="center">Команды не найдены</TableCell>
+                                  </TableRow>
+                                ) : agentCommands.map((command) => (
                                 <TableRow key={command.id} hover>
                                   <TableCell>{command.id}</TableCell>
                                   <TableCell>
@@ -2154,6 +2945,25 @@ const Settings = () => {
                                     <Typography variant="caption" color="text.secondary" display="block">
                                       Подтверждение: {command.acknowledgedAt ? new Date(command.acknowledgedAt).toLocaleString('ru-RU') : '-'}
                                     </Typography>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    {canRetryCommand(command.status) ? (
+                                      <Tooltip title="Поставить команду в очередь повторно">
+                                        <span>
+                                          <Button
+                                            size="small"
+                                            variant="outlined"
+                                            startIcon={<Replay fontSize="small" />}
+                                            onClick={() => handleRetryAgentCommand(command)}
+                                            disabled={agentActionLoading || agentCommandSaving}
+                                          >
+                                            Повторить
+                                          </Button>
+                                        </span>
+                                      </Tooltip>
+                                    ) : (
+                                      '—'
+                                    )}
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -2407,6 +3217,206 @@ const Settings = () => {
             </Card>
           </Grid>
         </Grid>
+      )}
+
+      {tabValue === 5 && (
+        <Card>
+          <CardContent>
+            <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap" mb={2}>
+              <Box>
+                <Typography variant="h6">Журнал аудита</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Фиксация административных действий с фильтрами, поиском и экспортом CSV.
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  variant="outlined"
+                  startIcon={<Refresh />}
+                  onClick={() => fetchAuditEvents()}
+                  disabled={auditLoading}
+                >
+                  {auditLoading ? 'Обновление...' : 'Обновить'}
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<FileDownload />}
+                  onClick={handleExportAuditCsv}
+                  disabled={auditExporting}
+                >
+                  {auditExporting ? 'Экспорт...' : 'Экспорт CSV'}
+                </Button>
+              </Stack>
+            </Box>
+
+            {auditError && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                {auditError}
+              </Alert>
+            )}
+
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={12} md={2}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Действие</InputLabel>
+                  <Select
+                    label="Действие"
+                    value={auditActionFilter}
+                    onChange={(e) => setAuditActionFilter(e.target.value)}
+                  >
+                    <MenuItem value="">Все</MenuItem>
+                    {auditActionOptions.map((value) => (
+                      <MenuItem key={value} value={value}>{value}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Актор</InputLabel>
+                  <Select
+                    label="Актор"
+                    value={auditActorFilter}
+                    onChange={(e) => setAuditActorFilter(e.target.value)}
+                  >
+                    <MenuItem value="">Все</MenuItem>
+                    {auditActorOptions.map((value) => (
+                      <MenuItem key={value} value={value}>{value}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Поиск"
+                  value={auditSearchFilter}
+                  onChange={(e) => setAuditSearchFilter(e.target.value)}
+                  placeholder="action, actor, target, details"
+                />
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  type="datetime-local"
+                  label="С"
+                  value={auditFromFilter}
+                  onChange={(e) => setAuditFromFilter(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  type="datetime-local"
+                  label="По"
+                  value={auditToFilter}
+                  onChange={(e) => setAuditToFilter(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12} md={1} display="flex" justifyContent="flex-end">
+                <Stack direction="row" spacing={1}>
+                  <Button variant="outlined" size="small" onClick={handleResetAuditFilters}>Сброс</Button>
+                  <Button variant="contained" size="small" onClick={handleApplyAuditFilters}>Применить</Button>
+                </Stack>
+              </Grid>
+            </Grid>
+
+            {auditLoading && <LinearProgress sx={{ mb: 2, borderRadius: 999 }} />}
+
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Время</TableCell>
+                    <TableCell>Актор</TableCell>
+                    <TableCell>Действие</TableCell>
+                    <TableCell>Цель</TableCell>
+                    <TableCell>Статус</TableCell>
+                    <TableCell>Код</TableCell>
+                    <TableCell>Детали</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {auditEvents.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center">События аудита не найдены</TableCell>
+                    </TableRow>
+                  ) : (
+                    auditEvents.map((event) => (
+                      <TableRow key={event.id} hover>
+                        <TableCell>{event.createdAt ? new Date(event.createdAt).toLocaleString('ru-RU') : '—'}</TableCell>
+                        <TableCell>{event.actor || '—'}</TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={600}>{event.action || '—'}</Typography>
+                        </TableCell>
+                        <TableCell>{`${event.targetType || '—'}:${event.targetId || '—'}`}</TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            color={event.success ? 'success' : 'error'}
+                            label={event.success ? 'Успех' : 'Ошибка'}
+                          />
+                        </TableCell>
+                        <TableCell>{event.statusCode || '—'}</TableCell>
+                        <TableCell>
+                          <Tooltip title={event.detailsJson || '—'}>
+                            <Typography variant="caption">{formatAuditDetailsPreview(event.detailsJson)}</Typography>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <Box mt={2} display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap">
+              <Typography variant="body2" color="text.secondary">
+                Всего записей: {auditTotalCount}
+              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <InputLabel>На странице</InputLabel>
+                  <Select
+                    label="На странице"
+                    value={auditPageSize}
+                    onChange={(e) => {
+                      const nextSize = Number(e.target.value) || 25;
+                      setAuditPageSize(nextSize);
+                      setAuditPage(1);
+                    }}
+                  >
+                    {[25, 50, 100, 200].map((size) => (
+                      <MenuItem key={size} value={size}>{size}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setAuditPage((prev) => Math.max(1, prev - 1))}
+                  disabled={auditPage <= 1}
+                >
+                  Назад
+                </Button>
+                <Chip size="small" variant="outlined" label={`Страница ${auditPage} из ${auditTotalPages}`} />
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setAuditPage((prev) => Math.min(auditTotalPages, prev + 1))}
+                  disabled={auditPage >= auditTotalPages}
+                >
+                  Вперёд
+                </Button>
+              </Stack>
+            </Box>
+          </CardContent>
+        </Card>
       )}
 
       <Dialog

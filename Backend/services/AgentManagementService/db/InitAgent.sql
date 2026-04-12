@@ -5,7 +5,9 @@ CREATE TABLE agents (
     status          VARCHAR(20) NOT NULL DEFAULT 'online', -- online / offline / updating
     last_heartbeat  TIMESTAMP,
     config_version  VARCHAR(20),
-    offline_since   TIMESTAMP NULL
+    offline_since   TIMESTAMP NULL,
+    desired_version VARCHAR(20),
+    desired_version_set_at TIMESTAMP
 );
 
 CREATE TABLE sync_batches (

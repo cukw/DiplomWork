@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+*.db
+*.sqlite
+state/
+src/endpoint_agent/generated/*_pb2.py
+src/endpoint_agent/generated/*_pb2_grpc.py
+!src/endpoint_agent/generated/__init__.py
+.target/
+rust/sysprobe/target/

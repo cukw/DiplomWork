@@ -7,6 +7,7 @@ package agent;
 service AgentManagementService {
   rpc RegisterAgent (RegisterAgentRequest) returns (RegisterAgentResponse);
   rpc UpdateAgentStatus (UpdateAgentStatusRequest) returns (UpdateAgentStatusResponse);
+  rpc SetAgentDesiredVersion (SetAgentDesiredVersionRequest) returns (SetAgentDesiredVersionResponse);
   rpc GetAgent (GetAgentRequest) returns (GetAgentResponse);
   rpc GetAgentsByComputer (GetAgentsByComputerRequest) returns (GetAgentsByComputerResponse);
   rpc GetAllAgents (GetAllAgentsRequest) returns (GetAllAgentsResponse);
@@ -21,6 +22,7 @@ service AgentManagementService {
   rpc GetAgentCommands (GetAgentCommandsRequest) returns (GetAgentCommandsResponse);
   rpc CreateAgentCommand (CreateAgentCommandRequest) returns (CreateAgentCommandResponse);
   rpc AckAgentCommand (AckAgentCommandRequest) returns (AckAgentCommandResponse);
+  rpc RetryAgentCommand (RetryAgentCommandRequest) returns (RetryAgentCommandResponse);
   
   rpc CreateSyncBatch (CreateSyncBatchRequest) returns (CreateSyncBatchResponse);
   rpc UpdateSyncBatch (UpdateSyncBatchRequest) returns (UpdateSyncBatchResponse);
@@ -51,6 +53,21 @@ message UpdateAgentStatusResponse {
   bool success = 1;
   string message = 2;
   Agent agent = 3;
+}
+
+message SetAgentDesiredVersionRequest {
+  int64 agent_id = 1;
+  string desired_version = 2;
+  bool enqueue_self_update = 3;
+  string requested_by = 4;
+  string command_key = 5;
+}
+
+message SetAgentDesiredVersionResponse {
+  bool success = 1;
+  string message = 2;
+  Agent agent = 3;
+  AgentCommand command = 4;
 }
 
 message GetAgentRequest {
@@ -166,6 +183,9 @@ message GetAgentCommandsRequest {
   string status = 2;
   int32 page = 3;
   int32 page_size = 4;
+  string type = 5;
+  string created_from = 6;
+  string created_to = 7;
 }
 
 message GetAgentCommandsResponse {
@@ -196,6 +216,18 @@ message AckAgentCommandRequest {
 }
 
 message AckAgentCommandResponse {
+  bool success = 1;
+  string message = 2;
+  AgentCommand command = 3;
+}
+
+message RetryAgentCommandRequest {
+  int64 agent_id = 1;
+  int64 command_id = 2;
+  string requested_by = 3;
+}
+
+message RetryAgentCommandResponse {
   bool success = 1;
   string message = 2;
   AgentCommand command = 3;
@@ -269,6 +301,8 @@ message Agent {
   string last_heartbeat = 5;
   string config_version = 6;
   string offline_since = 7;
+  string desired_version = 8;
+  string desired_version_set_at = 9;
 }
 
 message SyncBatch {

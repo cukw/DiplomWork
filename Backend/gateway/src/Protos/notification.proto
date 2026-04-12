@@ -25,6 +25,7 @@ message SendNotificationRequest {
   string title = 3;
   string message = 4;
   string channel = 5;
+  string recipient_email = 6;
 }
 
 message SendNotificationResponse {
@@ -145,6 +146,13 @@ message Notification {
   bool is_read = 6;
   string sent_at = 7;
   string channel = 8;
+  string recipient_email = 9;
+  string delivery_status = 10;
+  int32 delivery_attempts = 11;
+  int32 max_delivery_attempts = 12;
+  string next_retry_at = 13;
+  string delivered_at = 14;
+  string last_delivery_error = 15;
 }
 
 message NotificationTemplate {

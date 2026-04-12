@@ -33,30 +33,31 @@
 
 ## Быстрый запуск
 
-### 1. Запуск всех сервисов
+### 1. Подготовка переменных окружения
 ```bash
-docker-compose up -d
+cp .env.production.example .env
+# заполните все значения в .env (обязательные секреты)
 ```
 
-### 2. Добавление тестовых пользователей
+### 2. Запуск всех сервисов
 ```bash
-./Backend/services/UserService/db/add_test_users.sh
+docker compose --env-file .env up -d
 ```
 
-### 3. Доступ к системе
+### 3. Bootstrap-администратор
+- Логин: `admin`
+- Пароль: `admin123`
+- Роль: `admin`
+
+### 4. Доступ к системе
 - **Фронтенд**: http://localhost:3000
 - **API Gateway**: http://localhost:8080
 - **RabbitMQ Management**: http://localhost:15672 (guest/guest)
 
-## Тестовые пользователи
+## Пользователи
 
-### Обычный пользователь
-- **Логин**: `testuser`
-- **Пароль**: `password123`
-
-### Администратор
-- **Логин**: `admin`
-- **Пароль**: `admin123`
+Bootstrap-админ создается автоматически при инициализации БД (`admin/admin123`).
+Остальных пользователей создавайте через `POST /api/auth/register`.
 
 ## API Эндпоинты
 
@@ -132,10 +133,11 @@ docker-compose exec postgres-user psql -U postgres -d users
 docker-compose exec postgres-activity psql -U postgres -d activities
 ```
 
-### Добавление тестовых данных
+### Создание пользователей
 ```bash
-# Выполнить скрипт добавления тестовых пользователей
-./Backend/services/UserService/db/add_test_users.sh
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"user1","email":"user1@your-domain.tld","password":"ChangeMe_Strong_123!","role":"user"}'
 ```
 
 ## Мониторинг и отладка
@@ -169,7 +171,7 @@ docker network inspect finalwork_frontend
 3. Убедитесь, что фронтенд в той же сети: `docker network inspect finalwork_backend`
 
 ### Ошибка аутентификации
-1. Проверьте, что тестовые пользователи добавлены
+1. Проверьте, что пользователь создан через `POST /api/auth/register`
 2. Проверьте логи AuthService: `docker-compose logs authservice`
 3. Убедитесь, что база данных auth запущена: `docker-compose ps postgres-auth`
 
