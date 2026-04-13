@@ -28,26 +28,25 @@ public sealed class NotificationDeliveryMetricsWorker : BackgroundService
                 var db = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
                 var now = DateTime.UtcNow;
 
-                var queueDepthTask = db.Notifications
+                var queueDepth = await db.Notifications
                     .AsNoTracking()
                     .CountAsync(n => n.DeliveryStatus == "pending" || n.DeliveryStatus == "failed", stoppingToken);
 
-                var retryDueDepthTask = db.Notifications
+                var retryDueDepth = await db.Notifications
                     .AsNoTracking()
                     .CountAsync(n =>
                         (n.DeliveryStatus == "pending" || n.DeliveryStatus == "failed")
                         && n.NextRetryAt != null
                         && n.NextRetryAt <= now, stoppingToken);
 
-                var dlqDepthTask = db.NotificationDeliveryDeadLetters
+                var dlqDepth = await db.NotificationDeliveryDeadLetters
                     .AsNoTracking()
                     .CountAsync(stoppingToken);
 
-                await Task.WhenAll(queueDepthTask, retryDueDepthTask, dlqDepthTask);
                 NotificationDeliveryMetrics.Update(
-                    queueDepthTask.Result,
-                    retryDueDepthTask.Result,
-                    dlqDepthTask.Result);
+                    queueDepth,
+                    retryDueDepth,
+                    dlqDepth);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

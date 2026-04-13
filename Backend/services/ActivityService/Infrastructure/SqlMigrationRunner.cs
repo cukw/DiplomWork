@@ -47,7 +47,7 @@ public static class SqlMigrationRunner
 
             if (!string.IsNullOrWhiteSpace(existingChecksum))
             {
-                if (!string.Equals(existingChecksum, checksum, StringComparison.OrdinalIgnoreCase))
+                if (!IsKnownChecksum(script, existingChecksum))
                 {
                     throw new InvalidOperationException(
                         $"Migration checksum mismatch for {serviceName} {migration.Version}. " +
@@ -147,6 +147,24 @@ public static class SqlMigrationRunner
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(script));
         return Convert.ToHexString(bytes);
+    }
+
+    private static bool IsKnownChecksum(string script, string checksum)
+    {
+        return GetEquivalentChecksums(script)
+            .Any(candidate => string.Equals(candidate, checksum, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static IEnumerable<string> GetEquivalentChecksums(string script)
+    {
+        yield return ComputeChecksum(script);
+
+        var normalizedLineEndings = script
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace("\r", "\n", StringComparison.Ordinal);
+
+        yield return ComputeChecksum(normalizedLineEndings);
+        yield return ComputeChecksum(normalizedLineEndings.Replace("\n", "\r\n", StringComparison.Ordinal));
     }
 
     private static async Task ExecuteScriptAsync(
