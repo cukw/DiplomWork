@@ -388,19 +388,19 @@ services:
     restart: unless-stopped
     depends_on:
       activityservice:
-        condition: service_started
+        condition: service_healthy
       authservice:
-        condition: service_started
+        condition: service_healthy
       userservice:
-        condition: service_started
+        condition: service_healthy
       metricservice:
-        condition: service_started
+        condition: service_healthy
       notificationservice:
-        condition: service_started
+        condition: service_healthy
       reportservice:
-        condition: service_started
+        condition: service_healthy
       agentmanagementservice:
-        condition: service_started
+        condition: service_healthy
     environment:
       ASPNETCORE_URLS: "http://+:8080"
       Jwt__Key: "${JWT_KEYS_V1:?JWT_KEYS_V1 is required}"
@@ -414,6 +414,7 @@ services:
       Cors__AllowedOrigins__0: "http://localhost:3000"
       Cors__AllowedOrigins__1: "https://localhost:3443"
       Services__Activity: "http://activityservice:5001"
+      Services__ActivityHttp: "http://activityservice:5002"
       Services__Auth: "http://authservice:5003"
       Services__User: "http://userservice:5004"
       Services__Notification: "http://notificationservice:5012"
@@ -490,7 +491,8 @@ services:
       - backend
       - frontend
     depends_on:
-      - gateway
+      gateway:
+        condition: service_healthy
     environment:
       - REACT_APP_API_URL=/api
       - REACT_APP_ENV=production

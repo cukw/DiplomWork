@@ -20,15 +20,11 @@ on:
         type: boolean
         default: false
   push:
+    branches:
+      - "**"
     tags:
-      - "v*"
-    paths:
-      - "LocalEndpointAgent/**"
-      - ".github/workflows/local-endpoint-agent-packages.yml"
+      - "**"
   pull_request:
-    paths:
-      - "LocalEndpointAgent/**"
-      - ".github/workflows/local-endpoint-agent-packages.yml"
 
 permissions:
   contents: read
