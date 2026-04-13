@@ -1,6 +1,8 @@
 using UserService.Services;
 using UserService.Data;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +30,14 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<UserDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+var telemetryServiceName = builder.Configuration["OpenTelemetry:ServiceName"] ?? "user-service";
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService(telemetryServiceName))
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddPrometheusExporter());
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -50,6 +60,7 @@ using (var scope = app.Services.CreateScope())
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<UserServiceImpl>();
 app.MapControllers();
+app.MapPrometheusScrapingEndpoint("/metrics");
 app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "UserService", timestamp = DateTime.UtcNow }));
 

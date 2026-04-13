@@ -40,15 +40,15 @@
               },
               {
                 "color": "orange",
-                "value": 0.5
+                "value": 100
               },
               {
                 "color": "red",
-                "value": 1
+                "value": 500
               }
             ]
           },
-          "unit": "s"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -61,11 +61,11 @@
       "id": 1,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
+          "expr": "sum(rabbitmq_queue_messages_ready)",
           "refId": "A"
         }
       ],
-      "title": "HTTP p95 Latency (Global)",
+      "title": "Ready Messages",
       "type": "stat"
     },
     {
@@ -87,15 +87,15 @@
               },
               {
                 "color": "orange",
-                "value": 0.02
+                "value": 50
               },
               {
                 "color": "red",
-                "value": 0.05
+                "value": 200
               }
             ]
           },
-          "unit": "percentunit"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -108,11 +108,11 @@
       "id": 2,
       "targets": [
         {
-          "expr": "(sum(rate(http_server_request_duration_seconds_count{status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_request_duration_seconds_count[5m])), 0.001))",
+          "expr": "sum(rabbitmq_queue_messages_unacked)",
           "refId": "A"
         }
       ],
-      "title": "HTTP 5xx Error Rate",
+      "title": "Unacked Messages",
       "type": "stat"
     },
     {
@@ -129,16 +129,16 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "red",
                 "value": null
               },
               {
                 "color": "orange",
-                "value": 100
+                "value": 1
               },
               {
-                "color": "red",
-                "value": 200
+                "color": "green",
+                "value": 3
               }
             ]
           },
@@ -155,11 +155,11 @@
       "id": 3,
       "targets": [
         {
-          "expr": "notification_delivery_queue_depth",
+          "expr": "sum(rabbitmq_consumers)",
           "refId": "A"
         }
       ],
-      "title": "Notification Queue Depth",
+      "title": "Consumers",
       "type": "stat"
     },
     {
@@ -170,22 +170,9 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short"
+          "unit": "msgps"
         },
         "overrides": []
       },
@@ -198,12 +185,18 @@
       "id": 4,
       "targets": [
         {
-          "expr": "notification_delivery_dlq_depth",
+          "expr": "sum(rate(rabbitmq_global_messages_published_total[5m]))",
+          "legendFormat": "published",
           "refId": "A"
+        },
+        {
+          "expr": "sum(rate(rabbitmq_global_messages_delivered_total[5m]))",
+          "legendFormat": "delivered",
+          "refId": "B"
         }
       ],
-      "title": "Notification DLQ Depth",
-      "type": "stat"
+      "title": "Message Rate",
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -220,7 +213,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 9,
         "w": 12,
         "x": 0,
         "y": 6
@@ -228,22 +221,12 @@
       "id": 5,
       "targets": [
         {
-          "expr": "notification_delivery_queue_depth",
-          "legendFormat": "pending+failed",
+          "expr": "sum by (queue) (rabbitmq_queue_messages)",
+          "legendFormat": "{{queue}}",
           "refId": "A"
-        },
-        {
-          "expr": "notification_delivery_retry_due_depth",
-          "legendFormat": "retry_due",
-          "refId": "B"
-        },
-        {
-          "expr": "notification_delivery_dlq_depth",
-          "legendFormat": "dlq",
-          "refId": "C"
         }
       ],
-      "title": "Notification Delivery Backlog",
+      "title": "Messages by Queue",
       "type": "timeseries"
     },
     {
@@ -256,12 +239,12 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "s"
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 9,
         "w": 12,
         "x": 12,
         "y": 6
@@ -269,21 +252,26 @@
       "id": 6,
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, service_name) (rate(http_server_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "{{service_name}}",
+          "expr": "sum by (queue) (rabbitmq_queue_messages_ready)",
+          "legendFormat": "{{queue}} ready",
           "refId": "A"
+        },
+        {
+          "expr": "sum by (queue) (rabbitmq_queue_messages_unacked)",
+          "legendFormat": "{{queue}} unacked",
+          "refId": "B"
         }
       ],
-      "title": "HTTP p95 by Service",
+      "title": "Ready vs Unacked by Queue",
       "type": "timeseries"
     }
   ],
   "schemaVersion": 39,
   "style": "dark",
   "tags": [
-    "slo",
-    "backend",
-    "delivery"
+    "rabbitmq",
+    "messaging",
+    "backend"
   ],
   "templating": {
     "list": []
@@ -294,8 +282,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Backend SLO & Delivery",
-  "uid": "backend-slo-delivery",
+  "title": "RabbitMQ Messaging",
+  "uid": "rabbitmq-messaging",
   "version": 1,
   "weekStart": ""
 }

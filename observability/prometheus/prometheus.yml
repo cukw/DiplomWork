@@ -21,7 +21,32 @@ scrape_configs:
     static_configs:
       - targets: ["authservice:5007"]
 
+  - job_name: userservice
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["userservice:5005"]
+
+  - job_name: metricservice
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["metricservice:5011"]
+
   - job_name: notificationservice
     metrics_path: /metrics
     static_configs:
       - targets: ["notificationservice:5017"]
+
+  - job_name: reportservice
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["reportservice:5014"]
+
+  - job_name: agentmanagementservice
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["agentmanagementservice:5016"]
+
+  - job_name: rabbitmq
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["rabbitmq:15692"]

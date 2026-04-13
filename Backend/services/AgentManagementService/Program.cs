@@ -2,6 +2,8 @@ using AgentManagementService.Services;
 using AgentManagementService.Data;
 using Backend.Common.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 using UserLookupClient = AgentManagementService.UserLookup.UserService.UserServiceClient;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -39,6 +41,14 @@ builder.Services.AddGrpcClient<UserLookupClient>(o =>
 builder.Services.AddDbContext<AgentDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+var telemetryServiceName = builder.Configuration["OpenTelemetry:ServiceName"] ?? "agent-management-service";
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService(telemetryServiceName))
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddPrometheusExporter());
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -61,6 +71,7 @@ await InitializeDatabaseWithRetryAsync(
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<AgentManagementServiceImpl>();
 app.MapControllers();
+app.MapPrometheusScrapingEndpoint("/metrics");
 app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "AgentManagementService", timestamp = DateTime.UtcNow }));
 

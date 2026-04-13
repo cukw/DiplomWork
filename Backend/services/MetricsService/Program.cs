@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using MassTransit;
 using MetricsService.Events;
 using ActivityService.Services.Events;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +32,14 @@ builder.Services.AddControllers();
 // Configure Entity Framework
 builder.Services.AddDbContext<MetricsDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+var telemetryServiceName = builder.Configuration["OpenTelemetry:ServiceName"] ?? "metrics-service";
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService(telemetryServiceName))
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddPrometheusExporter());
 
 builder.Services.AddOptions<MassTransitHostOptions>().Configure(options =>
 {
@@ -136,6 +146,7 @@ await InitializeDatabaseWithRetryAsync(
 app.MapGrpcService<GreeterService>();
 app.MapGrpcService<MetricsServiceImpl>();
 app.MapControllers();
+app.MapPrometheusScrapingEndpoint("/metrics");
 app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "MetricsService", timestamp = DateTime.UtcNow }));
 

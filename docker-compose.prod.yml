@@ -66,6 +66,12 @@ services:
     profiles:
       - demo
 
+  prometheus:
+    ports: []
+
+  grafana:
+    ports: []
+
   gateway:
     ports: []
     environment:

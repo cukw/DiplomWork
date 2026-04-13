@@ -157,8 +157,14 @@ services:
     image: rabbitmq:3.13-management-alpine
     container_name: rabbitmq
     restart: unless-stopped
+    command:
+      - sh
+      - -c
+      - rabbitmq-plugins enable --offline rabbitmq_prometheus && rabbitmq-server
     ports:
       - "127.0.0.1:15672:15672"   # Web UI (local admin only)
+    expose:
+      - "15692"                    # Prometheus metrics inside backend network
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:?RABBITMQ_PASS is required}
