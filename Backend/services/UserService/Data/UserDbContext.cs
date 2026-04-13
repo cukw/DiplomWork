@@ -19,27 +19,33 @@ public class UserDbContext : DbContext
         // Configure User entity
         modelBuilder.Entity<User>(entity =>
         {
+            entity.ToTable("users");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.FullName).HasMaxLength(255);
-            entity.Property(e => e.Department).HasMaxLength(100);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.HasIndex(e => e.AuthUserId).IsUnique();
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.AuthUserId).HasColumnName("auth_user_id");
+            entity.Property(e => e.FullName).HasColumnName("full_name").HasMaxLength(255);
+            entity.Property(e => e.Department).HasColumnName("department").HasMaxLength(100);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasIndex(e => e.AuthUserId).IsUnique().HasDatabaseName("users_auth_user_id_key");
         });
 
         // Configure Computer entity
         modelBuilder.Entity<Computer>(entity =>
         {
+            entity.ToTable("computers");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.UserId).IsRequired();
-            entity.Property(e => e.Hostname).IsRequired().HasMaxLength(255);
-            entity.Property(e => e.OsVersion).HasMaxLength(100);
-            entity.Property(e => e.IpAddress).HasMaxLength(15);
-            entity.Property(e => e.MacAddress).HasMaxLength(17);
-            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("active");
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.HasIndex(e => e.UserId).IsUnique();
-            entity.HasIndex(e => e.Hostname);
-            entity.HasIndex(e => e.MacAddress).IsUnique();
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id").IsRequired();
+            entity.Property(e => e.Hostname).HasColumnName("hostname").IsRequired().HasMaxLength(255);
+            entity.Property(e => e.OsVersion).HasColumnName("os_version").HasMaxLength(100);
+            entity.Property(e => e.IpAddress).HasColumnName("ip_address").HasMaxLength(15);
+            entity.Property(e => e.MacAddress).HasColumnName("mac_address").HasMaxLength(17);
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).HasDefaultValue("active");
+            entity.Property(e => e.LastSeen).HasColumnName("last_seen");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.HasIndex(e => e.UserId).IsUnique().HasDatabaseName("uq_computers_user_id");
+            entity.HasIndex(e => e.Hostname).HasDatabaseName("idx_computers_hostname");
+            entity.HasIndex(e => e.MacAddress).IsUnique().HasDatabaseName("computers_mac_address_key");
             
             // One-to-one relationship with User
             entity.HasOne(e => e.User)

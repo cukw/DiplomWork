@@ -123,36 +123,36 @@ namespace ActivityService.Services
             }
         }
 
-    private async Task CheckForSuspiciousUrls(Activity activity, List<Anomaly> anomalies)
+    private Task CheckForSuspiciousUrls(Activity activity, List<Anomaly> anomalies)
     {
         if (string.IsNullOrEmpty(activity.Url))
-            return;
+            return Task.CompletedTask;
 
         var suspiciousDomains = new[] {
             "malware.com", "phishing.site", "suspicious.net", "hacktool.org",
             "darkweb.onion", "illegal.download", "crypto-miner.net"
         };
 
-        try
-        {
-            var uri = new Uri(activity.Url);
-            var domain = uri.Host.ToLower();
+        if (!Uri.TryCreate(activity.Url, UriKind.Absolute, out var uri))
+            return Task.CompletedTask;
 
-            if (suspiciousDomains.Any(suspicious => domain.Contains(suspicious)))
-            {
-                anomalies.Add(new Anomaly
-                {
-                    ActivityId = activity.Id,
-                    Type = "SUSPICIOUS_URL",
-                    Description = $"Access to suspicious URL detected: {activity.Url}",
-                    DetectedAt = DateTime.UtcNow
-                });
-            }
-        }
-        catch (Exception ex)
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            return Task.CompletedTask;
+
+        var domain = uri.Host.ToLowerInvariant();
+
+        if (suspiciousDomains.Any(suspicious => domain.Contains(suspicious)))
         {
-            _logger.LogWarning(ex, "Error parsing URL: {Url}", activity.Url);
+            anomalies.Add(new Anomaly
+            {
+                ActivityId = activity.Id,
+                Type = "SUSPICIOUS_URL",
+                Description = $"Access to suspicious URL detected: {activity.Url}",
+                DetectedAt = DateTime.UtcNow
+            });
         }
+
+        return Task.CompletedTask;
     }
 
     private async Task CheckForUnusualTimePatterns(Activity activity, List<Anomaly> anomalies)
