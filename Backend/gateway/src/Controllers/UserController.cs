@@ -110,7 +110,9 @@ public class UserController : ControllerBase
             }
             catch (RpcException ex) when (createdAuthAccount)
             {
-                var rollbackMessage = await TryRollbackAuthAccountAsync(authUserId);
+                var rollback = await TryDeleteAuthAccountAsync(
+                    authUserId,
+                    "Created auth account was rolled back");
                 _logger.LogError(
                     ex,
                     "UserService CreateUser failed after creating auth account {AuthUserId}",
@@ -118,21 +120,21 @@ public class UserController : ControllerBase
 
                 return StatusCode(500, new
                 {
-                    message = $"User profile creation failed after auth account creation. {rollbackMessage}"
+                    message = $"User profile creation failed after auth account creation. {rollback.Message}"
                 });
             }
 
             if (!resp.Success)
             {
-                var rollbackMessage = createdAuthAccount
-                    ? await TryRollbackAuthAccountAsync(authUserId)
+                (bool Success, string Message)? rollback = createdAuthAccount
+                    ? await TryDeleteAuthAccountAsync(authUserId, "Created auth account was rolled back")
                     : null;
 
                 return BadRequest(new
                 {
-                    message = rollbackMessage is null
+                    message = rollback is null
                         ? resp.Message
-                        : $"{resp.Message}. {rollbackMessage}"
+                        : $"{resp.Message}. {rollback.Value.Message}"
                 });
             }
 
@@ -165,12 +167,42 @@ public class UserController : ControllerBase
     }
 
     [HttpDelete("users/{id:long}")]
-    public async Task<IActionResult> Delete(long id)
+    public async Task<IActionResult> Delete(long id, [FromQuery] bool deleteAuthAccount = false)
     {
         try
         {
+            long authUserId = 0;
+            if (deleteAuthAccount)
+            {
+                var profile = await _user.GetUserProfileAsync(new GetUserProfileRequest { UserId = id });
+                if (!profile.Success)
+                    return NotFound(new { message = profile.Message });
+
+                authUserId = profile.UserProfile.AuthUserId;
+            }
+
             var resp = await _user.DeleteUserAsync(new DeleteUserRequest { UserId = id });
             if (!resp.Success) return NotFound(new { message = resp.Message });
+
+            if (deleteAuthAccount && authUserId > 0)
+            {
+                var authDelete = await TryDeleteAuthAccountAsync(authUserId);
+                if (!authDelete.Success)
+                {
+                    return Ok(new
+                    {
+                        message = $"{resp.Message}. {authDelete.Message}",
+                        authDeleted = false
+                    });
+                }
+
+                return Ok(new
+                {
+                    message = $"{resp.Message}. Auth account deleted successfully",
+                    authDeleted = true
+                });
+            }
+
             return Ok(new { message = resp.Message });
         }
         catch (RpcException ex)
@@ -249,7 +281,9 @@ public class UserController : ControllerBase
         return null;
     }
 
-    private async Task<string> TryRollbackAuthAccountAsync(long authUserId)
+    private async Task<(bool Success, string Message)> TryDeleteAuthAccountAsync(
+        long authUserId,
+        string successMessage = "Auth account deleted successfully")
     {
         try
         {
@@ -259,22 +293,22 @@ public class UserController : ControllerBase
             });
 
             if (rollback.Success)
-                return "Created auth account was rolled back";
+                return (true, successMessage);
 
             _logger.LogWarning(
-                "Failed to rollback auth account {AuthUserId}: {Message}",
+                "Failed to delete auth account {AuthUserId}: {Message}",
                 authUserId,
                 rollback.Message);
-            return $"Created auth account {authUserId} could not be rolled back: {rollback.Message}";
+            return (false, $"Auth account {authUserId} could not be deleted: {rollback.Message}");
         }
         catch (RpcException ex)
         {
             _logger.LogWarning(
                 ex,
-                "Failed to rollback auth account {AuthUserId}. Status={StatusCode}",
+                "Failed to delete auth account {AuthUserId}. Status={StatusCode}",
                 authUserId,
                 ex.StatusCode);
-            return $"Created auth account {authUserId} could not be rolled back";
+            return (false, $"Auth account {authUserId} could not be deleted");
         }
     }
 

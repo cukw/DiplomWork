@@ -236,8 +236,8 @@ export const userAPI = {
     return response.data;
   },
 
-  deleteUser: async (id) => {
-    const response = await api.delete(`/user/users/${id}`);
+  deleteUser: async (id, options = {}) => {
+    const response = await api.delete(`/user/users/${id}`, { params: options });
     return response.data;
   },
 };

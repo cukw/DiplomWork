@@ -221,9 +221,9 @@ services:
         condition: service_healthy
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres-auth;Database=auth;Username=postgres;Password=${DB_PASSWORD:?DB_PASSWORD is required};TrustServerCertificate=true"
-      Jwt__Key: "${JWT_KEYS_V1:?JWT_KEYS_V1 is required}"
+      Jwt__Key: "${JWT_KEYS_V1:-${JWT_KEY:?JWT_KEYS_V1 or JWT_KEY is required}}"
       Jwt__ActiveKeyId: "${JWT_ACTIVE_KEY_ID:-v1}"
-      Jwt__Keys__v1: "${JWT_KEYS_V1:?JWT_KEYS_V1 is required}"
+      Jwt__Keys__v1: "${JWT_KEYS_V1:-${JWT_KEY:?JWT_KEYS_V1 or JWT_KEY is required}}"
       Jwt__Keys__v2: "${JWT_KEYS_V2:-}"
       Jwt__RequireHttpsMetadata: "${JWT_REQUIRE_HTTPS_METADATA:-true}"
       Cors__AllowedOrigins__0: "http://localhost:3000"
@@ -409,9 +409,9 @@ services:
         condition: service_healthy
     environment:
       ASPNETCORE_URLS: "http://+:8080"
-      Jwt__Key: "${JWT_KEYS_V1:?JWT_KEYS_V1 is required}"
+      Jwt__Key: "${JWT_KEYS_V1:-${JWT_KEY:?JWT_KEYS_V1 or JWT_KEY is required}}"
       Jwt__ActiveKeyId: "${JWT_ACTIVE_KEY_ID:-v1}"
-      Jwt__Keys__v1: "${JWT_KEYS_V1:?JWT_KEYS_V1 is required}"
+      Jwt__Keys__v1: "${JWT_KEYS_V1:-${JWT_KEY:?JWT_KEYS_V1 or JWT_KEY is required}}"
       Jwt__Keys__v2: "${JWT_KEYS_V2:-}"
       Jwt__Issuer: "ActivityMonitoringSystem"
       Jwt__Audience: "ActivityMonitoringSystem"
@@ -467,7 +467,7 @@ services:
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: "admin"
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
     ports:
       - "3001:3000"
     volumes:

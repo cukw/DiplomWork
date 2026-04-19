@@ -270,7 +270,7 @@ const Users = () => {
       setError(null);
       setSuccess(null);
 
-      await userAPI.deleteUser(selectedUser.id);
+      await userAPI.deleteUser(selectedUser.id, { deleteAuthAccount: true });
       setSuccess(`Пользователь «${selectedUser.fullName}» удален`);
       setDeleteDialogOpen(false);
       setSelectedUser(null);
