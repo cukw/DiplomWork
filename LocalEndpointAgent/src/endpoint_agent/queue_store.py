@@ -8,8 +8,9 @@ from .models import ActivityEvent
 
 
 class OfflineQueueStore:
-    def __init__(self, state_dir: Path) -> None:
+    def __init__(self, state_dir: Path, max_size: int = 10_000) -> None:
         self.db_path = state_dir / "agent_queue.sqlite3"
+        self.max_size = max(1, int(max_size))
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
@@ -38,7 +39,25 @@ class OfflineQueueStore:
         rows = list(rows)
         if not rows:
             return 0
+        if len(rows) > self.max_size:
+            rows = rows[-self.max_size:]
+
         with self._connect() as conn:
+            existing_count = int(conn.execute("SELECT COUNT(*) FROM activity_queue").fetchone()[0])
+            overflow_count = existing_count + len(rows) - self.max_size
+            if overflow_count > 0:
+                conn.execute(
+                    """
+                    DELETE FROM activity_queue
+                    WHERE id IN (
+                        SELECT id
+                        FROM activity_queue
+                        ORDER BY id ASC
+                        LIMIT ?
+                    )
+                    """,
+                    (overflow_count,),
+                )
             conn.executemany("INSERT INTO activity_queue(payload) VALUES (?)", rows)
             conn.commit()
         return len(rows)

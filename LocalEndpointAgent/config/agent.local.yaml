@@ -15,6 +15,7 @@ runtime:
   flush_interval_sec: 5
   collection_interval_sec: 5
   max_batch_size: 100
+  max_queue_size: 10000
 
 collectors:
   processes:

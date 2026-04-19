@@ -29,7 +29,7 @@ class EndpointAgentRunner:
         self.cfg = cfg
         self.state_dir = cfg.state_dir_path
         self.state_store = AgentStateStore(self.state_dir)
-        self.queue = OfflineQueueStore(self.state_dir)
+        self.queue = OfflineQueueStore(self.state_dir, max_size=self.cfg.runtime.max_queue_size)
         self.policy_cache = PolicyCache(self.state_dir)
         self.policy: dict[str, Any] = self._bootstrap_policy()
         self.system = SystemController()

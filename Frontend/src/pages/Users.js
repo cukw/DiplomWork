@@ -45,6 +45,10 @@ const FETCH_PAGE_SIZE = 500;
 
 const emptyForm = {
   authUserId: '',
+  username: '',
+  email: '',
+  password: '',
+  role: 'user',
   fullName: '',
   department: '',
   hostname: '',
@@ -159,6 +163,10 @@ const Users = () => {
 
     setFormData({
       authUserId: String(selectedUser.authUserId ?? ''),
+      username: '',
+      email: '',
+      password: '',
+      role: 'user',
       fullName: selectedUser.fullName || '',
       department: selectedUser.department || '',
       hostname: selectedUser.computer?.hostname || '',
@@ -201,22 +209,44 @@ const Users = () => {
         });
         setSuccess('Пользователь успешно обновлен');
       } else {
-        const authUserId = Number(formData.authUserId);
-        if (!Number.isFinite(authUserId) || authUserId <= 0) {
+        const rawAuthUserId = String(formData.authUserId || '').trim();
+        const useExistingAuth = rawAuthUserId.length > 0;
+        const authUserId = useExistingAuth ? Number(rawAuthUserId) : 0;
+        const username = String(formData.username || '').trim();
+        const password = String(formData.password || '');
+        const hostname = String(formData.hostname || '').trim();
+
+        if (useExistingAuth && (!Number.isFinite(authUserId) || authUserId <= 0)) {
           setError('ID пользователя авторизации должен быть положительным числом');
+          return;
+        }
+        if (!useExistingAuth && !username) {
+          setError('Поле «Логин» обязательно');
+          return;
+        }
+        if (!useExistingAuth && !password) {
+          setError('Поле «Пароль» обязательно');
+          return;
+        }
+        if (!hostname) {
+          setError('Поле «Имя хоста» обязательно');
           return;
         }
 
         await userAPI.createUser({
           authUserId,
+          username,
+          email: String(formData.email || '').trim(),
+          password,
+          role: String(formData.role || 'user').trim() || 'user',
           fullName,
           department,
-          hostname: String(formData.hostname || '').trim(),
+          hostname,
           osVersion: String(formData.osVersion || '').trim(),
           ipAddress: String(formData.ipAddress || '').trim(),
           macAddress: String(formData.macAddress || '').trim(),
         });
-        setSuccess('Пользователь успешно создан');
+        setSuccess(useExistingAuth ? 'Профиль пользователя успешно создан' : 'Учётная запись и профиль успешно созданы');
       }
 
       setDialogOpen(false);
@@ -275,7 +305,7 @@ const Users = () => {
         <Box>
           <Typography variant="h4">Пользователи</Typography>
           <Typography variant="body2" color="text.secondary">
-            Полное управление пользователями через сервис пользователей (шлюз `/api/user/users`)
+            Управление профилями, auth-учётками и закреплёнными компьютерами
           </Typography>
         </Box>
         <Button variant="contained" startIcon={<Add />} onClick={handleAddUser}>
@@ -422,14 +452,57 @@ const Users = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="ID пользователя авторизации"
+                label="ID существующей auth-учётки"
                 type="number"
                 value={formData.authUserId}
                 onChange={(e) => setFormData((prev) => ({ ...prev, authUserId: e.target.value }))}
                 disabled={Boolean(selectedUser)}
-                helperText={selectedUser ? 'Связь с пользователем авторизации нельзя изменить через текущий интерфейс' : 'Обязательно'}
+                helperText={selectedUser ? 'Связь с пользователем авторизации нельзя изменить через текущий интерфейс' : 'Оставьте пустым, чтобы создать логин и пароль здесь'}
               />
             </Grid>
+            {!selectedUser && !String(formData.authUserId || '').trim() && (
+              <>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Логин"
+                    value={formData.username}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, username: e.target.value }))}
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Пароль"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                  />
+                </Grid>
+                <Grid item xs={12} md={8}>
+                  <TextField
+                    fullWidth
+                    label="Email"
+                    value={formData.email}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Роль"
+                    value={formData.role}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, role: e.target.value }))}
+                  >
+                    <MenuItem value="user">Пользователь</MenuItem>
+                    <MenuItem value="moderator">Модератор</MenuItem>
+                    <MenuItem value="auditor">Аудитор</MenuItem>
+                    <MenuItem value="admin">Администратор</MenuItem>
+                  </TextField>
+                </Grid>
+              </>
+            )}
             <Grid item xs={12} md={8}>
               <TextField
                 fullWidth

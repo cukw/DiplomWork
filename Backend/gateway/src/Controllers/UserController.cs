@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Grpc.Core;
+using AuthClient = Gateway.Protos.Auth.AuthService.AuthServiceClient;
+using AuthProto = Gateway.Protos.Auth;
 using UserClient = Gateway.Protos.User.UserService.UserServiceClient;
 using Gateway.Protos.User;
 
@@ -12,8 +14,15 @@ namespace Gateway.Controllers;
 public class UserController : ControllerBase
 {
     private readonly UserClient _user;
+    private readonly AuthClient _auth;
+    private readonly ILogger<UserController> _logger;
 
-    public UserController(UserClient user) => _user = user;
+    public UserController(UserClient user, AuthClient auth, ILogger<UserController> logger)
+    {
+        _user = user;
+        _auth = auth;
+        _logger = logger;
+    }
 
     [HttpGet("users")]
     public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
@@ -59,18 +68,75 @@ public class UserController : ControllerBase
     {
         try
         {
-            var resp = await _user.CreateUserAsync(new CreateUserRequest
+            var authUserId = dto.AuthUserId;
+            AuthProto.User? authUser = null;
+            var createdAuthAccount = false;
+
+            if (authUserId <= 0)
             {
-                AuthUserId = dto.AuthUserId,
-                FullName   = dto.FullName   ?? "",
-                Department = dto.Department ?? "",
-                Hostname   = dto.Hostname   ?? "",
-                OsVersion  = dto.OsVersion  ?? "",
-                IpAddress  = dto.IpAddress  ?? "",
-                MacAddress = dto.MacAddress ?? ""
-            });
-            if (!resp.Success) return BadRequest(new { message = resp.Message });
-            return Ok(MapUser(resp.UserProfile));
+                var validationError = ValidateAuthAccountFields(dto);
+                if (validationError is not null)
+                    return BadRequest(new { message = validationError });
+
+                var authResp = await _auth.RegisterAsync(new AuthProto.RegisterRequest
+                {
+                    Username = dto.Username?.Trim() ?? "",
+                    Email    = dto.Email?.Trim() ?? "",
+                    Password = dto.Password ?? "",
+                    Role     = string.IsNullOrWhiteSpace(dto.Role) ? "user" : dto.Role.Trim()
+                });
+
+                if (!authResp.Success)
+                    return BadRequest(new { message = authResp.Message });
+
+                authUser = authResp.User;
+                authUserId = authResp.User.Id;
+                createdAuthAccount = true;
+            }
+
+            CreateUserResponse resp;
+            try
+            {
+                resp = await _user.CreateUserAsync(new CreateUserRequest
+                {
+                    AuthUserId = authUserId,
+                    FullName   = dto.FullName   ?? "",
+                    Department = dto.Department ?? "",
+                    Hostname   = dto.Hostname   ?? "",
+                    OsVersion  = dto.OsVersion  ?? "",
+                    IpAddress  = dto.IpAddress  ?? "",
+                    MacAddress = dto.MacAddress ?? ""
+                });
+            }
+            catch (RpcException ex) when (createdAuthAccount)
+            {
+                var rollbackMessage = await TryRollbackAuthAccountAsync(authUserId);
+                _logger.LogError(
+                    ex,
+                    "UserService CreateUser failed after creating auth account {AuthUserId}",
+                    authUserId);
+
+                return StatusCode(500, new
+                {
+                    message = $"User profile creation failed after auth account creation. {rollbackMessage}"
+                });
+            }
+
+            if (!resp.Success)
+            {
+                var rollbackMessage = createdAuthAccount
+                    ? await TryRollbackAuthAccountAsync(authUserId)
+                    : null;
+
+                return BadRequest(new
+                {
+                    message = rollbackMessage is null
+                        ? resp.Message
+                        : $"{resp.Message}. {rollbackMessage}"
+                });
+            }
+
+            return Ok(MapCreatedUser(resp.UserProfile, authUser, resp.Message));
         }
         catch (RpcException ex)
         {
@@ -149,8 +215,75 @@ public class UserController : ControllerBase
         lastSeen   = c.LastSeen
     };
 
+    private static object? MapCreatedUser(UserProfile? u, AuthProto.User? authUser, string message) => u is null ? null : new
+    {
+        id          = u.Id,
+        authUserId  = u.AuthUserId,
+        fullName    = u.FullName,
+        department  = u.Department,
+        createdAt   = u.CreatedAt,
+        computer    = MapComputer(u.Computer),
+        authUser    = MapAuthUser(authUser),
+        message
+    };
+
+    private static object? MapAuthUser(AuthProto.User? u) => u is null ? null : new
+    {
+        id        = u.Id,
+        username  = u.Username,
+        email     = u.Email,
+        role      = u.Role,
+        isActive  = u.IsActive,
+        lastLogin = u.LastLogin,
+        createdAt = u.CreatedAt
+    };
+
+    private static string? ValidateAuthAccountFields(CreateUserDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Username))
+            return "Username is required when AuthUserId is not provided";
+
+        if (string.IsNullOrWhiteSpace(dto.Password))
+            return "Password is required when AuthUserId is not provided";
+
+        return null;
+    }
+
+    private async Task<string> TryRollbackAuthAccountAsync(long authUserId)
+    {
+        try
+        {
+            var rollback = await _auth.DeleteAuthUserAsync(new AuthProto.DeleteAuthUserRequest
+            {
+                UserId = authUserId
+            });
+
+            if (rollback.Success)
+                return "Created auth account was rolled back";
+
+            _logger.LogWarning(
+                "Failed to rollback auth account {AuthUserId}: {Message}",
+                authUserId,
+                rollback.Message);
+            return $"Created auth account {authUserId} could not be rolled back: {rollback.Message}";
+        }
+        catch (RpcException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Failed to rollback auth account {AuthUserId}. Status={StatusCode}",
+                authUserId,
+                ex.StatusCode);
+            return $"Created auth account {authUserId} could not be rolled back";
+        }
+    }
+
     public record CreateUserDto(
         long    AuthUserId,
+        string? Username,
+        string? Email,
+        string? Password,
+        string? Role,
         string? FullName,
         string? Department,
         string? Hostname,

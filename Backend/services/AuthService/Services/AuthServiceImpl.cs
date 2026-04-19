@@ -121,13 +121,27 @@ public class AuthServiceImpl : AuthService.AuthServiceBase
 
         try
         {
+            var username = (request.Username ?? string.Empty).Trim();
+            var password = request.Password ?? string.Empty;
+            var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
+            var roleName = string.IsNullOrWhiteSpace(request.Role) ? "user" : request.Role.Trim().ToLowerInvariant();
+
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            {
+                return new RegisterResponse
+                {
+                    Success = false,
+                    Message = "Username and password are required"
+                };
+            }
+
             // Check if user already exists
             var existingUser = await _db.AuthUsers
-                .FirstOrDefaultAsync(u => u.Username == request.Username || u.Email == request.Email);
+                .FirstOrDefaultAsync(u => u.Username == username || (email != null && u.Email == email), context.CancellationToken);
 
             if (existingUser != null)
             {
-                _logger.LogWarning("Registration failed: User already exists - {Username}", request.Username);
+                _logger.LogWarning("Registration failed: User already exists - {Username}", username);
                 return new RegisterResponse
                 {
                     Success = false,
@@ -136,8 +150,7 @@ public class AuthServiceImpl : AuthService.AuthServiceBase
             }
 
             // Get role
-            var roleName = string.IsNullOrEmpty(request.Role) ? "user" : request.Role;
-            var role = await _db.Roles.FirstOrDefaultAsync(r => r.Name == roleName);
+            var role = await _db.Roles.FirstOrDefaultAsync(r => r.Name == roleName, context.CancellationToken);
 
             if (role == null)
             {
@@ -152,22 +165,22 @@ public class AuthServiceImpl : AuthService.AuthServiceBase
             // Create new user
             var user = new AuthUser
             {
-                Username = request.Username,
-                PasswordHash = _passwordService.HashPassword(request.Password),
-                Email = request.Email,
+                Username = username,
+                PasswordHash = _passwordService.HashPassword(password),
+                Email = email,
                 RoleId = role.Id,
                 IsActive = true
             };
 
             _db.AuthUsers.Add(user);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(context.CancellationToken);
 
             // Reload user with role
             user = await _db.AuthUsers
                 .Include(u => u.Role)
-                .FirstAsync(u => u.Id == user.Id);
+                .FirstAsync(u => u.Id == user.Id, context.CancellationToken);
 
-            _logger.LogInformation("Registration successful for user: {Username}", request.Username);
+            _logger.LogInformation("Registration successful for user: {Username}", username);
 
             return new RegisterResponse
             {
@@ -395,6 +408,59 @@ public class AuthServiceImpl : AuthService.AuthServiceBase
             {
                 Success = false,
                 Message = "An error occurred while retrieving user profile"
+            };
+        }
+    }
+
+    public override async Task<DeleteAuthUserResponse> DeleteAuthUser(DeleteAuthUserRequest request, ServerCallContext context)
+    {
+        _logger.LogInformation("Delete auth user request for user ID: {UserId}", request.UserId);
+
+        try
+        {
+            if (request.UserId <= 0 || request.UserId > int.MaxValue)
+            {
+                return new DeleteAuthUserResponse
+                {
+                    Success = false,
+                    Message = "Invalid auth user ID"
+                };
+            }
+
+            var authUserId = (int)request.UserId;
+            var user = await _db.AuthUsers
+                .FirstOrDefaultAsync(u => u.Id == authUserId, context.CancellationToken);
+
+            if (user == null)
+            {
+                return new DeleteAuthUserResponse
+                {
+                    Success = false,
+                    Message = "Auth user not found"
+                };
+            }
+
+            var sessions = await _db.Sessions
+                .Where(s => s.UserId == authUserId)
+                .ToListAsync(context.CancellationToken);
+
+            _db.Sessions.RemoveRange(sessions);
+            _db.AuthUsers.Remove(user);
+            await _db.SaveChangesAsync(context.CancellationToken);
+
+            return new DeleteAuthUserResponse
+            {
+                Success = true,
+                Message = "Auth user deleted successfully"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting auth user for ID: {UserId}", request.UserId);
+            return new DeleteAuthUserResponse
+            {
+                Success = false,
+                Message = "An error occurred while deleting auth user"
             };
         }
     }

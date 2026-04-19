@@ -19,6 +19,7 @@ class RuntimeConfig(BaseModel):
     flush_interval_sec: int = 5
     collection_interval_sec: int = 5
     max_batch_size: int = 100
+    max_queue_size: int = 10_000
 
 
 class ProcessCollectorConfig(BaseModel):

@@ -212,7 +212,7 @@ namespace ActivityService.Services
         try
         {
             // Parse details to extract file path
-            var details = System.Text.Json.JsonDocument.Parse(activity.Details);
+            using var details = System.Text.Json.JsonDocument.Parse(activity.Details);
             if (details.RootElement.TryGetProperty("filePath", out var filePathElement))
             {
                 var filePath = filePathElement.GetString()?.ToLower() ?? "";

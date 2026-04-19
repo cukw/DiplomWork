@@ -270,9 +270,12 @@ namespace ActivityService.Services
             var totalActivities   = await query.CountAsync(context.CancellationToken);
             var blockedActivities = await query.CountAsync(a => a.IsBlocked, context.CancellationToken);
 
-            var activityIds  = await query.Select(a => a.Id).ToListAsync(context.CancellationToken);
             var anomalyCount = await _db.Anomalies
-                .Where(a => activityIds.Contains(a.ActivityId))
+                .Join(
+                    query,
+                    anomaly => anomaly.ActivityId,
+                    activity => activity.Id,
+                    (anomaly, _) => anomaly.Id)
                 .CountAsync(context.CancellationToken);
 
             var activityTypeCounts = await query
