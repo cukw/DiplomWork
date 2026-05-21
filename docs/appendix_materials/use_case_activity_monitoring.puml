@@ -1,0 +1,90 @@
+@startuml
+left to right direction
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam handwritten false
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 15
+skinparam actorStyle stick
+skinparam packageStyle rectangle
+skinparam ArrowColor #222222
+skinparam ActorBorderColor #222222
+skinparam UsecaseBorderColor #222222
+skinparam UsecaseBackgroundColor #FFFFFF
+skinparam RectangleBorderColor #222222
+skinparam RectangleBackgroundColor #FFFFFF
+
+title Диаграмма прецедентов системы мониторинга активности пользователей
+
+actor "Администратор" as Admin
+actor "Оператор\nмониторинга" as Operator
+actor "Специалист\nпо ИБ" as Security
+actor "Endpoint-агент" as Agent
+actor "Канал уведомлений\nEmail / Webhook" as NotifyChannel
+
+rectangle "Система учета и анализа компьютерной активности пользователей" as System {
+  usecase "Войти\nв систему" as UC_Login
+  usecase "Просмотреть\nDashboard" as UC_Dashboard
+  usecase "Просмотреть и\nотфильтровать\nсобытия активности" as UC_Events
+  usecase "Проанализировать\nаномалии и риски" as UC_Anomalies
+  usecase "Сформировать\nотчет" as UC_Report
+  usecase "Получить\nуведомление" as UC_Notify
+
+  usecase "Управлять\nпользователями\nи ролями" as UC_Users
+  usecase "Управлять\nрабочими\nстанциями" as UC_Workstations
+  usecase "Управлять\nendpoint-агентами" as UC_Agents
+  usecase "Настроить\nполитики\nмониторинга" as UC_Policies
+  usecase "Отправить\nкоманду агенту" as UC_Command
+  usecase "Просмотреть\nжурнал аудита" as UC_Audit
+
+  usecase "Зарегистрировать\nагент и отправлять\nheartbeat" as UC_Register
+  usecase "Передать события\nактивности" as UC_Telemetry
+  usecase "Буферизовать\nсобытия при\nотсутствии связи" as UC_Buffer
+
+  usecase "Рассчитать риск\nи выявить\nаномалии" as UC_Risk
+}
+
+Admin --> UC_Login
+Admin --> UC_Users
+Admin --> UC_Workstations
+Admin --> UC_Agents
+Admin --> UC_Policies
+Admin --> UC_Command
+Admin --> UC_Audit
+
+Operator --> UC_Login
+Operator --> UC_Dashboard
+Operator --> UC_Events
+Operator --> UC_Anomalies
+Operator --> UC_Report
+Operator --> UC_Notify
+
+Security --> UC_Events
+Security --> UC_Anomalies
+Security --> UC_Report
+Security --> UC_Policies
+Security --> UC_Audit
+
+Agent --> UC_Register
+Agent --> UC_Telemetry
+Agent --> UC_Buffer
+Agent --> UC_Command
+Agent --> UC_Policies
+
+NotifyChannel --> UC_Notify
+
+UC_Telemetry ..> UC_Risk : <<include>>
+UC_Anomalies ..> UC_Risk : <<include>>
+UC_Command ..> UC_Agents : <<include>>
+UC_Policies ..> UC_Agents : <<include>>
+UC_Notify ..> UC_Anomalies : <<extend>>
+UC_Buffer ..> UC_Telemetry : <<extend>>
+
+note right of UC_Anomalies
+  Прецедент используется при проверке
+  подозрительной активности,
+  расчете уровня риска и подготовке
+  уведомлений для ответственных лиц.
+end note
+
+@enduml

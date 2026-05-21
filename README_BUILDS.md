@@ -106,7 +106,26 @@ powershell -ExecutionPolicy Bypass -File C:\path\to\FinalWork\LocalEndpointAgent
 
 #### Вариант B: через CI (GitHub Actions)
 - workflow: `Local Endpoint Agent Packages`
-- артефакт: `local-endpoint-agent-windows`
+- артефакты:
+  - `local-endpoint-agent-windows`
+  - `local-endpoint-agent-linux`
+  - `local-endpoint-agent-macos`
+- запускается автоматически на `push`/tag и вручную через `workflow_dispatch`
+- shell-запуск вручную: `gh workflow run "Local Endpoint Agent Packages"`
+
+Перед prod/release сборкой:
+- добавить GitHub repository secret `AGENT_AUTH_TOKEN`
+- jobs для Windows/Linux/macOS зашивают в agent artifact:
+  - `gateway_url=https://2.26.89.86`
+  - `activity_service_url=2.26.89.86:5001`
+  - `agent_management_url=2.26.89.86:5015`
+  - `agent_auth_header=x-agent-token`
+  - `agent_auth_token=$AGENT_AUTH_TOKEN`
+
+Операционная схема:
+- администратор скачивает GitHub artifact/release asset и ставит агент на ПК;
+- установщик/EXE не логинит пользователя;
+- пользователь авторизуется уже в локальном окне агента при первом запуске.
 
 Важно:
 - `build_windows_exe.sh` (Docker + wine) не поддерживается на ARM-host (macOS ARM/Linux ARM).
@@ -158,4 +177,4 @@ bash /Users/cukw/FinalWork/LocalEndpointAgent/scripts/generate_protos.sh
 2. `dotnet build FinalWork.sln` проходит локально.
 3. `npm run build` в `Frontend` проходит.
 4. В `LocalEndpointAgent/dist` есть нужные артефакты для целевых ОС.
-5. Для Windows есть `endpoint-agent-windows.exe` (локально на Windows или из CI).
+5. Для Windows/Linux/macOS есть agent artifacts из GitHub Actions или release assets.

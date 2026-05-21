@@ -1,0 +1,177 @@
+digraph ComponentDiagramSeparateDbs {
+  graph [
+    rankdir=TB,
+    compound=true,
+    splines=ortho,
+    nodesep=0.55,
+    ranksep=0.75,
+    pad=0.25,
+    bgcolor="white",
+    fontname="Times New Roman",
+    fontsize=18,
+    label="Компонентная схема системы мониторинга активности пользователей",
+    labelloc=t
+  ];
+
+  node [
+    shape=box,
+    style="rounded,filled",
+    fillcolor="#F6F6F6",
+    color="#333333",
+    penwidth=1.2,
+    fontname="Times New Roman",
+    fontsize=12,
+    margin="0.12,0.08"
+  ];
+
+  edge [
+    color="#222222",
+    arrowsize=0.8,
+    fontname="Times New Roman",
+    fontsize=10
+  ];
+
+  subgraph cluster_client {
+    label="Клиентская часть";
+    labelloc=t;
+    labeljust=l;
+    color="#222222";
+    penwidth=1.4;
+    style=rounded;
+    margin=18;
+
+    admin [label="Администратор\nбраузер"];
+    web [label="Web-приложение\nReact SPA + Nginx\nDashboard, Analytics, Reports"];
+
+    admin -> web [label="HTTPS"];
+  }
+
+  subgraph cluster_agent {
+    label="Агентская часть";
+    labelloc=t;
+    labeljust=l;
+    color="#222222";
+    penwidth=1.4;
+    style=rounded;
+    margin=18;
+
+    endpoint [label="LocalEndpointAgent\nсбор телеметрии\nбуферизация\nконтроль рабочей станции"];
+  }
+
+  subgraph cluster_api {
+    label="Серверная часть API";
+    labelloc=t;
+    labeljust=l;
+    color="#222222";
+    penwidth=1.4;
+    style=rounded;
+    margin=18;
+
+    gateway [label="API Gateway\nREST API\nJWT, RBAC, audit, SSE"];
+  }
+
+  subgraph cluster_backend {
+    label="Доменный слой backend-сервисов";
+    labelloc=t;
+    labeljust=l;
+    color="#222222";
+    penwidth=1.4;
+    style=rounded;
+    margin=18;
+
+    auth [label="AuthService\nлогин, refresh-token\nсессии, роли, JWT"];
+    user [label="UserService\nпользователи\nрабочие станции"];
+    activity [label="ActivityService\nприем активности\nриск, аномалии, outbox"];
+    agent_mgmt [label="AgentManagementService\nрегистрация, heartbeat\nполитики и команды"];
+    metrics [label="MetricsService\nагрегации\naccess lists"];
+    notification [label="NotificationService\nуведомления\nretry, delivery status"];
+    report [label="ReportService\nsummary, daily reports\nexport"];
+
+    { rank=same; auth; user; activity; agent_mgmt; }
+    { rank=same; metrics; notification; report; }
+  }
+
+  subgraph cluster_events {
+    label="Событийный слой";
+    labelloc=t;
+    labeljust=l;
+    color="#222222";
+    penwidth=1.4;
+    style=rounded;
+    margin=18;
+
+    rabbit [label="RabbitMQ\nactivity.created\nactivity.anomaly.detected", shape=box, fillcolor="#F6F6F6"];
+  }
+
+  subgraph cluster_storage {
+    label="Слой хранения";
+    labelloc=t;
+    labeljust=l;
+    color="#222222";
+    penwidth=1.4;
+    style=rounded;
+    margin=18;
+
+    auth_db [label="Auth DB\nusers, roles\nsessions", shape=cylinder, fillcolor="#FFFFFF"];
+    user_db [label="User DB\nprofiles\ncomputers", shape=cylinder, fillcolor="#FFFFFF"];
+    activity_db [label="Activity DB\nactivities\nanomalies\noutbox", shape=cylinder, fillcolor="#FFFFFF"];
+    agent_db [label="Agent DB\nagents\npolicies\ncommands", shape=cylinder, fillcolor="#FFFFFF"];
+    metrics_db [label="Metrics DB\nmetrics\nblacklist\nwhitelist", shape=cylinder, fillcolor="#FFFFFF"];
+    notification_db [label="Notification DB\nnotifications\ninbox\nDLQ", shape=cylinder, fillcolor="#FFFFFF"];
+    report_db [label="Report DB\ndaily reports\nuser stats", shape=cylinder, fillcolor="#FFFFFF"];
+    gateway_db [label="Gateway Runtime DB\nRBAC\nsettings\naudit", shape=cylinder, fillcolor="#FFFFFF"];
+    sqlite_queue [label="SQLite queue\nлокальный буфер\nendpoint-агента", shape=cylinder, fillcolor="#FFFFFF"];
+
+    { rank=same; auth_db; user_db; activity_db; agent_db; }
+    { rank=same; metrics_db; notification_db; report_db; gateway_db; sqlite_queue; }
+  }
+
+  subgraph cluster_observability {
+    label="Наблюдаемость";
+    labelloc=t;
+    labeljust=l;
+    color="#222222";
+    penwidth=1.4;
+    style=rounded;
+    margin=18;
+
+    prometheus [label="Prometheus\nметрики сервисов\nbackend + RabbitMQ"];
+    grafana [label="Grafana\nдашборды\nнаблюдаемости"];
+
+    prometheus -> grafana [label="query"];
+  }
+
+  web -> gateway [label="REST /api\nSSE", lhead=cluster_api];
+
+  gateway -> auth [label="gRPC"];
+  gateway -> user [label="gRPC"];
+  gateway -> activity [label="gRPC"];
+  gateway -> agent_mgmt [label="gRPC"];
+  gateway -> metrics [label="gRPC"];
+  gateway -> notification [label="gRPC"];
+  gateway -> report [label="gRPC"];
+
+  endpoint -> activity [label="CreateActivity\ngRPC + token"];
+  endpoint -> agent_mgmt [label="register\nheartbeat\npolicy/commands"];
+  endpoint -> sqlite_queue [label="offline queue"];
+
+  activity -> rabbit [label="outbox publish"];
+  rabbit -> metrics [label="consume"];
+  rabbit -> notification [label="consume"];
+  rabbit -> report [label="consume"];
+
+  auth -> auth_db [label="store"];
+  user -> user_db [label="store"];
+  activity -> activity_db [label="store"];
+  agent_mgmt -> agent_db [label="store"];
+  metrics -> metrics_db [label="store"];
+  notification -> notification_db [label="store"];
+  report -> report_db [label="store"];
+  gateway -> gateway_db [label="store"];
+
+  prometheus -> gateway [label="scrape", style=dashed];
+  prometheus -> auth [label="scrape", style=dashed];
+  prometheus -> activity [label="scrape", style=dashed];
+  prometheus -> agent_mgmt [label="scrape", style=dashed];
+  prometheus -> rabbit [label="scrape", style=dashed];
+}

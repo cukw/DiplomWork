@@ -1,6 +1,12 @@
 Param(
     [string]$ProjectRoot = "",
-    [string]$PythonCommand = "python"
+    [string]$PythonCommand = "python",
+    [string]$GatewayUrl = "https://2.26.89.86",
+    [string]$ActivityServiceUrl = "2.26.89.86:5001",
+    [string]$AgentManagementUrl = "2.26.89.86:5015",
+    [string]$AgentAuthHeader = "x-agent-token",
+    [string]$AgentAuthToken = $env:AGENT_AUTH_TOKEN,
+    [bool]$GatewayTlsInsecure = $true
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,6 +32,28 @@ catch {
 
 Push-Location $ProjectRoot
 try {
+    if ([string]::IsNullOrWhiteSpace($AgentAuthToken)) {
+        Write-Warning "AGENT_AUTH_TOKEN is empty. The EXE will be built without the shared gRPC agent token."
+    }
+
+    $embeddedConfigPath = Join-Path $ProjectRoot "src\endpoint_agent\embedded_config.py"
+    $escapedGatewayUrl = $GatewayUrl.Replace("\", "\\").Replace("'", "\'")
+    $escapedActivityUrl = $ActivityServiceUrl.Replace("\", "\\").Replace("'", "\'")
+    $escapedAgentUrl = $AgentManagementUrl.Replace("\", "\\").Replace("'", "\'")
+    $escapedAuthHeader = $AgentAuthHeader.Replace("\", "\\").Replace("'", "\'")
+    $agentTokenValue = if ($null -eq $AgentAuthToken) { "" } else { $AgentAuthToken }
+    $escapedAuthToken = $agentTokenValue.Replace("\", "\\").Replace("'", "\'")
+    $tlsValue = if ($GatewayTlsInsecure) { "True" } else { "False" }
+
+    @"
+DEFAULT_GATEWAY_URL = '$escapedGatewayUrl'
+DEFAULT_GATEWAY_TLS_INSECURE = $tlsValue
+DEFAULT_ACTIVITY_SERVICE_URL = '$escapedActivityUrl'
+DEFAULT_AGENT_MANAGEMENT_URL = '$escapedAgentUrl'
+DEFAULT_AGENT_AUTH_HEADER = '$escapedAuthHeader'
+DEFAULT_AGENT_AUTH_TOKEN = '$escapedAuthToken'
+"@ | Set-Content -Encoding UTF8 $embeddedConfigPath
+
     & $PythonCommand -m pip install --upgrade pip
     & $PythonCommand -m pip install grpcio protobuf psutil pyyaml pyinstaller grpcio-tools
     & $PythonCommand -m pip install -e .
@@ -60,6 +88,7 @@ try {
       --name endpoint-agent-windows.exe `
       --paths src `
       --collect-submodules endpoint_agent.generated `
+      --hidden-import tkinter `
       --distpath $distDir `
       --workpath "$buildDir\work" `
       --specpath "$buildDir\spec" `
@@ -73,5 +102,9 @@ try {
     Write-Host "Built: $exePath"
 }
 finally {
+    $embeddedConfigPath = Join-Path $ProjectRoot "src\endpoint_agent\embedded_config.py"
+    if (Test-Path $embeddedConfigPath) {
+        Remove-Item -Force $embeddedConfigPath
+    }
     Pop-Location
 }

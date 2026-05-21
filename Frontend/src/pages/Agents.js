@@ -615,14 +615,16 @@ const Agents = () => {
             Реестр агентов, эффективные возможности и история команд
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={actionLoading ? <CircularProgress size={16} color="inherit" /> : <Refresh />}
-          onClick={hardRefresh}
-          disabled={actionLoading}
-        >
-          Обновить
-        </Button>
+        <Stack direction="row" spacing={1} flexWrap="wrap">
+          <Button
+            variant="contained"
+            startIcon={actionLoading ? <CircularProgress size={16} color="inherit" /> : <Refresh />}
+            onClick={hardRefresh}
+            disabled={actionLoading}
+          >
+            Обновить
+          </Button>
+        </Stack>
       </Box>
 
       {error && (

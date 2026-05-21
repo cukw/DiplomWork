@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1050" viewBox="0 0 1600 1050">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L9,3 L0,6" fill="none" stroke="#222" stroke-width="1.4"/>
+    </marker>
+  </defs>
+  <style>
+    svg { background: #fff; font-family: 'Times New Roman', Times, serif; }
+    .title { font-size: 24px; font-weight: 700; fill: #111; }
+    .system-title { font-size: 20px; font-weight: 700; fill: #111; }
+    .assoc { stroke: #222; stroke-width: 1.35; fill: none; }
+    .include { stroke: #222; stroke-width: 1.35; fill: none; stroke-dasharray: 8 7; marker-end: url(#arrow); }
+    .rel-label { font-size: 15px; fill: #111; font-style: italic; }
+    .note { fill: #f7f2d4; stroke: #555; stroke-width: 1.1; }
+    .note-text { font-size: 15px; fill: #111; }
+  </style>
+
+  <text class="title" x="800" y="42" text-anchor="middle">Диаграмма прецедентов системы мониторинга активности пользователей</text>
+
+  <rect x="250" y="82" width="1050" height="860" rx="12" ry="12" fill="#fff" stroke="#222" stroke-width="2"/>
+  <text class="system-title" x="275" y="116">Система учета и анализа компьютерной активности пользователей</text>
+
+  <g id="admin">
+<circle cx="105" cy="212" r="11" fill="#fff" stroke="#222" stroke-width="1.5"/>
+<line x1="105" y1="223" x2="105" y2="270" stroke="#222" stroke-width="1.5"/>
+<line x1="77" y1="241" x2="133" y2="241" stroke="#222" stroke-width="1.5"/>
+<line x1="105" y1="270" x2="80" y2="308" stroke="#222" stroke-width="1.5"/>
+<line x1="105" y1="270" x2="130" y2="308" stroke="#222" stroke-width="1.5"/>
+<text x="105" y="342" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="105" dy="0">Администратор</tspan></text>
+</g>
+  <g id="operator">
+<circle cx="105" cy="487" r="11" fill="#fff" stroke="#222" stroke-width="1.5"/>
+<line x1="105" y1="498" x2="105" y2="545" stroke="#222" stroke-width="1.5"/>
+<line x1="77" y1="516" x2="133" y2="516" stroke="#222" stroke-width="1.5"/>
+<line x1="105" y1="545" x2="80" y2="583" stroke="#222" stroke-width="1.5"/>
+<line x1="105" y1="545" x2="130" y2="583" stroke="#222" stroke-width="1.5"/>
+<text x="105" y="606.5" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="105" dy="0">Оператор</tspan><tspan x="105" dy="21">мониторинга</tspan></text>
+</g>
+  <g id="security">
+<circle cx="105" cy="757" r="11" fill="#fff" stroke="#222" stroke-width="1.5"/>
+<line x1="105" y1="768" x2="105" y2="815" stroke="#222" stroke-width="1.5"/>
+<line x1="77" y1="786" x2="133" y2="786" stroke="#222" stroke-width="1.5"/>
+<line x1="105" y1="815" x2="80" y2="853" stroke="#222" stroke-width="1.5"/>
+<line x1="105" y1="815" x2="130" y2="853" stroke="#222" stroke-width="1.5"/>
+<text x="105" y="876.5" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="105" dy="0">Специалист</tspan><tspan x="105" dy="21">по ИБ</tspan></text>
+</g>
+  <g id="agent">
+<circle cx="1485" cy="257" r="11" fill="#fff" stroke="#222" stroke-width="1.5"/>
+<line x1="1485" y1="268" x2="1485" y2="315" stroke="#222" stroke-width="1.5"/>
+<line x1="1457" y1="286" x2="1513" y2="286" stroke="#222" stroke-width="1.5"/>
+<line x1="1485" y1="315" x2="1460" y2="353" stroke="#222" stroke-width="1.5"/>
+<line x1="1485" y1="315" x2="1510" y2="353" stroke="#222" stroke-width="1.5"/>
+<text x="1485" y="387" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="1485" dy="0">Endpoint-агент</tspan></text>
+</g>
+  <g id="channel">
+<circle cx="1485" cy="687" r="11" fill="#fff" stroke="#222" stroke-width="1.5"/>
+<line x1="1485" y1="698" x2="1485" y2="745" stroke="#222" stroke-width="1.5"/>
+<line x1="1457" y1="716" x2="1513" y2="716" stroke="#222" stroke-width="1.5"/>
+<line x1="1485" y1="745" x2="1460" y2="783" stroke="#222" stroke-width="1.5"/>
+<line x1="1485" y1="745" x2="1510" y2="783" stroke="#222" stroke-width="1.5"/>
+<text x="1485" y="806.5" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="1485" dy="0">Канал уведомлений</tspan><tspan x="1485" dy="21">Email / Webhook</tspan></text>
+</g>
+
+  <g id="login">
+<ellipse cx="430" cy="170" rx="110" ry="36" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="430" y="159.5" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="430" dy="0">Войти</tspan><tspan x="430" dy="21">в систему</tspan></text>
+</g>
+  <g id="dashboard">
+<ellipse cx="430" cy="285" rx="120" ry="38" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="430" y="274.5" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="430" dy="0">Просмотреть</tspan><tspan x="430" dy="21">Dashboard</tspan></text>
+</g>
+  <g id="events">
+<ellipse cx="430" cy="410" rx="135" ry="48" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="430" y="389" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="430" dy="0">Просмотреть и</tspan><tspan x="430" dy="21">отфильтровать</tspan><tspan x="430" dy="21">события активности</tspan></text>
+</g>
+  <g id="report">
+<ellipse cx="430" cy="545" rx="115" ry="38" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="430" y="534.5" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="430" dy="0">Сформировать</tspan><tspan x="430" dy="21">отчет</tspan></text>
+</g>
+  <g id="notify">
+<ellipse cx="430" cy="680" rx="115" ry="38" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="430" y="669.5" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="430" dy="0">Получить</tspan><tspan x="430" dy="21">уведомление</tspan></text>
+</g>
+
+  <g id="users">
+<ellipse cx="745" cy="170" rx="125" ry="48" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="745" y="149" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="745" dy="0">Управлять</tspan><tspan x="745" dy="21">пользователями</tspan><tspan x="745" dy="21">и ролями</tspan></text>
+</g>
+  <g id="workstations">
+<ellipse cx="745" cy="300" rx="125" ry="44" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="745" y="279" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="745" dy="0">Управлять</tspan><tspan x="745" dy="21">рабочими</tspan><tspan x="745" dy="21">станциями</tspan></text>
+</g>
+  <g id="agents">
+<ellipse cx="745" cy="430" rx="130" ry="38" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="745" y="419.5" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="745" dy="0">Управлять</tspan><tspan x="745" dy="21">endpoint-агентами</tspan></text>
+</g>
+  <g id="policies">
+<ellipse cx="745" cy="560" rx="130" ry="48" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="745" y="539" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="745" dy="0">Настроить</tspan><tspan x="745" dy="21">политики</tspan><tspan x="745" dy="21">мониторинга</tspan></text>
+</g>
+  <g id="audit">
+<ellipse cx="745" cy="705" rx="130" ry="44" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="745" y="694.5" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="745" dy="0">Просмотреть</tspan><tspan x="745" dy="21">журнал аудита</tspan></text>
+</g>
+  <g id="command">
+<ellipse cx="745" cy="830" rx="125" ry="44" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="745" y="819.5" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="745" dy="0">Отправить</tspan><tspan x="745" dy="21">команду агенту</tspan></text>
+</g>
+
+  <g id="register">
+<ellipse cx="1065" cy="210" rx="140" ry="48" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="1065" y="189" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="1065" dy="0">Зарегистрировать</tspan><tspan x="1065" dy="21">агент и отправлять</tspan><tspan x="1065" dy="21">heartbeat</tspan></text>
+</g>
+  <g id="telemetry">
+<ellipse cx="1065" cy="365" rx="135" ry="42" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="1065" y="354.5" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="1065" dy="0">Передать события</tspan><tspan x="1065" dy="21">активности</tspan></text>
+</g>
+  <g id="buffer">
+<ellipse cx="1065" cy="515" rx="135" ry="50" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="1065" y="494" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="1065" dy="0">Буферизовать</tspan><tspan x="1065" dy="21">события при</tspan><tspan x="1065" dy="21">отсутствии связи</tspan></text>
+</g>
+  <g id="anomalies">
+<ellipse cx="1065" cy="675" rx="140" ry="48" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="1065" y="664.5" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="1065" dy="0">Проанализировать</tspan><tspan x="1065" dy="21">аномалии и риски</tspan></text>
+</g>
+  <g id="risk">
+<ellipse cx="1065" cy="835" rx="140" ry="48" fill="#fff" stroke="#222" stroke-width="1.6"/>
+<text x="1065" y="814" text-anchor="middle" font-size="18" font-weight="400" fill="#111"><tspan x="1065" dy="0">Рассчитать риск</tspan><tspan x="1065" dy="21">и выявить</tspan><tspan x="1065" dy="21">аномалии</tspan></text>
+</g>
+
+  <!-- Связи акторов с прецедентами -->
+  <line class="assoc" x1="135" y1="229" x2="323" y2="162"/>
+  <line class="assoc" x1="135" y1="243" x2="622" y2="160"/>
+  <line class="assoc" x1="135" y1="257" x2="622" y2="292"/>
+  <line class="assoc" x1="135" y1="271" x2="615" y2="548"/>
+  <line class="assoc" x1="135" y1="285" x2="623" y2="694"/>
+  <line class="assoc" x1="135" y1="299" x2="625" y2="820"/>
+
+  <line class="assoc" x1="135" y1="506" x2="322" y2="282"/>
+  <line class="assoc" x1="135" y1="520" x2="303" y2="405"/>
+  <line class="assoc" x1="135" y1="536" x2="322" y2="538"/>
+  <line class="assoc" x1="135" y1="552" x2="322" y2="675"/>
+  <line class="assoc" x1="135" y1="568" x2="927" y2="667"/>
+
+  <line class="assoc" x1="135" y1="774" x2="306" y2="417"/>
+  <line class="assoc" x1="135" y1="788" x2="321" y2="549"/>
+  <line class="assoc" x1="135" y1="802" x2="623" y2="553"/>
+  <line class="assoc" x1="135" y1="816" x2="623" y2="695"/>
+  <line class="assoc" x1="135" y1="830" x2="929" y2="676"/>
+
+  <line class="assoc" x1="1455" y1="270" x2="1204" y2="213"/>
+  <line class="assoc" x1="1455" y1="287" x2="1198" y2="360"/>
+  <line class="assoc" x1="1455" y1="304" x2="1194" y2="510"/>
+  <line class="assoc" x1="1455" y1="321" x2="875" y2="825"/>
+  <line class="assoc" x1="1455" y1="338" x2="873" y2="558"/>
+
+  <line class="assoc" x1="1455" y1="707" x2="548" y2="676"/>
+
+  <!-- Отношения include/extend -->
+  <path class="include" d="M 545 680 C 705 685, 850 680, 925 675"/>
+<text class="rel-label" x="725" y="670" text-anchor="middle">«extend»</text>
+  <path class="include" d="M 1198 365 C 1255 430, 1260 755, 1197 818"/>
+<text class="rel-label" x="1260" y="605" text-anchor="middle">«include»</text>
+  <path class="include" d="M 1065 724 L 1065 785"/>
+<text class="rel-label" x="1132" y="760" text-anchor="middle">«include»</text>
+  <path class="include" d="M 1065 565 L 1065 407"/>
+<text class="rel-label" x="1130" y="475" text-anchor="middle">«extend»</text>
+  <path class="include" d="M 873 830 C 935 825, 940 470, 872 435"/>
+<text class="rel-label" x="955" y="625" text-anchor="middle">«include»</text>
+  <path class="include" d="M 875 560 C 935 555, 942 455, 872 432"/>
+<text class="rel-label" x="945" y="510" text-anchor="middle">«include»</text>
+
+  <!-- Примечание -->
+  <path class="note" d="M 1235 780 L 1535 780 L 1535 900 L 1235 900 Z M 1507 780 L 1535 808 L 1507 808 Z"/>
+  <text class="note-text" x="1250" y="810">
+    <tspan x="1250" dy="0">При обнаружении подозрительной</tspan>
+    <tspan x="1250" dy="20">активности система рассчитывает риск,</tspan>
+    <tspan x="1250" dy="20">формирует уведомления и сохраняет</tspan>
+    <tspan x="1250" dy="20">результат для последующего анализа.</tspan>
+  </text>
+</svg>

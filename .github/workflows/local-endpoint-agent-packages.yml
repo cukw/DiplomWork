@@ -42,7 +42,24 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Require production agent token for release artifacts
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_release == 'true')
+        env:
+          AGENT_AUTH_TOKEN: ${{ secrets.AGENT_AUTH_TOKEN }}
+        run: |
+          if [ -z "${AGENT_AUTH_TOKEN}" ]; then
+            echo "GitHub secret AGENT_AUTH_TOKEN is required before publishing agent release artifacts." >&2
+            exit 1
+          fi
+
       - name: Build .deb package
+        env:
+          GATEWAY_URL: "https://2.26.89.86"
+          GATEWAY_TLS_INSECURE: "true"
+          ACTIVITY_SERVICE_URL: "2.26.89.86:5001"
+          AGENT_MANAGEMENT_URL: "2.26.89.86:5015"
+          AGENT_AUTH_HEADER: "x-agent-token"
+          AGENT_AUTH_TOKEN: ${{ secrets.AGENT_AUTH_TOKEN }}
         run: |
           chmod +x LocalEndpointAgent/scripts/build_linux_deb.sh
           bash LocalEndpointAgent/scripts/build_linux_deb.sh
@@ -69,7 +86,24 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Require production agent token for release artifacts
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_release == 'true')
+        env:
+          AGENT_AUTH_TOKEN: ${{ secrets.AGENT_AUTH_TOKEN }}
+        run: |
+          if [ -z "${AGENT_AUTH_TOKEN}" ]; then
+            echo "GitHub secret AGENT_AUTH_TOKEN is required before publishing agent release artifacts." >&2
+            exit 1
+          fi
+
       - name: Build macOS binary and dmg
+        env:
+          GATEWAY_URL: "https://2.26.89.86"
+          GATEWAY_TLS_INSECURE: "true"
+          ACTIVITY_SERVICE_URL: "2.26.89.86:5001"
+          AGENT_MANAGEMENT_URL: "2.26.89.86:5015"
+          AGENT_AUTH_HEADER: "x-agent-token"
+          AGENT_AUTH_TOKEN: ${{ secrets.AGENT_AUTH_TOKEN }}
         run: |
           chmod +x LocalEndpointAgent/scripts/build_macos_bin.sh
           chmod +x LocalEndpointAgent/scripts/build_macos_dmg.sh
@@ -97,11 +131,29 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Require production agent token for release artifacts
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_release == 'true')
+        shell: pwsh
+        env:
+          AGENT_AUTH_TOKEN: ${{ secrets.AGENT_AUTH_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:AGENT_AUTH_TOKEN)) {
+            throw "GitHub secret AGENT_AUTH_TOKEN is required before publishing agent release artifacts."
+          }
+
       - name: Build .exe package
         shell: pwsh
+        env:
+          AGENT_AUTH_TOKEN: ${{ secrets.AGENT_AUTH_TOKEN }}
         run: |
           Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-          ./LocalEndpointAgent/scripts/build_windows_exe.ps1
+          ./LocalEndpointAgent/scripts/build_windows_exe.ps1 `
+            -GatewayUrl "https://2.26.89.86" `
+            -ActivityServiceUrl "2.26.89.86:5001" `
+            -AgentManagementUrl "2.26.89.86:5015" `
+            -AgentAuthHeader "x-agent-token" `
+            -AgentAuthToken "$env:AGENT_AUTH_TOKEN" `
+            -GatewayTlsInsecure $true
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4

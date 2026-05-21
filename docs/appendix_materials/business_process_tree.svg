@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="780" viewBox="0 0 1300 780">
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L9,3.5 L0,7 Z" fill="#111"/>
+    </marker>
+    <style>
+      .box { fill: #d9ffd8; stroke: #111; stroke-width: 1.35; }
+      .line { fill: none; stroke: #111; stroke-width: 1.25; stroke-linecap: square; stroke-linejoin: miter; }
+      .label { font-family: "Times New Roman", serif; font-size: 15px; fill: #111; }
+      .small { font-size: 14px; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1300" height="780" fill="#ffffff"/>
+
+  <!-- Root -->
+  <rect class="box" x="505" y="20" width="290" height="74" rx="10" ry="10"/>
+  <text class="label" x="650" y="45" text-anchor="middle">
+    <tspan x="650" dy="0">Бизнес-процессы системы</tspan>
+    <tspan x="650" dy="19">учета и анализа компьютерной</tspan>
+    <tspan x="650" dy="19">активности пользователей</tspan>
+  </text>
+
+  <!-- Category boxes -->
+  <rect class="box" x="50" y="150" width="260" height="72" rx="10" ry="10"/>
+  <text class="label" x="180" y="177" text-anchor="middle">
+    <tspan x="180" dy="0">Основные</tspan>
+    <tspan x="180" dy="19">бизнес-процессы</tspan>
+  </text>
+
+  <rect class="box" x="520" y="150" width="260" height="72" rx="10" ry="10"/>
+  <text class="label" x="650" y="177" text-anchor="middle">
+    <tspan x="650" dy="0">Обеспечивающие</tspan>
+    <tspan x="650" dy="19">бизнес-процессы</tspan>
+  </text>
+
+  <rect class="box" x="990" y="150" width="260" height="72" rx="10" ry="10"/>
+  <text class="label" x="1120" y="177" text-anchor="middle">
+    <tspan x="1120" dy="0">Бизнес-процессы</tspan>
+    <tspan x="1120" dy="19">управления</tspan>
+  </text>
+
+  <!-- Root connectors -->
+  <path class="line" d="M650 94 V120 H180 V150"/>
+  <path class="line" d="M650 120 V150"/>
+  <path class="line" d="M650 120 H1120 V150"/>
+
+  <!-- Left group -->
+  <path class="line" d="M180 222 V245 H78 V650"/>
+  <path class="line" d="M78 292 H110" marker-end="url(#arrow)"/>
+  <path class="line" d="M78 402 H110" marker-end="url(#arrow)"/>
+  <path class="line" d="M78 512 H110" marker-end="url(#arrow)"/>
+  <path class="line" d="M78 622 H110" marker-end="url(#arrow)"/>
+
+  <rect class="box" x="110" y="258" width="260" height="68" rx="10" ry="10"/>
+  <text class="label small" x="240" y="284" text-anchor="middle">
+    <tspan x="240" dy="0">Сбор компьютерной</tspan>
+    <tspan x="240" dy="18">активности пользователей</tspan>
+  </text>
+
+  <rect class="box" x="110" y="368" width="260" height="68" rx="10" ry="10"/>
+  <text class="label small" x="240" y="394" text-anchor="middle">
+    <tspan x="240" dy="0">Обработка и хранение</tspan>
+    <tspan x="240" dy="18">событий активности</tspan>
+  </text>
+
+  <rect class="box" x="110" y="478" width="260" height="68" rx="10" ry="10"/>
+  <text class="label small" x="240" y="504" text-anchor="middle">
+    <tspan x="240" dy="0">Анализ активности</tspan>
+    <tspan x="240" dy="18">и выявление аномалий</tspan>
+  </text>
+
+  <rect class="box" x="110" y="588" width="260" height="68" rx="10" ry="10"/>
+  <text class="label small" x="240" y="614" text-anchor="middle">
+    <tspan x="240" dy="0">Формирование отчетов</tspan>
+    <tspan x="240" dy="18">и уведомлений</tspan>
+  </text>
+
+  <!-- Middle group -->
+  <path class="line" d="M650 222 V245 H548 V650"/>
+  <path class="line" d="M548 292 H580" marker-end="url(#arrow)"/>
+  <path class="line" d="M548 402 H580" marker-end="url(#arrow)"/>
+  <path class="line" d="M548 512 H580" marker-end="url(#arrow)"/>
+  <path class="line" d="M548 622 H580" marker-end="url(#arrow)"/>
+
+  <rect class="box" x="580" y="258" width="260" height="68" rx="10" ry="10"/>
+  <text class="label small" x="710" y="284" text-anchor="middle">
+    <tspan x="710" dy="0">Управление пользователями</tspan>
+    <tspan x="710" dy="18">и компьютерами</tspan>
+  </text>
+
+  <rect class="box" x="580" y="368" width="260" height="68" rx="10" ry="10"/>
+  <text class="label small" x="710" y="394" text-anchor="middle">
+    <tspan x="710" dy="0">Управление</tspan>
+    <tspan x="710" dy="18">endpoint-агентами</tspan>
+  </text>
+
+  <rect class="box" x="580" y="478" width="260" height="68" rx="10" ry="10"/>
+  <text class="label small" x="710" y="504" text-anchor="middle">
+    <tspan x="710" dy="0">Обслуживание БД, очередей</tspan>
+    <tspan x="710" dy="18">и сервисов</tspan>
+  </text>
+
+  <rect class="box" x="580" y="588" width="260" height="68" rx="10" ry="10"/>
+  <text class="label small" x="710" y="614" text-anchor="middle">
+    <tspan x="710" dy="0">Мониторинг состояния</tspan>
+    <tspan x="710" dy="18">и резервное копирование</tspan>
+  </text>
+
+  <!-- Right group -->
+  <path class="line" d="M1120 222 V245 H1018 V650"/>
+  <path class="line" d="M1018 292 H1050" marker-end="url(#arrow)"/>
+  <path class="line" d="M1018 402 H1050" marker-end="url(#arrow)"/>
+  <path class="line" d="M1018 512 H1050" marker-end="url(#arrow)"/>
+  <path class="line" d="M1018 622 H1050" marker-end="url(#arrow)"/>
+
+  <rect class="box" x="1050" y="258" width="230" height="68" rx="10" ry="10"/>
+  <text class="label small" x="1165" y="284" text-anchor="middle">
+    <tspan x="1165" dy="0">Настройка политик</tspan>
+    <tspan x="1165" dy="18">мониторинга</tspan>
+  </text>
+
+  <rect class="box" x="1050" y="368" width="230" height="68" rx="10" ry="10"/>
+  <text class="label small" x="1165" y="394" text-anchor="middle">
+    <tspan x="1165" dy="0">Управление правилами</tspan>
+    <tspan x="1165" dy="18">безопасности</tspan>
+  </text>
+
+  <rect class="box" x="1050" y="478" width="230" height="68" rx="10" ry="10"/>
+  <text class="label small" x="1165" y="504" text-anchor="middle">
+    <tspan x="1165" dy="0">Контроль доступа, ролей</tspan>
+    <tspan x="1165" dy="18">и разрешений</tspan>
+  </text>
+
+  <rect class="box" x="1050" y="588" width="230" height="68" rx="10" ry="10"/>
+  <text class="label small" x="1165" y="614" text-anchor="middle">
+    <tspan x="1165" dy="0">Аудит действий</tspan>
+    <tspan x="1165" dy="18">администратора</tspan>
+  </text>
+</svg>

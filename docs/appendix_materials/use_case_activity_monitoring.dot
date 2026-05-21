@@ -1,0 +1,238 @@
+graph UseCaseActivityMonitoring {
+  graph [
+    rankdir=LR,
+    splines=ortho,
+    overlap=false,
+    nodesep=0.55,
+    ranksep=0.85,
+    pad=0.25,
+    bgcolor="white",
+    fontname="Times New Roman",
+    fontsize=20,
+    label="Диаграмма прецедентов системы мониторинга активности пользователей",
+    labelloc=t
+  ];
+
+  node [
+    fontname="Times New Roman",
+    fontsize=12,
+    color="#222222"
+  ];
+
+  edge [
+    color="#222222",
+    fontname="Times New Roman",
+    fontsize=10
+  ];
+
+  admin [
+    label="Администратор",
+    shape=box,
+    style="rounded,filled",
+    fillcolor="#F6F6F6"
+  ];
+
+  operator [
+    label="Оператор\nмониторинга",
+    shape=box,
+    style="rounded,filled",
+    fillcolor="#F6F6F6"
+  ];
+
+  security [
+    label="Специалист\nпо ИБ",
+    shape=box,
+    style="rounded,filled",
+    fillcolor="#F6F6F6"
+  ];
+
+  endpoint [
+    label="Endpoint-агент",
+    shape=box,
+    style="rounded,filled",
+    fillcolor="#F6F6F6"
+  ];
+
+  channel [
+    label="Канал уведомлений\nEmail / Webhook",
+    shape=box,
+    style="rounded,filled",
+    fillcolor="#F6F6F6"
+  ];
+
+  subgraph cluster_system {
+    label="Система учета и анализа компьютерной активности пользователей";
+    labelloc=t;
+    labeljust=l;
+    color="#222222";
+    penwidth=2;
+    style=rounded;
+    margin=22;
+
+    login [
+      label="Авторизация\nв системе",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+
+    dashboard [
+      label="Просмотр\nDashboard",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+
+    events [
+      label="Просмотр и фильтрация\nсобытий активности",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+
+    anomalies [
+      label="Анализ аномалий\nи уровня риска",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+
+    reports [
+      label="Формирование\nотчетов",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+
+    notifications [
+      label="Получение\nуведомлений",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+
+    users [
+      label="Управление\nпользователями\nи ролями",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+
+    workstations [
+      label="Управление\nрабочими станциями",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+
+    agents [
+      label="Управление\nendpoint-агентами",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+
+    policies [
+      label="Настройка политик\nмониторинга",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+
+    commands [
+      label="Отправка команд\nendpoint-агентам",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+
+    audit [
+      label="Просмотр журнала\nадминистративного аудита",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+
+    register [
+      label="Регистрация агента\nи heartbeat",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+
+    telemetry [
+      label="Передача событий\nактивности",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+
+    offline [
+      label="Локальная буферизация\nпри отсутствии связи",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+
+    risk [
+      label="Расчет риска\nи выявление аномалий",
+      shape=ellipse,
+      style=filled,
+      fillcolor="#FFFFFF"
+    ];
+  }
+
+  admin -- login;
+  admin -- users;
+  admin -- workstations;
+  admin -- agents;
+  admin -- policies;
+  admin -- commands;
+  admin -- audit;
+
+  operator -- login;
+  operator -- dashboard;
+  operator -- events;
+  operator -- anomalies;
+  operator -- reports;
+  operator -- notifications;
+
+  security -- anomalies;
+  security -- events;
+  security -- reports;
+  security -- audit;
+  security -- policies;
+
+  endpoint -- register;
+  endpoint -- telemetry;
+  endpoint -- offline;
+  endpoint -- commands;
+  endpoint -- policies;
+
+  channel -- notifications;
+
+  telemetry -- risk [
+    label="«include»",
+    style=dashed
+  ];
+
+  anomalies -- risk [
+    label="«include»",
+    style=dashed
+  ];
+
+  notifications -- anomalies [
+    label="«extend»",
+    style=dashed
+  ];
+
+  commands -- agents [
+    label="«include»",
+    style=dashed
+  ];
+
+  policies -- agents [
+    label="«include»",
+    style=dashed
+  ];
+}

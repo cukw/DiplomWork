@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Grpc.Core;
+using System.Security.Claims;
 using AuthClient = Gateway.Protos.Auth.AuthService.AuthServiceClient;
 using AuthProto = Gateway.Protos.Auth;
 using UserClient = Gateway.Protos.User.UserService.UserServiceClient;
@@ -146,6 +147,69 @@ public class UserController : ControllerBase
         }
     }
 
+    [HttpPost("computers/enroll")]
+    public async Task<IActionResult> EnrollComputer([FromBody] EnrollComputerDto dto)
+    {
+        var authUserId = GetAuthenticatedAuthUserId();
+        if (authUserId <= 0)
+            return Unauthorized(new { message = "Invalid token claims" });
+
+        try
+        {
+            var resp = await _user.EnrollComputerForAuthUserAsync(new EnrollComputerForAuthUserRequest
+            {
+                AuthUserId = authUserId,
+                FullName   = string.IsNullOrWhiteSpace(dto.FullName) ? (User.Identity?.Name ?? "") : dto.FullName.Trim(),
+                Department = dto.Department ?? "",
+                Hostname   = dto.Hostname ?? "",
+                OsVersion  = dto.OsVersion ?? "",
+                IpAddress  = dto.IpAddress ?? "",
+                MacAddress = dto.MacAddress ?? ""
+            });
+
+            if (!resp.Success)
+                return Conflict(new { message = resp.Message });
+
+            return Ok(MapEnrollment(resp));
+        }
+        catch (RpcException ex)
+        {
+            return StatusCode(500, new { message = ex.Status.Detail });
+        }
+    }
+
+    [HttpPost("computers/session/end")]
+    public async Task<IActionResult> EndComputerSession([FromBody] EndComputerSessionDto dto)
+    {
+        var authUserId = GetAuthenticatedAuthUserId();
+        if (authUserId <= 0)
+            return Unauthorized(new { message = "Invalid token claims" });
+
+        try
+        {
+            var resp = await _user.EndComputerSessionForAuthUserAsync(new EndComputerSessionForAuthUserRequest
+            {
+                AuthUserId = authUserId,
+                SessionId  = dto.SessionId,
+                ComputerId = dto.ComputerId
+            });
+
+            if (!resp.Success)
+                return NotFound(new { message = resp.Message });
+
+            return Ok(new
+            {
+                message = resp.Message,
+                sessionId = resp.SessionId,
+                computer = MapComputer(resp.Computer)
+            });
+        }
+        catch (RpcException ex)
+        {
+            return StatusCode(500, new { message = ex.Status.Detail });
+        }
+    }
+
     [HttpPut("users/{id:long}")]
     public async Task<IActionResult> Update(long id, [FromBody] UpdateUserDto dto)
     {
@@ -233,7 +297,8 @@ public class UserController : ControllerBase
         fullName    = u.FullName,
         department  = u.Department,
         createdAt   = u.CreatedAt,
-        computer    = MapComputer(u.Computer)
+        computer    = MapComputer(u.Computer),
+        computers   = u.Computers.Select(MapComputer)
     };
 
     private static object? MapComputer(ComputerInfo? c) => c is null ? null : new
@@ -257,6 +322,18 @@ public class UserController : ControllerBase
         computer    = MapComputer(u.Computer),
         authUser    = MapAuthUser(authUser),
         message
+    };
+
+    private static object MapEnrollment(EnrollComputerForAuthUserResponse resp) => new
+    {
+        message = resp.Message,
+        sessionId = resp.SessionId,
+        sessionExpiresAt = resp.SessionExpiresAt,
+        createdUser = resp.CreatedUser,
+        createdComputer = resp.CreatedComputer,
+        createdSession = resp.CreatedSession,
+        user = MapUser(resp.UserProfile),
+        computer = MapComputer(resp.Computer)
     };
 
     private static object? MapAuthUser(AuthProto.User? u) => u is null ? null : new
@@ -312,6 +389,13 @@ public class UserController : ControllerBase
         }
     }
 
+    private long GetAuthenticatedAuthUserId()
+    {
+        var userIdStr = User.FindFirst("sub")?.Value
+                        ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return long.TryParse(userIdStr, out var userId) ? userId : 0;
+    }
+
     public record CreateUserDto(
         long    AuthUserId,
         string? Username,
@@ -326,4 +410,14 @@ public class UserController : ControllerBase
         string? MacAddress);
 
     public record UpdateUserDto(string? FullName, string? Department);
+
+    public record EnrollComputerDto(
+        string? FullName,
+        string? Department,
+        string? Hostname,
+        string? OsVersion,
+        string? IpAddress,
+        string? MacAddress);
+
+    public record EndComputerSessionDto(long SessionId, long ComputerId);
 }

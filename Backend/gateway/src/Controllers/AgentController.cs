@@ -16,7 +16,9 @@ public class AgentController : ControllerBase
     private readonly AgentClient _agent;
     private readonly IAdminAuditLogger _auditLogger;
 
-    public AgentController(AgentClient agent, IAdminAuditLogger auditLogger)
+    public AgentController(
+        AgentClient agent,
+        IAdminAuditLogger auditLogger)
     {
         _agent = agent;
         _auditLogger = auditLogger;

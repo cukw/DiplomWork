@@ -316,6 +316,10 @@ services:
       - backend
 
   activityagent:
+    # Demo generator. Enable explicitly with:
+    # docker compose --profile demo up --build -d activityagent
+    profiles:
+      - demo
     build:
       context: ./Backend/services/ActivityAgent
       dockerfile: dockerfile
@@ -388,6 +392,7 @@ services:
   gateway:
     build:
       context: ./Backend/gateway
+      dockerfile: dockerfile
       args:
         BUILD_CONFIGURATION: Release
     container_name: gateway

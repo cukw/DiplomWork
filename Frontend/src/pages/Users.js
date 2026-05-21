@@ -228,11 +228,6 @@ const Users = () => {
           setError('Поле «Пароль» обязательно');
           return;
         }
-        if (!hostname) {
-          setError('Поле «Имя хоста» обязательно');
-          return;
-        }
-
         await userAPI.createUser({
           authUserId,
           username,
@@ -305,7 +300,7 @@ const Users = () => {
         <Box>
           <Typography variant="h4">Пользователи</Typography>
           <Typography variant="body2" color="text.secondary">
-            Управление профилями, auth-учётками и закреплёнными компьютерами
+            Управление профилями, auth-учётками и активными компьютерными сессиями
           </Typography>
         </Box>
         <Button variant="contained" startIcon={<Add />} onClick={handleAddUser}>
@@ -350,7 +345,7 @@ const Users = () => {
               <TableRow>
                 <TableCell>Пользователь</TableCell>
                 <TableCell>Отдел</TableCell>
-                <TableCell>Компьютер</TableCell>
+                <TableCell>Активный компьютер</TableCell>
                 <TableCell>Сеть</TableCell>
                 <TableCell>Создан</TableCell>
                 <TableCell align="right">Действия</TableCell>
@@ -397,7 +392,7 @@ const Users = () => {
                         />
                       </Stack>
                     ) : (
-                      <Typography variant="body2" color="text.secondary">Нет компьютера</Typography>
+                      <Typography variant="body2" color="text.secondary">Нет активной сессии</Typography>
                     )}
                   </TableCell>
                   <TableCell>
@@ -526,7 +521,7 @@ const Users = () => {
                 value={formData.hostname}
                 onChange={(e) => setFormData((prev) => ({ ...prev, hostname: e.target.value }))}
                 disabled={Boolean(selectedUser)}
-                helperText={selectedUser ? 'Параметры компьютера управляются backend отдельно' : ''}
+                helperText={selectedUser ? 'Параметры компьютера обновляет локальный агент' : 'Можно оставить пустым: компьютер зарегистрирует локальный агент'}
               />
             </Grid>
             <Grid item xs={12} md={6}>

@@ -6,10 +6,21 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, Field
 
+from .prod_defaults import (
+    DEFAULT_ACTIVITY_SERVICE_URL,
+    DEFAULT_AGENT_AUTH_HEADER,
+    DEFAULT_AGENT_AUTH_TOKEN,
+    DEFAULT_AGENT_MANAGEMENT_URL,
+    DEFAULT_GATEWAY_TLS_INSECURE,
+    DEFAULT_GATEWAY_URL,
+)
+
 
 class ServicesConfig(BaseModel):
-    activity_service_url: str = "localhost:5001"
-    agent_management_url: str = "localhost:5015"
+    gateway_url: str = DEFAULT_GATEWAY_URL
+    gateway_tls_insecure: bool = DEFAULT_GATEWAY_TLS_INSECURE
+    activity_service_url: str = DEFAULT_ACTIVITY_SERVICE_URL
+    agent_management_url: str = DEFAULT_AGENT_MANAGEMENT_URL
 
 
 class RuntimeConfig(BaseModel):
@@ -93,8 +104,8 @@ class ControlPlaneSigningConfig(BaseModel):
 
 
 class AgentTransportAuthConfig(BaseModel):
-    token: str | None = None
-    header_name: str = "x-agent-token"
+    token: str | None = DEFAULT_AGENT_AUTH_TOKEN
+    header_name: str = DEFAULT_AGENT_AUTH_HEADER
 
 
 class SecurityConfig(BaseModel):
@@ -103,8 +114,11 @@ class SecurityConfig(BaseModel):
 
 
 class AgentIdentityConfig(BaseModel):
-    computer_id: int
+    computer_id: int = 0
     user_id: int | None = None
+    session_id: int | None = None
+    session_expires_at: str | None = None
+    auth_refresh_token: str | None = None
     version: str = "0.1.0"
     device_name: str = "unknown-device"
 
@@ -165,3 +179,91 @@ def load_config(path: str | Path) -> AgentConfig:
     cfg = AgentConfig.model_validate(raw)
     cfg.state_dir_path.mkdir(parents=True, exist_ok=True)
     return cfg
+
+
+def default_config_path() -> Path:
+    local_config = Path("config/agent.local.yaml")
+    if local_config.exists():
+        return local_config.resolve()
+
+    home = Path.home()
+    if _is_windows():
+        import os
+
+        root = Path(os.environ.get("LOCALAPPDATA", str(home / "AppData/Local"))) / "LocalEndpointAgent"
+        return root / "config" / "agent.local.yaml"
+
+    if _is_macos():
+        return home / "Library" / "Application Support" / "LocalEndpointAgent" / "config" / "agent.local.yaml"
+
+    return home / ".local" / "share" / "local-endpoint-agent" / "config" / "agent.local.yaml"
+
+
+def resolve_config_path(path: str | Path | None) -> Path:
+    return Path(path).expanduser().resolve() if path else default_config_path()
+
+
+def ensure_config(path: str | Path | None = None) -> Path:
+    config_path = resolve_config_path(path)
+    if config_path.exists():
+        return config_path
+
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    state_dir = config_path.parent.parent / "state"
+    raw = {
+        "agent": {
+            "computer_id": 0,
+            "user_id": None,
+            "session_id": None,
+            "session_expires_at": None,
+            "auth_refresh_token": None,
+            "version": "0.1.0",
+            "device_name": "unknown-device",
+        },
+        "services": {
+            "gateway_url": DEFAULT_GATEWAY_URL,
+            "gateway_tls_insecure": DEFAULT_GATEWAY_TLS_INSECURE,
+            "activity_service_url": DEFAULT_ACTIVITY_SERVICE_URL,
+            "agent_management_url": DEFAULT_AGENT_MANAGEMENT_URL,
+        },
+        "runtime": {
+            "state_dir": str(state_dir).replace("\\", "/"),
+            "heartbeat_interval_sec": 15,
+            "policy_refresh_interval_sec": 30,
+            "flush_interval_sec": 5,
+            "collection_interval_sec": 5,
+            "max_batch_size": 100,
+            "max_queue_size": 10_000,
+        },
+        "security": {
+            "agent_transport_auth": {
+                "token": DEFAULT_AGENT_AUTH_TOKEN,
+                "header_name": DEFAULT_AGENT_AUTH_HEADER,
+            },
+            "control_plane_signing": {
+                "secret": "",
+                "key_id": "default",
+                "allow_unsigned": True,
+            },
+        },
+    }
+    with config_path.open("w", encoding="utf-8") as f:
+        yaml.safe_dump(raw, f, allow_unicode=True, sort_keys=False)
+    return config_path
+
+
+def load_or_create_config(path: str | Path | None = None) -> tuple[Path, AgentConfig]:
+    config_path = ensure_config(path)
+    return config_path, load_config(config_path)
+
+
+def _is_windows() -> bool:
+    import os
+
+    return os.name == "nt"
+
+
+def _is_macos() -> bool:
+    import platform
+
+    return platform.system().lower() == "darwin"

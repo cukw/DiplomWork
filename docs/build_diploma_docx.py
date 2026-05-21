@@ -13,9 +13,11 @@ from docx.shared import Cm, Inches, Pt
 ROOT = Path("/Users/cukw/FinalWork")
 DOCS = ROOT / "docs"
 SRC_MD = DOCS / "Диплом_Мониторинг_активности_пользователей_2026.md"
-OUT_DOCX = DOCS / "Диплом_Мониторинг_активности_пользователей_2026_финал_по_методичке.docx"
+OUT_DOCX = DOCS / "Диплом.docx"
 MATERIALS = DOCS / "appendix_materials"
 MATERIALS.mkdir(parents=True, exist_ok=True)
+SCREENSHOTS = MATERIALS / "screenshots"
+SCREENSHOTS.mkdir(parents=True, exist_ok=True)
 
 
 def run(cmd: list[str]) -> None:
@@ -400,6 +402,30 @@ def add_heading(doc: Document, text: str, level: int = 1) -> None:
     format_paragraph(spacer, justify=False, first_indent=0)
 
 
+def add_unlisted_heading(doc: Document, text: str) -> None:
+    p = doc.add_paragraph()
+    p.paragraph_format.first_line_indent = Cm(1.25)
+    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    r = p.add_run(text)
+    set_run_font(r, size=14, bold=False)
+    spacer = doc.add_paragraph()
+    format_paragraph(spacer, justify=False, first_indent=0)
+
+
+def add_table_caption(doc: Document, text: str) -> None:
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    p.paragraph_format.first_line_indent = Cm(0)
+    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.ONE_POINT_FIVE
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
+    r = p.add_run(text)
+    set_run_font(r, size=12)
+
+
 def add_centered_picture(doc: Document, image_path: Path, width: float, caption: str) -> None:
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -435,6 +461,30 @@ def add_table_font(table, size: int = 12) -> None:
                     set_run_font(r, size=size)
 
 
+def format_appendix_content(doc: Document) -> None:
+    in_appendix = False
+    for paragraph in doc.paragraphs:
+        text = paragraph.text.strip()
+        if text == "Приложения" and paragraph.style.name.startswith("Heading"):
+            in_appendix = True
+
+        if not in_appendix:
+            continue
+
+        paragraph.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+        if not paragraph.style.name.startswith("Heading"):
+            for run in paragraph.runs:
+                run.font.size = Pt(12)
+
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    paragraph.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+                    for run in paragraph.runs:
+                        run.font.size = Pt(12)
+
+
 def add_page_number(footer_paragraph) -> None:
     footer_paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     footer_paragraph.paragraph_format.first_line_indent = Cm(0)
@@ -450,6 +500,15 @@ def add_page_number(footer_paragraph) -> None:
     run._r.append(fld_char_begin)
     run._r.append(instr_text)
     run._r.append(fld_char_end)
+
+
+def enable_update_fields_on_open(doc: Document) -> None:
+    settings = doc.settings.element
+    update_fields = settings.find(qn("w:updateFields"))
+    if update_fields is None:
+        update_fields = OxmlElement("w:updateFields")
+        settings.append(update_fields)
+    update_fields.set(qn("w:val"), "true")
 
 
 def parse_main_blocks(text: str) -> list[str]:
@@ -658,6 +717,7 @@ def build_document() -> None:
     )
 
     doc = Document()
+    enable_update_fields_on_open(doc)
 
     normal = doc.styles["Normal"]
     normal.font.name = "Times New Roman"
@@ -758,12 +818,12 @@ def build_document() -> None:
         "II. Срок сдачи студентом законченной работы: ______________________________.",
         "III. Исходные данные: исходный код и конфигурации репозитория FinalWork, материалы преддипломной практики, методические указания колледжа.",
         "IV. Перечень подлежащих разработке вопросов:",
-        "1. Анализ предметной области и требований к системе мониторинга активности пользователей.",
-        "2. Исследование архитектурных подходов и механизмов надежной событийной интеграции.",
-        "3. Анализ состава сервисов проекта, схем хранения данных и клиентского интерфейса.",
-        "4. Описание реализации функциональных модулей, контрольной плоскости агентов и механизма обнаружения аномалий.",
-        "5. Оценка работоспособности, эксплуатационных характеристик и сценариев использования системы.",
-        "6. Подготовка приложений с техническим заданием, схемой развертывания, картой API, листингами и руководством пользователя.",
+        "1. Анализ предметной области автоматизации и определение цели, задач и требований к информационной системе.",
+        "2. Выполнение системного анализа объекта исследования, обзор существующих решений и подготовка проекта управления разработкой.",
+        "3. Разработка технического задания, проектирование информационной системы и проектирование базы данных.",
+        "4. Реализация физической модели базы данных, интерфейса и функционала приложения.",
+        "5. Тестирование приложения, проверка демонстрационного стенда и подготовка руководства пользователя.",
+        "6. Подготовка приложений со схемами, картой экранов, листингами, материалами тестирования, руководством пользователя и скриншотами.",
         "V. Перечень приложений:",
         "1. Техническое задание.",
         "2. Карта экранов и маршрутов web-приложения.",
@@ -773,6 +833,7 @@ def build_document() -> None:
         "6. Карта API и сервисных контрактов.",
         "7. Материалы тестирования и наблюдаемости.",
         "8. Руководство пользователя.",
+        "9. Скриншоты демонстрационного стенда.",
         "VI. Дата выдачи задания: ______________________________.",
         "Руководитель ______________________________",
         "Задание принял к исполнению ______________________________",
@@ -781,7 +842,7 @@ def build_document() -> None:
         add_text_paragraph(doc, row)
 
     doc.add_page_break()
-    add_heading(doc, "КАЛЕНДАРНЫЙ ПЛАН ДИПЛОМНОЙ РАБОТЫ", level=1)
+    add_unlisted_heading(doc, "КАЛЕНДАРНЫЙ ПЛАН ДИПЛОМНОЙ РАБОТЫ")
     plan = doc.add_table(rows=1, cols=4)
     plan.style = "Table Grid"
     plan.rows[0].cells[0].text = "Этап"
@@ -789,11 +850,12 @@ def build_document() -> None:
     plan.rows[0].cells[2].text = "Срок"
     plan.rows[0].cells[3].text = "Отметка"
     plan_rows = [
-        ("1", "Анализ предметной области, нормативной базы и архитектурных подходов", "__________", "__________"),
-        ("2", "Исследование состава сервисов, БД, очередей и endpoint-агента", "__________", "__________"),
-        ("3", "Подготовка аналитической части и описания требований", "__________", "__________"),
-        ("4", "Подготовка практической части и приложений", "__________", "__________"),
-        ("5", "Проверка структуры, оглавления и итогового оформления", "__________", "__________"),
+        ("1", "Анализ предметной области автоматизации и постановка цели и задач системы", "__________", "__________"),
+        ("2", "Системный анализ объекта исследования, требований и существующих решений", "__________", "__________"),
+        ("3", "Проектирование архитектуры системы и модели базы данных", "__________", "__________"),
+        ("4", "Разработка функционала приложения, интерфейса и физической модели БД", "__________", "__________"),
+        ("5", "Тестирование приложения, проверка демонстрационного стенда и фиксация скриншотов", "__________", "__________"),
+        ("6", "Подготовка руководства пользователя, приложений и итогового оформления", "__________", "__________"),
     ]
     for row in plan_rows:
         cells = plan.add_row().cells
@@ -802,7 +864,7 @@ def build_document() -> None:
     add_table_font(plan)
 
     doc.add_page_break()
-    add_heading(doc, "Оглавление", level=1)
+    add_unlisted_heading(doc, "Оглавление")
     toc = doc.add_paragraph()
     toc.paragraph_format.first_line_indent = Cm(0)
     add_field(toc, ' TOC \\o "1-3" \\h \\z \\u ')
@@ -819,10 +881,15 @@ def build_document() -> None:
     major_headings = {
         "ВВЕДЕНИЕ",
         "Введение",
+        "Глава 1. Анализ и проектирование предметной области",
         "Глава 1. Аналитическая часть",
+        "Глава I. Теоретическая часть",
+        "Глава 2. Разработка информационной системы",
         "Глава 2. Практическая часть",
+        "Глава II. Практическая часть",
         "Заключение",
         "Список использованных источников",
+        "Список литературы",
         "Приложения",
     }
 
@@ -834,14 +901,18 @@ def build_document() -> None:
             if block != "Введение":
                 doc.add_page_break()
             add_heading(doc, block.title() if block == "ВВЕДЕНИЕ" else block, level=1)
-            in_refs = block == "Список использованных источников"
+            in_refs = block in {"Список использованных источников", "Список литературы"}
             continue
 
-        if re.match(r"^\d+\.\d+\s", block):
+        if re.match(r"^\d+\.\d+\.?\s", block):
             add_heading(doc, block, level=2)
             continue
 
-        if block in {"Вывод по теоретической части", "Вывод по практической части"}:
+        if block in {
+            "Вывод по теоретической части",
+            "Вывод по практической части",
+            "Выводы по практической части",
+        }:
             add_heading(doc, block, level=2)
             continue
 
@@ -851,7 +922,10 @@ def build_document() -> None:
 
         add_text_paragraph(doc, block)
 
-    doc.add_page_break()
+    doc.add_section(WD_SECTION.NEW_PAGE)
+    appendix_section = doc.sections[-1]
+    set_section_margins(appendix_section)
+    appendix_section.footer.is_linked_to_previous = False
     add_heading(doc, "Приложения", level=1)
 
     doc.add_page_break()
@@ -864,6 +938,7 @@ def build_document() -> None:
         doc,
         "Объект автоматизации представляет собой цифровую среду организации, в рамках которой требуется централизованно контролировать действия пользователей, состояние конечных устройств и выполнение политик безопасности."
     )
+    add_table_caption(doc, "Таблица 1.1. Основные параметры технического задания")
     tz_table = doc.add_table(rows=1, cols=2)
     tz_table.style = "Table Grid"
     tz_table.rows[0].cells[0].text = "Параметр"
@@ -879,6 +954,7 @@ def build_document() -> None:
         row[0].text = key
         row[1].text = value
     add_table_font(tz_table)
+    add_table_caption(doc, "Таблица 1.2. Требования к входным и выходным данным")
     req_table = doc.add_table(rows=1, cols=2)
     req_table.style = "Table Grid"
     req_table.rows[0].cells[0].text = "Группа требований"
@@ -900,6 +976,10 @@ def build_document() -> None:
         6.1,
         "Рисунок 1.1. Архитектурная схема программного комплекса мониторинга активности пользователей",
     )
+    add_text_paragraph(
+        doc,
+        "Схема фиксирует состав основных компонентов и показывает, что пользовательский интерфейс, gateway, доменные сервисы, брокер сообщений, базы данных и endpoint-агент образуют единый контур обработки активности."
+    )
 
     doc.add_page_break()
     add_heading(doc, "Приложение 2. Карта экранов", level=2)
@@ -913,6 +993,11 @@ def build_document() -> None:
         5.8,
         "Рисунок 2.1. Карта экранов и маршрутов web-приложения",
     )
+    add_text_paragraph(
+        doc,
+        "После авторизации пользователь переходит в защищенные разделы приложения. Карта используется как основа для проверки навигации и сопоставления экранов со скриншотами демонстрационного стенда."
+    )
+    add_table_caption(doc, "Таблица 2.1. Маршруты web-приложения")
     routes_table = doc.add_table(rows=1, cols=3)
     routes_table.style = "Table Grid"
     routes_table.rows[0].cells[0].text = "Маршрут"
@@ -932,6 +1017,7 @@ def build_document() -> None:
         row[1].text = page
         row[2].text = purpose
     add_table_font(routes_table)
+    add_table_caption(doc, "Таблица 2.2. Роли и основные разделы интерфейса")
     role_table = doc.add_table(rows=1, cols=3)
     role_table.style = "Table Grid"
     role_table.rows[0].cells[0].text = "Роль"
@@ -960,9 +1046,14 @@ def build_document() -> None:
         6.0,
         "Рисунок 3.1. Укрупненная схема ключевых сущностей системы",
     )
+    add_text_paragraph(
+        doc,
+        "Схема связывает транзакционные сущности активности с агентами, политиками, командами, уведомлениями и служебными таблицами надежной доставки событий."
+    )
     add_code_block(doc, "Фрагмент SQL-описания таблиц ActivityService.", "\n".join(activity_sql.splitlines()[:45]))
     add_code_block(doc, "Фрагмент SQL-описания таблиц AgentManagementService.", "\n".join(agent_sql.splitlines()[:60]))
     add_code_block(doc, "Фрагмент SQL-описания таблиц NotificationService.", "\n".join(notification_sql.splitlines()[:45]))
+    add_table_caption(doc, "Таблица 3.1. Словарь ключевых сущностей базы данных")
     dictionary_table = doc.add_table(rows=1, cols=3)
     dictionary_table.style = "Table Grid"
     dictionary_table.rows[0].cells[0].text = "Сущность"
@@ -994,6 +1085,10 @@ def build_document() -> None:
         6.0,
         "Рисунок 4.1. Сценарий обработки события активности в серверной части",
     )
+    add_text_paragraph(
+        doc,
+        "Последовательность показывает, как первичное событие активности превращается в сохраненную запись, событие outbox и несколько независимых проекций для метрик, уведомлений и отчетности."
+    )
     add_code_block(doc, "Фрагмент frontend-маршрутизации приложения.", app_routes)
     add_code_block(doc, "Фрагмент контроллера управления агентами.", controller_snippet)
     add_code_block(doc, "Фрагмент логики публикации доменных событий.", activity_service_snippet)
@@ -1011,6 +1106,11 @@ def build_document() -> None:
         6.2,
         "Рисунок 5.1. Укрупненная схема развертывания платформы в контейнерной среде",
     )
+    add_text_paragraph(
+        doc,
+        "Схема развертывания дополняется перечнем контейнеров и опубликованных портов, что позволяет соотнести логическую архитектуру с фактической инфраструктурной конфигурацией."
+    )
+    add_table_caption(doc, "Таблица 5.1. Сервисы и порты инфраструктурного контура")
     infra_table = doc.add_table(rows=1, cols=3)
     infra_table.style = "Table Grid"
     infra_table.rows[0].cells[0].text = "Сервис"
@@ -1036,6 +1136,11 @@ def build_document() -> None:
         6.2,
         "Рисунок 6.1. Карта основных контроллеров gateway и прикладных подсистем",
     )
+    add_text_paragraph(
+        doc,
+        "Карта API показывает, какие контроллеры доступны через gateway и какие подсистемы участвуют во внешнем REST-контуре приложения."
+    )
+    add_table_caption(doc, "Таблица 6.1. Основные REST-маршруты gateway")
     api_table = doc.add_table(rows=1, cols=3)
     api_table.style = "Table Grid"
     api_table.rows[0].cells[0].text = "Контроллер"
@@ -1061,6 +1166,11 @@ def build_document() -> None:
         5.8,
         "Рисунок 7.1. Контур сбора технических метрик и визуализации состояния сервисов",
     )
+    add_text_paragraph(
+        doc,
+        "Контур наблюдаемости дополняет функциональную проверку и показывает, как Prometheus, Grafana и alert-правила используются для эксплуатационного контроля сервисов."
+    )
+    add_table_caption(doc, "Таблица 7.1. Сценарии smoke-проверки")
     smoke_table = doc.add_table(rows=1, cols=2)
     smoke_table.style = "Table Grid"
     smoke_table.rows[0].cells[0].text = "Шаг smoke-проверки"
@@ -1078,6 +1188,7 @@ def build_document() -> None:
         row[0].text = step
         row[1].text = result
     add_table_font(smoke_table)
+    add_table_caption(doc, "Таблица 7.2. Задания Prometheus")
     jobs_table = doc.add_table(rows=1, cols=2)
     jobs_table.style = "Table Grid"
     jobs_table.rows[0].cells[0].text = "Prometheus job"
@@ -1087,6 +1198,7 @@ def build_document() -> None:
         row[0].text = job
         row[1].text = target
     add_table_font(jobs_table)
+    add_table_caption(doc, "Таблица 7.3. Alert-правила backend-контура")
     alert_table = doc.add_table(rows=1, cols=3)
     alert_table.style = "Table Grid"
     alert_table.rows[0].cells[0].text = "Alert"
@@ -1116,30 +1228,156 @@ def build_document() -> None:
         doc,
         "Раздел Analytics предназначен для анализа накопленных данных по периодам и фильтрам. Раздел Reports применяется для получения сводной отчетности и экспорта агрегированных представлений. Раздел Settings используется для настройки списков доступа, правил уведомлений и параметров мониторинга."
     )
+    add_text_paragraph(
+        doc,
+        "Перед началом работы пользователь открывает адрес демонстрационного стенда http://2.26.89.86 и проходит авторизацию. Для демонстрационного доступа используются учетные данные admin / admin123. После успешного входа открывается административная панель, а все основные действия выполняются через боковое меню приложения."
+    )
+    add_text_paragraph(
+        doc,
+        "Рекомендуемый порядок работы состоит из нескольких шагов: сначала пользователь проверяет Dashboard и общее состояние системы, затем при необходимости переходит к аналитике, отчетам, агентам, настройкам или пользователям. После завершения работы необходимо выполнить выход из учетной записи, чтобы закрыть административную сессию."
+    )
+    add_table_caption(doc, "Таблица 8.1. Основные действия пользователя")
     guide_table = doc.add_table(rows=1, cols=2)
     guide_table.style = "Table Grid"
     guide_table.rows[0].cells[0].text = "Действие пользователя"
     guide_table.rows[0].cells[1].text = "Результат"
     guide_rows = [
+        ("Открытие http://2.26.89.86", "Переход на демонстрационный стенд через браузер"),
+        ("Вход под admin / admin123", "Получение доступа к административной панели стенда"),
         ("Вход в систему через /login", "Проверка учетных данных и открытие административной панели"),
         ("Переход на Dashboard", "Просмотр KPI, последних событий и аномалий"),
         ("Переход на Agents", "Управление списком агентов, политиками и командами"),
         ("Переход на Analytics", "Анализ активности по периодам, категориям и drill-down"),
         ("Переход на Reports", "Формирование периодных отчетов и экспорт результатов"),
         ("Переход на Settings", "Настройка мониторинга, списков доступа и alert-правил"),
+        ("Переход на Users", "Просмотр и сопровождение пользователей и связанных компьютеров"),
+        ("Выход из системы", "Завершение административной сессии и возврат к странице входа"),
     ]
     for action, result in guide_rows:
         row = guide_table.add_row().cells
         row[0].text = action
         row[1].text = result
     add_table_font(guide_table)
+    add_table_caption(doc, "Таблица 8.2. Назначение основных разделов интерфейса")
+    sections_table = doc.add_table(rows=1, cols=3)
+    sections_table.style = "Table Grid"
+    sections_table.rows[0].cells[0].text = "Раздел"
+    sections_table.rows[0].cells[1].text = "Что делает пользователь"
+    sections_table.rows[0].cells[2].text = "Когда используется"
+    for section, action, when in [
+        ("Dashboard", "Проверяет KPI, последние события, аномалии и состояние агентов", "В начале смены и при оперативном контроле"),
+        ("Analytics", "Выбирает период, фильтрует события и анализирует детализацию активности", "При разборе причин отклонений и подозрительных действий"),
+        ("Reports", "Формирует дневные, недельные, месячные и произвольные отчеты", "Для подготовки сводок и передачи результатов руководителю"),
+        ("Agents", "Проверяет статусы агентов, политики, команды блокировки и разблокировки", "При администрировании рабочих станций и реагировании на риски"),
+        ("Settings", "Настраивает мониторинг, списки доступа, уведомления и правила", "При первичной настройке и изменении политики контроля"),
+        ("Users", "Создает, просматривает и сопровождает пользователей и компьютеры", "При изменении состава сотрудников или рабочих мест"),
+    ]:
+        row = sections_table.add_row().cells
+        row[0].text = section
+        row[1].text = action
+        row[2].text = when
+    add_table_font(sections_table)
+    add_table_caption(doc, "Таблица 8.3. Типовые ситуации и действия пользователя")
+    situations_table = doc.add_table(rows=1, cols=2)
+    situations_table.style = "Table Grid"
+    situations_table.rows[0].cells[0].text = "Ситуация"
+    situations_table.rows[0].cells[1].text = "Действие пользователя"
+    for situation, action in [
+        ("Не удается войти в систему", "Проверить логин и пароль, затем повторить вход; при сохранении ошибки обратиться к администратору стенда"),
+        ("Dashboard показывает нулевые значения", "Убедиться, что на стенд загружены пользователи, компьютеры, агенты и события активности"),
+        ("Агент долго не выходит на связь", "Открыть Agents, проверить статус, последнюю активность и при необходимости повторить команду или проверить сеть"),
+        ("Нужно разобраться в подозрительном событии", "Открыть Analytics, выбрать период и фильтры, затем перейти к отчету или журналу событий"),
+        ("Необходимо изменить правила мониторинга", "Открыть Settings, изменить списки или правила, сохранить настройки и проверить синхронизацию политик"),
+        ("Работа завершена", "Выполнить выход из системы, чтобы закрыть административную сессию"),
+    ]:
+        row = situations_table.add_row().cells
+        row[0].text = situation
+        row[1].text = action
+    add_table_font(situations_table)
     add_centered_picture(
         doc,
         control_plane_img,
         5.6,
         "Рисунок 8.1. Контур взаимодействия администратора, control plane и endpoint-агента",
     )
+    add_text_paragraph(
+        doc,
+        "Представленный сценарий показывает последовательность действий администратора от входа в систему до управления агентами и просмотра аналитики. После проверки учетных данных пользователь работает только с защищенными разделами, а изменения конфигурации и командный контур фиксируются серверными механизмами аудита."
+    )
 
+    doc.add_page_break()
+    add_heading(doc, "Приложение 9. Скриншоты демонстрационного стенда", level=2)
+    add_text_paragraph(
+        doc,
+        "Скриншоты подготовлены 19.04.2026 с демонстрационного сервера http://2.26.89.86 после проверки авторизации и переходов по основным разделам web-приложения. На момент фиксации стенд находился в начальном состоянии данных: предметные пользователи, агенты, события активности, аномалии и правила оповещений отсутствовали."
+    )
+    screenshot_rows = [
+        (
+            "01_login.png",
+            "Рисунок 9.1. Страница входа в демонстрационный стенд",
+            "Экран подтверждает наличие отдельной страницы авторизации, через которую администратор получает доступ к защищенным разделам системы.",
+        ),
+        (
+            "02_dashboard.png",
+            "Рисунок 9.2. Панель Dashboard с текущими показателями стенда",
+            "Панель отображает базовые KPI и состояние активности. Нулевые значения соответствуют свежему стенду без загруженной телеметрии.",
+        ),
+        (
+            "03_agents.png",
+            "Рисунок 9.3. Раздел управления endpoint-агентами",
+            "Раздел Agents предназначен для просмотра подключенных агентов, их политик и командного контура. В текущем состоянии список агентов пуст.",
+        ),
+        (
+            "04_analytics.png",
+            "Рисунок 9.4. Раздел аналитики пользовательской активности",
+            "Раздел Analytics сохраняет рабочую структуру фильтров и аналитических блоков даже при отсутствии накопленных событий активности.",
+        ),
+        (
+            "05_reports.png",
+            "Рисунок 9.5. Раздел отчетности и аналитических выгрузок",
+            "Раздел Reports предназначен для формирования сводок и экспорта результатов после появления событий и отчетных проекций.",
+        ),
+        (
+            "06_settings.png",
+            "Рисунок 9.6. Раздел системных настроек мониторинга",
+            "Раздел Settings отражает доступность параметров безопасности, мониторинга, списков доступа и правил оповещений.",
+        ),
+        (
+            "07_users.png",
+            "Рисунок 9.7. Раздел управления пользователями",
+            "Раздел Users подтверждает наличие административного маршрута для работы с пользователями и связанными рабочими станциями.",
+        ),
+    ]
+    for filename, caption, description in screenshot_rows:
+        image_path = SCREENSHOTS / filename
+        if image_path.exists():
+            add_centered_picture(doc, image_path, 6.2, caption)
+            add_text_paragraph(doc, description)
+        else:
+            add_text_paragraph(doc, f"Файл скриншота {filename} отсутствует в каталоге материалов и требует повторной фиксации.")
+
+    add_table_caption(doc, "Таблица 9.1. Итоговая фиксация состояния демонстрационного стенда")
+    stand_table = doc.add_table(rows=1, cols=2)
+    stand_table.style = "Table Grid"
+    stand_table.rows[0].cells[0].text = "Проверенный показатель"
+    stand_table.rows[0].cells[1].text = "Состояние на 19.04.2026 18:12 МСК"
+    for key, value in [
+        ("Адрес стенда", "http://2.26.89.86"),
+        ("Демонстрационная учетная запись", "admin / admin123"),
+        ("Статус сервисов", "healthy для gateway и основных backend-сервисов"),
+        ("Пользователи, агенты, активности, аномалии", "0 записей в начальном состоянии стенда"),
+        ("Настройки мониторинга", "real-time monitoring и anomaly detection включены"),
+    ]:
+        row = stand_table.add_row().cells
+        row[0].text = key
+        row[1].text = value
+    add_table_font(stand_table)
+    add_text_paragraph(
+        doc,
+        "Итоговая фиксация показывает, что интерфейсные маршруты доступны, а отсутствие предметных записей является контролируемым начальным состоянием стенда. После наполнения тестовыми пользователями и агентами те же разделы используются для демонстрации динамики активности, аномалий, уведомлений и отчетов."
+    )
+
+    format_appendix_content(doc)
     doc.save(str(OUT_DOCX))
 
 

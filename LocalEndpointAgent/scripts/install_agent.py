@@ -17,6 +17,24 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 AGENT_SOURCE_ROOT = SCRIPT_DIR.parent
 REPO_ROOT = AGENT_SOURCE_ROOT.parent
 
+sys.path.insert(0, str(AGENT_SOURCE_ROOT / "src"))
+try:
+    from endpoint_agent.prod_defaults import (
+        DEFAULT_ACTIVITY_SERVICE_URL,
+        DEFAULT_AGENT_AUTH_HEADER,
+        DEFAULT_AGENT_AUTH_TOKEN,
+        DEFAULT_AGENT_MANAGEMENT_URL,
+        DEFAULT_GATEWAY_TLS_INSECURE,
+        DEFAULT_GATEWAY_URL,
+    )
+except Exception:
+    DEFAULT_GATEWAY_URL = "https://2.26.89.86"
+    DEFAULT_GATEWAY_TLS_INSECURE = True
+    DEFAULT_ACTIVITY_SERVICE_URL = "2.26.89.86:5001"
+    DEFAULT_AGENT_MANAGEMENT_URL = "2.26.89.86:5015"
+    DEFAULT_AGENT_AUTH_HEADER = "x-agent-token"
+    DEFAULT_AGENT_AUTH_TOKEN = os.environ.get("AGENT_AUTH_TOKEN", "")
+
 
 def _print(msg: str) -> None:
     print(f"[installer] {msg}")
@@ -234,6 +252,8 @@ def _render_config_yaml(
     computer_id: int,
     user_id: int | None,
     device_name: str,
+    gateway_url: str,
+    gateway_tls_insecure: bool,
     activity_service_url: str,
     agent_management_url: str,
     agent_transport_auth_token: str | None,
@@ -245,6 +265,7 @@ def _render_config_yaml(
 ) -> str:
     user_id_line = "null" if user_id is None else str(user_id)
     safe_device = device_name.replace('"', "")
+    safe_gateway = gateway_url.replace('"', "")
     safe_activity = activity_service_url.replace('"', "")
     safe_agent = agent_management_url.replace('"', "")
     safe_transport_token = (agent_transport_auth_token or "").replace('"', "")
@@ -253,13 +274,19 @@ def _render_config_yaml(
     safe_cp_key_id = (control_plane_signing_key_id or "default").replace('"', "")
     state_dir_str = str(state_dir).replace("\\", "/").replace('"', "")
     cp_allow_unsigned = "true" if control_plane_allow_unsigned else "false"
+    gateway_insecure = "true" if gateway_tls_insecure else "false"
     return f"""agent:
   computer_id: {computer_id}
   user_id: {user_id_line}
+  session_id: null
+  session_expires_at: null
+  auth_refresh_token: null
   version: "0.1.0"
   device_name: "{safe_device}"
 
 services:
+  gateway_url: "{safe_gateway}"
+  gateway_tls_insecure: {gateway_insecure}
   activity_service_url: "{safe_activity}"
   agent_management_url: "{safe_agent}"
 
@@ -324,6 +351,8 @@ def _write_runtime_files(
     computer_id: int,
     user_id: int | None,
     device_name: str,
+    gateway_url: str,
+    gateway_tls_insecure: bool,
     activity_service_url: str,
     agent_management_url: str,
     agent_transport_auth_token: str | None,
@@ -345,6 +374,8 @@ def _write_runtime_files(
         computer_id=computer_id,
         user_id=user_id,
         device_name=device_name,
+        gateway_url=gateway_url,
+        gateway_tls_insecure=gateway_tls_insecure,
         activity_service_url=activity_service_url,
         agent_management_url=agent_management_url,
         agent_transport_auth_token=agent_transport_auth_token,
@@ -363,7 +394,7 @@ def _write_runtime_files(
         launcher_text = (
             "@echo off\r\n"
             f"cd /d \"{app_dir}\"\r\n"
-            f"\"{venv_python_path}\" -m endpoint_agent.main --config \"{config_path}\" %*\r\n"
+            f"\"{venv_python_path}\" -m endpoint_agent.main %* --config \"{config_path}\"\r\n"
         )
     else:
         launcher = bin_dir / "run-agent.sh"
@@ -371,7 +402,7 @@ def _write_runtime_files(
             "#!/usr/bin/env bash\n"
             "set -euo pipefail\n"
             f"cd \"{app_dir}\"\n"
-            f"exec \"{venv_python_path}\" -m endpoint_agent.main --config \"{config_path}\" \"$@\"\n"
+            f"exec \"{venv_python_path}\" -m endpoint_agent.main \"$@\" --config \"{config_path}\"\n"
         )
     _print(f"Writing launcher: {launcher}")
     if not dry_run:
@@ -395,7 +426,7 @@ After=network-online.target
 [Service]
 Type=simple
 WorkingDirectory={app_dir}
-ExecStart={venv_python_path} -m endpoint_agent.main --config {config_path}
+ExecStart={venv_python_path} -m endpoint_agent.main run --config {config_path}
 Restart=always
 RestartSec=5
 
@@ -421,7 +452,7 @@ WantedBy=default.target
     desktop_text = f"""[Desktop Entry]
 Type=Application
 Name=Local Endpoint Agent
-Exec={venv_python_path} -m endpoint_agent.main --config {config_path}
+Exec={venv_python_path} -m endpoint_agent.main run --config {config_path}
 Path={app_dir}
 X-GNOME-Autostart-enabled=true
 Terminal=false
@@ -448,6 +479,7 @@ def _install_autostart_macos(install_root: Path, venv_python_path: Path, config_
     <string>{venv_python_path}</string>
     <string>-m</string>
     <string>endpoint_agent.main</string>
+    <string>run</string>
     <string>--config</string>
     <string>{config_path}</string>
   </array>
@@ -562,13 +594,16 @@ def _looks_like_loopback_endpoint(raw: str) -> bool:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Cross-platform installer for LocalEndpointAgent")
-    parser.add_argument("--computer-id", type=int, required=True, help="Computer ID (1:1 mapping with user workstation in your system)")
+    parser.add_argument("--computer-id", type=int, default=0, help="Computer ID. Use 0 before running endpoint-agent enroll")
     parser.add_argument("--user-id", type=int, default=None, help="User ID (optional)")
     parser.add_argument("--device-name", default=socket.gethostname(), help="Device name for agent identity")
-    parser.add_argument("--activity-service-url", default="localhost:5001", help="Direct gRPC endpoint for ActivityService (host:port)")
-    parser.add_argument("--agent-management-url", default="localhost:5015", help="Direct gRPC endpoint for AgentManagementService (host:port)")
-    parser.add_argument("--agent-auth-token", default="", help="Shared gRPC metadata token for ActivityService/AgentManagementService")
-    parser.add_argument("--agent-auth-header", default="x-agent-token", help="Metadata header name for the shared gRPC agent token")
+    parser.add_argument("--gateway-url", default=DEFAULT_GATEWAY_URL, help="Gateway URL used by local login/enrollment")
+    parser.add_argument("--gateway-tls-insecure", action="store_true", default=DEFAULT_GATEWAY_TLS_INSECURE, help="Skip Gateway TLS validation for local login/enrollment")
+    parser.add_argument("--gateway-tls-verify", dest="gateway_tls_insecure", action="store_false", help="Require valid Gateway TLS certificate")
+    parser.add_argument("--activity-service-url", default=DEFAULT_ACTIVITY_SERVICE_URL, help="Direct gRPC endpoint for ActivityService (host:port)")
+    parser.add_argument("--agent-management-url", default=DEFAULT_AGENT_MANAGEMENT_URL, help="Direct gRPC endpoint for AgentManagementService (host:port)")
+    parser.add_argument("--agent-auth-token", default=DEFAULT_AGENT_AUTH_TOKEN, help="Shared gRPC metadata token for ActivityService/AgentManagementService")
+    parser.add_argument("--agent-auth-header", default=DEFAULT_AGENT_AUTH_HEADER, help="Metadata header name for the shared gRPC agent token")
     parser.add_argument("--control-plane-signing-secret", default="", help="Shared secret for verifying signed agent policy/commands (optional)")
     parser.add_argument("--control-plane-signing-key-id", default="default", help="Expected control-plane signing key ID")
     parser.add_argument("--require-signed-control-plane", action="store_true", help="Reject unsigned policy/commands from AgentManagementService")
@@ -647,6 +682,8 @@ def main() -> int:
             computer_id=args.computer_id,
             user_id=args.user_id,
             device_name=args.device_name,
+            gateway_url=args.gateway_url,
+            gateway_tls_insecure=args.gateway_tls_insecure,
             activity_service_url=args.activity_service_url,
             agent_management_url=args.agent_management_url,
             agent_transport_auth_token=args.agent_auth_token or None,

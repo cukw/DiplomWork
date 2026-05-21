@@ -45,14 +45,75 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<UserDbContext>();
     dbContext.Database.Migrate();
     dbContext.Database.ExecuteSqlRaw(@"
-        -- Clean orphan computers before enforcing NOT NULL relationship.
-        DELETE FROM computers WHERE user_id IS NULL;
+        ALTER TABLE IF EXISTS computers
+            ALTER COLUMN user_id DROP NOT NULL;
 
         ALTER TABLE IF EXISTS computers
-            ALTER COLUMN user_id SET NOT NULL;
+            DROP CONSTRAINT IF EXISTS computers_user_id_fkey;
+        ALTER TABLE IF EXISTS computers
+            ADD CONSTRAINT computers_user_id_fkey
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
 
-        CREATE UNIQUE INDEX IF NOT EXISTS uq_computers_user_id
+        DROP INDEX IF EXISTS uq_computers_user_id;
+        ALTER TABLE IF EXISTS computers
+            DROP CONSTRAINT IF EXISTS computers_user_id_key;
+
+        CREATE INDEX IF NOT EXISTS idx_computers_user_id
             ON computers(user_id);
+
+        CREATE TABLE IF NOT EXISTS computer_sessions (
+            id BIGSERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            auth_user_id INTEGER NOT NULL,
+            computer_id INTEGER NOT NULL REFERENCES computers(id) ON DELETE CASCADE,
+            started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP NULL,
+            ended_at TIMESTAMP NULL,
+            last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status VARCHAR(20) NOT NULL DEFAULT 'active'
+        );
+
+        ALTER TABLE IF EXISTS computer_sessions
+            ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP NULL;
+
+        UPDATE computer_sessions
+        SET expires_at = COALESCE(expires_at, COALESCE(started_at, CURRENT_TIMESTAMP) + INTERVAL '1 day')
+        WHERE expires_at IS NULL;
+
+        ALTER TABLE IF EXISTS computer_sessions
+            ALTER COLUMN expires_at SET NOT NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_computer_sessions_user_id ON computer_sessions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_computer_sessions_computer_id ON computer_sessions(computer_id);
+
+        INSERT INTO computer_sessions (user_id, auth_user_id, computer_id, started_at, expires_at, last_seen, status)
+        SELECT c.user_id,
+               COALESCE(u.auth_user_id, 0),
+               c.id,
+               COALESCE(c.last_seen, CURRENT_TIMESTAMP),
+               COALESCE(c.last_seen, CURRENT_TIMESTAMP) + INTERVAL '1 day',
+               COALESCE(c.last_seen, CURRENT_TIMESTAMP),
+               'active'
+        FROM computers c
+        JOIN users u ON u.id = c.user_id
+        WHERE c.user_id IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM computer_sessions s
+              WHERE s.computer_id = c.id
+                AND s.ended_at IS NULL
+          )
+          AND NOT EXISTS (
+              SELECT 1
+              FROM computer_sessions s
+              WHERE s.user_id = c.user_id
+                AND s.ended_at IS NULL
+          );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_computer_sessions_active_user
+            ON computer_sessions(user_id) WHERE ended_at IS NULL;
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_computer_sessions_active_computer
+            ON computer_sessions(computer_id) WHERE ended_at IS NULL;
     ");
 }
 

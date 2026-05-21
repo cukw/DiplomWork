@@ -17,5 +17,6 @@ public class User
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
     // Navigation properties
-    public virtual Computer? Computer { get; set; }
+    public virtual ICollection<Computer> Computers { get; set; } = new List<Computer>();
+    public virtual ICollection<ComputerSession> ComputerSessions { get; set; } = new List<ComputerSession>();
 }

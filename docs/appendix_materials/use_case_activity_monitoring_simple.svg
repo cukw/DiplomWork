@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="920" viewBox="0 0 1600 920">
+  <rect x="0" y="0" width="1600" height="920" fill="#fff"/>
+  <style>
+    svg { font-family: 'Times New Roman', Times, serif; }
+    .assoc { stroke:#111; stroke-width:1.45; fill:none; }
+  </style>
+
+  <!-- Ассоциации администратора -->
+  <line class="assoc" x1="130" y1="430" x2="285" y2="80"/>
+  <line class="assoc" x1="130" y1="430" x2="285" y2="170"/>
+  <line class="assoc" x1="130" y1="430" x2="285" y2="260"/>
+  <line class="assoc" x1="130" y1="430" x2="285" y2="350"/>
+  <line class="assoc" x1="130" y1="430" x2="285" y2="440"/>
+  <line class="assoc" x1="130" y1="430" x2="285" y2="530"/>
+  <line class="assoc" x1="130" y1="430" x2="285" y2="620"/>
+  <line class="assoc" x1="130" y1="430" x2="285" y2="710"/>
+  <line class="assoc" x1="130" y1="430" x2="285" y2="800"/>
+
+  <!-- Ассоциации endpoint-агента -->
+  <line class="assoc" x1="1470" y1="430" x2="1305" y2="170"/>
+  <line class="assoc" x1="1470" y1="430" x2="1305" y2="290"/>
+  <line class="assoc" x1="1470" y1="430" x2="1305" y2="410"/>
+  <line class="assoc" x1="1470" y1="430" x2="1305" y2="530"/>
+  <line class="assoc" x1="1470" y1="430" x2="1305" y2="650"/>
+  <line class="assoc" x1="1470" y1="430" x2="1305" y2="770"/>
+
+  <!-- Прецеденты администратора -->
+  <g id="login"><ellipse cx="450" cy="80" rx="165" ry="42" fill="#fff" stroke="#111" stroke-width="1.7"/><text x="450" y="68.5" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="450" dy="0">Войти</tspan><tspan x="450" dy="23">в систему</tspan></text></g>
+  <g id="dashboard"><ellipse cx="450" cy="170" rx="165" ry="42" fill="#fff" stroke="#111" stroke-width="1.7"/><text x="450" y="158.5" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="450" dy="0">Просмотреть</tspan><tspan x="450" dy="23">Dashboard</tspan></text></g>
+  <g id="events"><ellipse cx="450" cy="260" rx="165" ry="42" fill="#fff" stroke="#111" stroke-width="1.7"/><text x="450" y="248.5" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="450" dy="0">Просмотреть события</tspan><tspan x="450" dy="23">активности</tspan></text></g>
+  <g id="analytics"><ellipse cx="450" cy="350" rx="165" ry="42" fill="#fff" stroke="#111" stroke-width="1.7"/><text x="450" y="338.5" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="450" dy="0">Проанализировать</tspan><tspan x="450" dy="23">аномалии и риск</tspan></text></g>
+  <g id="reports"><ellipse cx="450" cy="440" rx="165" ry="42" fill="#fff" stroke="#111" stroke-width="1.7"/><text x="450" y="428.5" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="450" dy="0">Сформировать</tspan><tspan x="450" dy="23">отчет</tspan></text></g>
+  <g id="users"><ellipse cx="450" cy="530" rx="165" ry="42" fill="#fff" stroke="#111" stroke-width="1.7"/><text x="450" y="518.5" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="450" dy="0">Управлять</tspan><tspan x="450" dy="23">пользователями</tspan></text></g>
+  <g id="agents"><ellipse cx="450" cy="620" rx="165" ry="42" fill="#fff" stroke="#111" stroke-width="1.7"/><text x="450" y="608.5" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="450" dy="0">Управлять</tspan><tspan x="450" dy="23">endpoint-агентами</tspan></text></g>
+  <g id="policies"><ellipse cx="450" cy="710" rx="165" ry="42" fill="#fff" stroke="#111" stroke-width="1.7"/><text x="450" y="698.5" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="450" dy="0">Настроить политики</tspan><tspan x="450" dy="23">мониторинга</tspan></text></g>
+  <g id="commands"><ellipse cx="450" cy="800" rx="165" ry="42" fill="#fff" stroke="#111" stroke-width="1.7"/><text x="450" y="788.5" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="450" dy="0">Отправить команду</tspan><tspan x="450" dy="23">агенту</tspan></text></g>
+
+  <!-- Прецеденты endpoint-агента -->
+  <g id="register"><ellipse cx="1150" cy="170" rx="165" ry="42" fill="#fff" stroke="#111" stroke-width="1.7"/><text x="1150" y="158.5" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="1150" dy="0">Зарегистрироваться</tspan><tspan x="1150" dy="23">в системе</tspan></text></g>
+  <g id="heartbeat"><ellipse cx="1150" cy="290" rx="165" ry="42" fill="#fff" stroke="#111" stroke-width="1.7"/><text x="1150" y="278.5" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="1150" dy="0">Отправить</tspan><tspan x="1150" dy="23">heartbeat</tspan></text></g>
+  <g id="telemetry"><ellipse cx="1150" cy="410" rx="165" ry="42" fill="#fff" stroke="#111" stroke-width="1.7"/><text x="1150" y="398.5" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="1150" dy="0">Передать события</tspan><tspan x="1150" dy="23">активности</tspan></text></g>
+  <g id="sync-policy"><ellipse cx="1150" cy="530" rx="165" ry="42" fill="#fff" stroke="#111" stroke-width="1.7"/><text x="1150" y="518.5" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="1150" dy="0">Получить политики</tspan><tspan x="1150" dy="23">мониторинга</tspan></text></g>
+  <g id="buffer"><ellipse cx="1150" cy="650" rx="165" ry="42" fill="#fff" stroke="#111" stroke-width="1.7"/><text x="1150" y="638.5" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="1150" dy="0">Буферизовать события</tspan><tspan x="1150" dy="23">при отсутствии связи</tspan></text></g>
+  <g id="execute"><ellipse cx="1150" cy="770" rx="165" ry="42" fill="#fff" stroke="#111" stroke-width="1.7"/><text x="1150" y="758.5" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="1150" dy="0">Выполнить команду</tspan><tspan x="1150" dy="23">администратора</tspan></text></g>
+
+  <!-- Акторы -->
+  <g id="admin">
+  <circle cx="95" cy="396" r="12" fill="#fff" stroke="#111" stroke-width="1.5"/>
+  <line x1="95" y1="408" x2="95" y2="462" stroke="#111" stroke-width="1.5"/>
+  <line x1="61" y1="430" x2="129" y2="430" stroke="#111" stroke-width="1.5"/>
+  <line x1="95" y1="462" x2="65" y2="506" stroke="#111" stroke-width="1.5"/>
+  <line x1="95" y1="462" x2="125" y2="506" stroke="#111" stroke-width="1.5"/>
+  <text x="95" y="542" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="95" dy="0">Администратор</tspan></text>
+</g>
+  <g id="agent">
+  <circle cx="1505" cy="396" r="12" fill="#fff" stroke="#111" stroke-width="1.5"/>
+  <line x1="1505" y1="408" x2="1505" y2="462" stroke="#111" stroke-width="1.5"/>
+  <line x1="1471" y1="430" x2="1539" y2="430" stroke="#111" stroke-width="1.5"/>
+  <line x1="1505" y1="462" x2="1475" y2="506" stroke="#111" stroke-width="1.5"/>
+  <line x1="1505" y1="462" x2="1535" y2="506" stroke="#111" stroke-width="1.5"/>
+  <text x="1505" y="542" text-anchor="middle" font-size="20" font-weight="400" fill="#111"><tspan x="1505" dy="0">Endpoint-агент</tspan></text>
+</g>
+</svg>

@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1850" height="1000" viewBox="0 0 1850 1000">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#111"/>
+    </marker>
+    <style>
+      .bg { fill: #ffffff; }
+      .zone { fill: #f7f7f7; stroke: #111111; stroke-width: 1.2; }
+      .frame { fill: #ffffff; stroke: #111111; stroke-width: 1.35; }
+      .subframe { fill: none; stroke: #111111; stroke-width: 1.25; }
+      .component { fill: #ffffff; stroke: #111111; stroke-width: 1.45; }
+      .client { fill: #ffffff; stroke: #111111; stroke-width: 1.45; }
+      .ui { fill: #f3f7ff; stroke: #111111; stroke-width: 1.45; }
+      .gateway { fill: #fffbe8; stroke: #111111; stroke-width: 1.45; }
+      .domain { fill: #ffffff; stroke: #111111; stroke-width: 1.45; }
+      .accent { fill: #f3fff3; stroke: #111111; stroke-width: 1.45; }
+      .infra { fill: #fffbe8; stroke: #111111; stroke-width: 1.45; }
+      .obs { fill: #fff4f4; stroke: #111111; stroke-width: 1.45; }
+      .db { fill: #ffffff; stroke: #111111; stroke-width: 1.45; }
+      .line { fill: none; stroke: #111111; stroke-width: 1.35; stroke-linecap: square; stroke-linejoin: miter; marker-end: url(#arrow); }
+      .dashed { fill: none; stroke: #111111; stroke-width: 1.15; stroke-dasharray: 7 5; stroke-linecap: square; stroke-linejoin: miter; marker-end: url(#arrow); }
+      .plain { fill: none; stroke: #111111; stroke-width: 1.2; stroke-linecap: square; stroke-linejoin: miter; }
+      .title { font-family: "Times New Roman", serif; font-size: 25px; font-weight: bold; fill: #111111; }
+      .zone-title { font-family: "Times New Roman", serif; font-size: 17px; font-weight: bold; fill: #111111; }
+      .comp-title { font-family: "Times New Roman", serif; font-size: 16px; font-weight: bold; fill: #111111; }
+      .text { font-family: "Times New Roman", serif; font-size: 14px; fill: #111111; }
+      .small { font-family: "Times New Roman", serif; font-size: 13px; fill: #111111; }
+      .label-bg { fill: #ffffff; stroke: none; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1850" height="1000"/>
+  <text class="title" x="925" y="42" text-anchor="middle">Компонентная схема информационной системы учета и анализа компьютерной активности пользователей</text>
+
+  <!-- Main zones -->
+  <rect class="zone" x="35" y="85" width="305" height="785" rx="8" ry="8"/>
+  <text class="zone-title" x="187" y="116" text-anchor="middle">Внешние участники</text>
+
+  <rect class="zone" x="390" y="85" width="1030" height="785" rx="8" ry="8"/>
+  <text class="zone-title" x="905" y="116" text-anchor="middle">Компоненты информационной системы</text>
+
+  <rect class="zone" x="1480" y="85" width="335" height="785" rx="8" ry="8"/>
+  <text class="zone-title" x="1648" y="116" text-anchor="middle">Инфраструктура</text>
+
+  <!-- External components -->
+  <rect class="client" x="70" y="155" width="235" height="95" rx="6" ry="6"/>
+  <rect class="client" x="92" y="171" width="23" height="15"/>
+  <rect class="client" x="92" y="193" width="23" height="15"/>
+  <text class="comp-title" x="188" y="183" text-anchor="middle">Администратор</text>
+  <text class="text" x="188" y="211" text-anchor="middle">веб-браузер</text>
+  <text class="small" x="188" y="232" text-anchor="middle">панель управления</text>
+
+  <rect class="client" x="70" y="395" width="235" height="160" rx="6" ry="6"/>
+  <rect class="client" x="92" y="411" width="23" height="15"/>
+  <rect class="client" x="92" y="433" width="23" height="15"/>
+  <text class="comp-title" x="188" y="423" text-anchor="middle">Рабочая станция</text>
+  <text class="text" x="188" y="450" text-anchor="middle">пользователя</text>
+  <rect class="ui" x="98" y="480" width="180" height="55" rx="5" ry="5"/>
+  <text class="text" x="188" y="502" text-anchor="middle">LocalEndpointAgent</text>
+  <text class="small" x="188" y="522" text-anchor="middle">сбор событий</text>
+
+  <!-- Frontend and Gateway -->
+  <rect class="ui" x="445" y="150" width="255" height="105" rx="6" ry="6"/>
+  <rect class="ui" x="467" y="166" width="23" height="15"/>
+  <rect class="ui" x="467" y="188" width="23" height="15"/>
+  <text class="comp-title" x="573" y="181" text-anchor="middle">Frontend</text>
+  <text class="text" x="573" y="208" text-anchor="middle">React SPA + Nginx</text>
+  <text class="small" x="573" y="230" text-anchor="middle">Dashboard, Users, Agents, Reports</text>
+
+  <rect class="gateway" x="795" y="150" width="270" height="105" rx="6" ry="6"/>
+  <rect class="gateway" x="817" y="166" width="23" height="15"/>
+  <rect class="gateway" x="817" y="188" width="23" height="15"/>
+  <text class="comp-title" x="930" y="181" text-anchor="middle">API Gateway</text>
+  <text class="text" x="930" y="208" text-anchor="middle">ASP.NET Core REST API</text>
+  <text class="small" x="930" y="230" text-anchor="middle">JWT, RBAC, audit, SSE</text>
+
+  <!-- Backend services frame -->
+  <rect class="frame" x="435" y="315" width="930" height="485" rx="7" ry="7"/>
+  <text class="zone-title" x="900" y="345" text-anchor="middle">Доменный backend</text>
+
+  <!-- gRPC bus -->
+  <path class="plain" d="M520 370 H1240"/>
+  <text class="small" x="1264" y="374">gRPC</text>
+
+  <rect class="domain" x="475" y="405" width="220" height="82" rx="5" ry="5"/>
+  <rect class="domain" x="494" y="418" width="20" height="13"/>
+  <rect class="domain" x="494" y="437" width="20" height="13"/>
+  <text class="comp-title" x="585" y="431" text-anchor="middle">AuthService</text>
+  <text class="small" x="585" y="456" text-anchor="middle">логин, роли</text>
+  <text class="small" x="585" y="475" text-anchor="middle">сессии, токены</text>
+
+  <rect class="domain" x="760" y="405" width="220" height="82" rx="5" ry="5"/>
+  <rect class="domain" x="779" y="418" width="20" height="13"/>
+  <rect class="domain" x="779" y="437" width="20" height="13"/>
+  <text class="comp-title" x="870" y="431" text-anchor="middle">UserService</text>
+  <text class="small" x="870" y="456" text-anchor="middle">пользователи</text>
+  <text class="small" x="870" y="475" text-anchor="middle">рабочие станции</text>
+
+  <rect class="accent" x="1045" y="405" width="240" height="82" rx="5" ry="5"/>
+  <rect class="accent" x="1064" y="418" width="20" height="13"/>
+  <rect class="accent" x="1064" y="437" width="20" height="13"/>
+  <text class="comp-title" x="1165" y="431" text-anchor="middle">ActivityService</text>
+  <text class="small" x="1165" y="456" text-anchor="middle">прием активности</text>
+  <text class="small" x="1165" y="475" text-anchor="middle">оценка риска, аномалии</text>
+
+  <rect class="accent" x="475" y="565" width="220" height="82" rx="5" ry="5"/>
+  <rect class="accent" x="494" y="578" width="20" height="13"/>
+  <rect class="accent" x="494" y="597" width="20" height="13"/>
+  <text class="comp-title" x="585" y="591" text-anchor="middle">AgentManagement</text>
+  <text class="small" x="585" y="616" text-anchor="middle">регистрация агентов</text>
+  <text class="small" x="585" y="635" text-anchor="middle">политики и команды</text>
+
+  <rect class="domain" x="760" y="565" width="220" height="82" rx="5" ry="5"/>
+  <rect class="domain" x="779" y="578" width="20" height="13"/>
+  <rect class="domain" x="779" y="597" width="20" height="13"/>
+  <text class="comp-title" x="870" y="591" text-anchor="middle">MetricsService</text>
+  <text class="small" x="870" y="616" text-anchor="middle">агрегации</text>
+  <text class="small" x="870" y="635" text-anchor="middle">правила списков</text>
+
+  <rect class="domain" x="1045" y="565" width="240" height="82" rx="5" ry="5"/>
+  <rect class="domain" x="1064" y="578" width="20" height="13"/>
+  <rect class="domain" x="1064" y="597" width="20" height="13"/>
+  <text class="comp-title" x="1165" y="591" text-anchor="middle">NotificationService</text>
+  <text class="small" x="1165" y="616" text-anchor="middle">уведомления</text>
+  <text class="small" x="1165" y="635" text-anchor="middle">доставка и retry</text>
+
+  <rect class="domain" x="760" y="705" width="220" height="72" rx="5" ry="5"/>
+  <rect class="domain" x="779" y="716" width="20" height="13"/>
+  <rect class="domain" x="779" y="735" width="20" height="13"/>
+  <text class="comp-title" x="870" y="734" text-anchor="middle">ReportService</text>
+  <text class="small" x="870" y="758" text-anchor="middle">отчеты и экспорт</text>
+
+  <!-- grouped event consumers frame -->
+  <rect class="subframe" x="735" y="540" width="575" height="250" rx="5" ry="5"/>
+  <text class="small" x="1022" y="665" text-anchor="middle">потребители событий RabbitMQ</text>
+
+  <!-- Infrastructure components -->
+  <rect class="infra" x="1525" y="220" width="245" height="105" rx="6" ry="6"/>
+  <rect class="infra" x="1547" y="236" width="23" height="15"/>
+  <rect class="infra" x="1547" y="258" width="23" height="15"/>
+  <text class="comp-title" x="1648" y="250" text-anchor="middle">RabbitMQ</text>
+  <text class="text" x="1648" y="277" text-anchor="middle">брокер сообщений</text>
+  <text class="small" x="1648" y="299" text-anchor="middle">activity.created, anomaly.detected</text>
+
+  <path class="db" d="M1525 415 C1525 395 1770 395 1770 415 V610 C1770 630 1525 630 1525 610 Z"/>
+  <path class="db" d="M1525 415 C1525 435 1770 435 1770 415"/>
+  <text class="comp-title" x="1648" y="458" text-anchor="middle">PostgreSQL</text>
+  <text class="text" x="1648" y="488" text-anchor="middle">раздельные БД сервисов</text>
+  <text class="small" x="1648" y="515" text-anchor="middle">activities, auth, users</text>
+  <text class="small" x="1648" y="536" text-anchor="middle">metrics, notifications</text>
+  <text class="small" x="1648" y="557" text-anchor="middle">reports, agents</text>
+
+  <rect class="obs" x="1525" y="690" width="245" height="88" rx="6" ry="6"/>
+  <rect class="obs" x="1547" y="705" width="23" height="15"/>
+  <rect class="obs" x="1547" y="727" width="23" height="15"/>
+  <text class="comp-title" x="1648" y="720" text-anchor="middle">Prometheus</text>
+  <text class="text" x="1648" y="748" text-anchor="middle">сбор метрик</text>
+  <text class="small" x="1648" y="768" text-anchor="middle">backend + RabbitMQ</text>
+
+  <rect class="obs" x="1525" y="812" width="245" height="58" rx="6" ry="6"/>
+  <rect class="obs" x="1547" y="823" width="23" height="15"/>
+  <rect class="obs" x="1547" y="842" width="23" height="15"/>
+  <text class="comp-title" x="1648" y="844" text-anchor="middle">Grafana</text>
+  <text class="small" x="1648" y="863" text-anchor="middle">дашборды наблюдаемости</text>
+
+  <!-- Communication lines -->
+  <path class="line" d="M305 202 H445"/>
+  <rect class="label-bg" x="354" y="179" width="52" height="18"/>
+  <text class="small" x="380" y="192" text-anchor="middle">HTTPS</text>
+
+  <path class="line" d="M700 202 H795"/>
+  <rect class="label-bg" x="725" y="179" width="48" height="18"/>
+  <text class="small" x="749" y="192" text-anchor="middle">REST</text>
+
+  <path class="line" d="M930 255 V370"/>
+  <rect class="label-bg" x="944" y="300" width="52" height="18"/>
+  <text class="small" x="970" y="313" text-anchor="middle">gRPC</text>
+
+  <!-- short arrows from gRPC bus to services -->
+  <path class="line" d="M585 370 V405"/>
+  <path class="line" d="M870 370 V405"/>
+  <path class="line" d="M1165 370 V405"/>
+
+  <!-- Agent communications -->
+  <path class="line" d="M305 508 H360 V360 H1165 V405"/>
+  <rect class="label-bg" x="392" y="337" width="122" height="18"/>
+  <text class="small" x="453" y="350" text-anchor="middle">события активности</text>
+
+  <path class="line" d="M305 532 H360 V606 H475"/>
+  <rect class="label-bg" x="360" y="582" width="104" height="18"/>
+  <text class="small" x="412" y="595" text-anchor="middle">политики, команды</text>
+
+  <!-- RabbitMQ and consumers -->
+  <path class="line" d="M1285 446 H1405 V273 H1525"/>
+  <rect class="label-bg" x="1382" y="248" width="92" height="18"/>
+  <text class="small" x="1428" y="261" text-anchor="middle">события Outbox</text>
+
+  <path class="line" d="M1525 300 H1410 V620 H1310"/>
+  <rect class="label-bg" x="1370" y="596" width="74" height="18"/>
+  <text class="small" x="1407" y="609" text-anchor="middle">публикация</text>
+
+  <!-- Persistence -->
+  <path class="line" d="M1365 640 H1440 V512 H1525"/>
+  <rect class="label-bg" x="1410" y="486" width="94" height="18"/>
+  <text class="small" x="1457" y="499" text-anchor="middle">хранение данных</text>
+
+  <!-- Observability -->
+  <path class="dashed" d="M1525 735 H1420 V760 H1365"/>
+  <rect class="label-bg" x="1418" y="712" width="94" height="18"/>
+  <text class="small" x="1465" y="725" text-anchor="middle">метрики / health</text>
+
+  <path class="dashed" d="M1770 734 H1794 V325 H1770"/>
+  <path class="line" d="M1648 778 V812"/>
+</svg>

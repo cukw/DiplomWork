@@ -73,6 +73,10 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 ```
 
 ## Сборка пакетов
+- Продовые пакеты для Windows, Linux и macOS собираются в GitHub Actions workflow `Local Endpoint Agent Packages`.
+- Для prod/release сборки в репозитории должен быть secret `AGENT_AUTH_TOKEN`; он зашивается в agent artifact вместе с prod URL.
+- Workflow запускается автоматически на `push`/tag и вручную через `workflow_dispatch`. Из shell его можно запустить командой:
+  - `gh workflow run "Local Endpoint Agent Packages"`
 - macOS (бинарник + dmg):
   - `bash LocalEndpointAgent/scripts/build_macos_dmg.sh`
 - Linux (.deb + бинарник, через Docker):
@@ -90,6 +94,16 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 
 Ограничение:
 - Docker-скрипт `build_windows_exe.sh` не поддерживается на ARM-хостах (macOS ARM/Linux ARM) из-за ограничений wine+эмуляции. Для Windows `.exe` используйте `build_windows_exe.ps1` на Windows или CI.
+
+## Продовая установка на рабочий ПК
+- Администратор скачивает нужный артефакт из GitHub Actions или release assets:
+  - Windows: `local-endpoint-agent-windows`
+  - Linux: `local-endpoint-agent-linux`
+  - macOS: `local-endpoint-agent-macos`
+- Администратор устанавливает/запускает агент на корпоративном ПК.
+- Установка не авторизует пользователя и не требует от пользователя командной строки.
+- При первом запуске агент сам открывает окно логина; пользователь вводит свои `username/password`.
+- После успешного логина агент сохраняет только `computer_id`, `user_id`, `session_id`, `session_expires_at` и refresh token. Пароль не сохраняется.
 
 ## Кроссплатформенный установщик (Linux / macOS / Windows)
 Добавлен единый установщик:
@@ -112,10 +126,10 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 
 ```bash
 python3 LocalEndpointAgent/scripts/install_agent.py \
-  --computer-id 1 \
-  --user-id 1 \
-  --activity-service-url localhost:5001 \
-  --agent-management-url localhost:5015
+  --gateway-url https://2.26.89.86 \
+  --activity-service-url 2.26.89.86:5001 \
+  --agent-management-url 2.26.89.86:5015 \
+  --agent-auth-token "$AGENT_AUTH_TOKEN"
 ```
 
 Полезные опции:

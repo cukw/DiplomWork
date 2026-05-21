@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1050" viewBox="0 0 1500 1050">
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#222"/></marker></defs>
+<rect width="100%" height="100%" fill="white"/>
+<text x="750.0" y="30" font-family="Times New Roman, Arial, sans-serif" font-size="20" font-weight="700" text-anchor="middle" dominant-baseline="middle">Компонентная схема системы мониторинга активности пользователей</text>
+<rect x="45" y="70" width="560" height="130" rx="3" ry="3" fill="white" stroke="#222" stroke-width="2"/>
+<text x="55" y="94" font-family="Times New Roman, Arial, sans-serif" font-size="18" font-weight="700" text-anchor="start" dominant-baseline="middle">Клиентская часть</text>
+<rect x="760" y="70" width="500" height="130" rx="3" ry="3" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="94" font-family="Times New Roman, Arial, sans-serif" font-size="18" font-weight="700" text-anchor="start" dominant-baseline="middle">Агентская часть</text>
+<rect x="45" y="240" width="560" height="155" rx="3" ry="3" fill="white" stroke="#222" stroke-width="2"/>
+<text x="55" y="264" font-family="Times New Roman, Arial, sans-serif" font-size="18" font-weight="700" text-anchor="start" dominant-baseline="middle">Серверная часть API</text>
+<rect x="45" y="430" width="1065" height="245" rx="3" ry="3" fill="white" stroke="#222" stroke-width="2"/>
+<text x="55" y="454" font-family="Times New Roman, Arial, sans-serif" font-size="18" font-weight="700" text-anchor="start" dominant-baseline="middle">Доменный слой backend-сервисов</text>
+<rect x="1150" y="430" width="300" height="245" rx="3" ry="3" fill="white" stroke="#222" stroke-width="2"/>
+<text x="1160" y="454" font-family="Times New Roman, Arial, sans-serif" font-size="18" font-weight="700" text-anchor="start" dominant-baseline="middle">Событийный слой</text>
+<rect x="45" y="720" width="1065" height="285" rx="3" ry="3" fill="white" stroke="#222" stroke-width="2"/>
+<text x="55" y="744" font-family="Times New Roman, Arial, sans-serif" font-size="18" font-weight="700" text-anchor="start" dominant-baseline="middle">Слой хранения</text>
+<rect x="1150" y="720" width="300" height="285" rx="3" ry="3" fill="white" stroke="#222" stroke-width="2"/>
+<text x="1160" y="744" font-family="Times New Roman, Arial, sans-serif" font-size="18" font-weight="700" text-anchor="start" dominant-baseline="middle">Наблюдаемость</text>
+<rect x="100" y="115" width="185" height="55" rx="6" ry="6" fill="#f6f6f6" stroke="#444" stroke-width="1.4"/>
+<rect x="263" y="123" width="13" height="10" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="260" y="126" width="13" height="10" fill="none" stroke="#aaa" stroke-width="1"/>
+<text x="192.5" y="134.8" font-family="Times New Roman, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" dominant-baseline="middle">Администратор</text>
+<text x="192.5" y="150.48000000000002" font-family="Times New Roman, Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle" dominant-baseline="middle">браузер</text>
+<rect x="380" y="105" width="190" height="75" rx="6" ry="6" fill="#f6f6f6" stroke="#444" stroke-width="1.4"/>
+<rect x="548" y="113" width="13" height="10" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="545" y="116" width="13" height="10" fill="none" stroke="#aaa" stroke-width="1"/>
+<text x="475.0" y="129.3" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">Web-приложение</text>
+<text x="475.0" y="142.74" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">React SPA + Nginx</text>
+<text x="475.0" y="156.18" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">Dashboard, Analytics, Reports</text>
+<rect x="890" y="105" width="240" height="75" rx="6" ry="6" fill="#f6f6f6" stroke="#444" stroke-width="1.4"/>
+<rect x="1108" y="113" width="13" height="10" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1105" y="116" width="13" height="10" fill="none" stroke="#aaa" stroke-width="1"/>
+<text x="1010.0" y="128.2" font-family="Times New Roman, Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle" dominant-baseline="middle">LocalEndpointAgent</text>
+<text x="1010.0" y="142.76" font-family="Times New Roman, Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle" dominant-baseline="middle">сбор телеметрии</text>
+<text x="1010.0" y="157.32" font-family="Times New Roman, Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle" dominant-baseline="middle">локальный контроль</text>
+<rect x="235" y="290" width="190" height="70" rx="6" ry="6" fill="#f6f6f6" stroke="#444" stroke-width="1.4"/>
+<rect x="403" y="298" width="13" height="10" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="400" y="301" width="13" height="10" fill="none" stroke="#aaa" stroke-width="1"/>
+<text x="330.0" y="310.7" font-family="Times New Roman, Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle" dominant-baseline="middle">API Gateway</text>
+<text x="330.0" y="325.26" font-family="Times New Roman, Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle" dominant-baseline="middle">REST API</text>
+<text x="330.0" y="339.82" font-family="Times New Roman, Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle" dominant-baseline="middle">JWT, RBAC, audit</text>
+<rect x="85" y="485" width="150" height="70" rx="6" ry="6" fill="#f6f6f6" stroke="#444" stroke-width="1.4"/>
+<rect x="213" y="493" width="13" height="10" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="210" y="496" width="13" height="10" fill="none" stroke="#aaa" stroke-width="1"/>
+<text x="160.0" y="506.8" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">AuthService</text>
+<text x="160.0" y="520.24" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">логин, сессии</text>
+<text x="160.0" y="533.6800000000001" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">роли, JWT</text>
+<rect x="260" y="485" width="150" height="70" rx="6" ry="6" fill="#f6f6f6" stroke="#444" stroke-width="1.4"/>
+<rect x="388" y="493" width="13" height="10" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="385" y="496" width="13" height="10" fill="none" stroke="#aaa" stroke-width="1"/>
+<text x="335.0" y="506.8" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">UserService</text>
+<text x="335.0" y="520.24" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">пользователи</text>
+<text x="335.0" y="533.6800000000001" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">рабочие станции</text>
+<rect x="435" y="485" width="170" height="70" rx="6" ry="6" fill="#f6f6f6" stroke="#444" stroke-width="1.4"/>
+<rect x="583" y="493" width="13" height="10" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="580" y="496" width="13" height="10" fill="none" stroke="#aaa" stroke-width="1"/>
+<text x="520.0" y="506.8" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">ActivityService</text>
+<text x="520.0" y="520.24" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">активность</text>
+<text x="520.0" y="533.6800000000001" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">риск, аномалии</text>
+<rect x="640" y="485" width="200" height="70" rx="6" ry="6" fill="#f6f6f6" stroke="#444" stroke-width="1.4"/>
+<rect x="818" y="493" width="13" height="10" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="815" y="496" width="13" height="10" fill="none" stroke="#aaa" stroke-width="1"/>
+<text x="740.0" y="506.8" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">AgentManagementService</text>
+<text x="740.0" y="520.24" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">регистрация, heartbeat</text>
+<text x="740.0" y="533.6800000000001" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">политики и команды</text>
+<rect x="875" y="485" width="150" height="70" rx="6" ry="6" fill="#f6f6f6" stroke="#444" stroke-width="1.4"/>
+<rect x="1003" y="493" width="13" height="10" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1000" y="496" width="13" height="10" fill="none" stroke="#aaa" stroke-width="1"/>
+<text x="950.0" y="506.8" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">MetricsService</text>
+<text x="950.0" y="520.24" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">метрики</text>
+<text x="950.0" y="533.6800000000001" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">агрегации</text>
+<rect x="260" y="590" width="170" height="55" rx="6" ry="6" fill="#f6f6f6" stroke="#444" stroke-width="1.4"/>
+<rect x="408" y="598" width="13" height="10" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="405" y="601" width="13" height="10" fill="none" stroke="#aaa" stroke-width="1"/>
+<text x="345.0" y="604.3" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">NotificationService</text>
+<text x="345.0" y="617.74" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">уведомления</text>
+<text x="345.0" y="631.18" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">retry</text>
+<rect x="875" y="590" width="150" height="55" rx="6" ry="6" fill="#f6f6f6" stroke="#444" stroke-width="1.4"/>
+<rect x="1003" y="598" width="13" height="10" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1000" y="601" width="13" height="10" fill="none" stroke="#aaa" stroke-width="1"/>
+<text x="950.0" y="604.3" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">ReportService</text>
+<text x="950.0" y="617.74" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">отчеты</text>
+<text x="950.0" y="631.18" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">export</text>
+<rect x="1225" y="515" width="150" height="75" rx="6" ry="6" fill="#f6f6f6" stroke="#444" stroke-width="1.4"/>
+<rect x="1353" y="523" width="13" height="10" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1350" y="526" width="13" height="10" fill="none" stroke="#aaa" stroke-width="1"/>
+<text x="1300.0" y="539.3" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">RabbitMQ</text>
+<text x="1300.0" y="552.74" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">activity.created</text>
+<text x="1300.0" y="566.18" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">activity.anomaly.detected</text>
+<rect x="1225" y="780" width="150" height="70" rx="6" ry="6" fill="#f6f6f6" stroke="#444" stroke-width="1.4"/>
+<rect x="1353" y="788" width="13" height="10" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1350" y="791" width="13" height="10" fill="none" stroke="#aaa" stroke-width="1"/>
+<text x="1300.0" y="807.85" font-family="Times New Roman, Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle" dominant-baseline="middle">Prometheus</text>
+<text x="1300.0" y="822.4100000000001" font-family="Times New Roman, Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle" dominant-baseline="middle">метрики сервисов</text>
+<rect x="1225" y="900" width="150" height="70" rx="6" ry="6" fill="#f6f6f6" stroke="#444" stroke-width="1.4"/>
+<rect x="1353" y="908" width="13" height="10" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1350" y="911" width="13" height="10" fill="none" stroke="#aaa" stroke-width="1"/>
+<text x="1300.0" y="927.85" font-family="Times New Roman, Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle" dominant-baseline="middle">Grafana</text>
+<text x="1300.0" y="942.4100000000001" font-family="Times New Roman, Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle" dominant-baseline="middle">дашборды</text>
+<path d="M70,798 C70,783 185,783 185,798 L185,867 C185,882 70,882 70,867 Z" fill="white" stroke="#444" stroke-width="1.4"/>
+<ellipse cx="127.5" cy="798" rx="57.5" ry="13" fill="white" stroke="#444" stroke-width="1.4"/>
+<text x="127.5" y="825.62" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">Auth DB</text>
+<text x="127.5" y="837.72" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">users, roles</text>
+<text x="127.5" y="849.82" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">sessions</text>
+<path d="M200,798 C200,783 315,783 315,798 L315,867 C315,882 200,882 200,867 Z" fill="white" stroke="#444" stroke-width="1.4"/>
+<ellipse cx="257.5" cy="798" rx="57.5" ry="13" fill="white" stroke="#444" stroke-width="1.4"/>
+<text x="257.5" y="825.62" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">User DB</text>
+<text x="257.5" y="837.72" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">profiles</text>
+<text x="257.5" y="849.82" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">computers</text>
+<path d="M330,798 C330,783 445,783 445,798 L445,867 C445,882 330,882 330,867 Z" fill="white" stroke="#444" stroke-width="1.4"/>
+<ellipse cx="387.5" cy="798" rx="57.5" ry="13" fill="white" stroke="#444" stroke-width="1.4"/>
+<text x="387.5" y="819.68" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">Activity DB</text>
+<text x="387.5" y="831.78" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">activities</text>
+<text x="387.5" y="843.88" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">anomalies</text>
+<text x="387.5" y="855.9799999999999" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">outbox</text>
+<path d="M475,798 C475,783 590,783 590,798 L590,867 C590,882 475,882 475,867 Z" fill="white" stroke="#444" stroke-width="1.4"/>
+<ellipse cx="532.5" cy="798" rx="57.5" ry="13" fill="white" stroke="#444" stroke-width="1.4"/>
+<text x="532.5" y="819.68" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">Agent DB</text>
+<text x="532.5" y="831.78" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">agents</text>
+<text x="532.5" y="843.88" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">policies</text>
+<text x="532.5" y="855.9799999999999" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">commands</text>
+<path d="M635,798 C635,783 750,783 750,798 L750,867 C750,882 635,882 635,867 Z" fill="white" stroke="#444" stroke-width="1.4"/>
+<ellipse cx="692.5" cy="798" rx="57.5" ry="13" fill="white" stroke="#444" stroke-width="1.4"/>
+<text x="692.5" y="819.68" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">Metrics DB</text>
+<text x="692.5" y="831.78" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">metrics</text>
+<text x="692.5" y="843.88" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">blacklist</text>
+<text x="692.5" y="855.9799999999999" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">whitelist</text>
+<path d="M800,798 C800,783 915,783 915,798 L915,867 C915,882 800,882 800,867 Z" fill="white" stroke="#444" stroke-width="1.4"/>
+<ellipse cx="857.5" cy="798" rx="57.5" ry="13" fill="white" stroke="#444" stroke-width="1.4"/>
+<text x="857.5" y="825.62" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">Notification DB</text>
+<text x="857.5" y="837.72" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">notifications</text>
+<text x="857.5" y="849.82" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">inbox, DLQ</text>
+<path d="M955,798 C955,783 1070,783 1070,798 L1070,867 C1070,882 955,882 955,867 Z" fill="white" stroke="#444" stroke-width="1.4"/>
+<ellipse cx="1012.5" cy="798" rx="57.5" ry="13" fill="white" stroke="#444" stroke-width="1.4"/>
+<text x="1012.5" y="825.62" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">Report DB</text>
+<text x="1012.5" y="837.72" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">daily reports</text>
+<text x="1012.5" y="849.82" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">user stats</text>
+<path d="M70,923 C70,908 220,908 220,923 L220,967 C220,982 70,982 70,967 Z" fill="white" stroke="#444" stroke-width="1.4"/>
+<ellipse cx="145.0" cy="923" rx="75.0" ry="13" fill="white" stroke="#444" stroke-width="1.4"/>
+<text x="145.0" y="938.12" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">Gateway Runtime DB</text>
+<text x="145.0" y="950.22" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">RBAC, settings</text>
+<text x="145.0" y="962.32" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">audit</text>
+<path d="M905,923 C905,908 1060,908 1060,923 L1060,967 C1060,982 905,982 905,967 Z" fill="white" stroke="#444" stroke-width="1.4"/>
+<ellipse cx="982.5" cy="923" rx="77.5" ry="13" fill="white" stroke="#444" stroke-width="1.4"/>
+<text x="982.5" y="938.12" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">SQLite queue</text>
+<text x="982.5" y="950.22" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">локальный буфер</text>
+<text x="982.5" y="962.32" font-family="Times New Roman, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="middle" dominant-baseline="middle">endpoint-агента</text>
+<line x1="285" y1="142" x2="380" y2="142" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="332.5" y="134.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">HTTPS</text>
+<line x1="475" y1="180" x2="330" y2="290" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="402.5" y="227.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">REST /api</text>
+<line x1="330" y1="360" x2="330" y2="430" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="330.0" y="387.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">gRPC к backend</text>
+<line x1="1010" y1="180" x2="520" y2="485" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="765.0" y="324.5" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">CreateActivity</text>
+<line x1="1010" y1="180" x2="740" y2="485" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="875.0" y="324.5" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">register / heartbeat</text>
+<line x1="1010" y1="180" x2="982" y2="910" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="996.0" y="537.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">offline queue</text>
+<line x1="520" y1="555" x2="1225" y2="552" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="872.5" y="545.5" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">outbox publish</text>
+<line x1="1225" y1="590" x2="950" y2="590" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="1087.5" y="582.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">consume</text>
+<line x1="1225" y1="552" x2="950" y2="520" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="1087.5" y="528.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">consume</text>
+<line x1="1225" y1="590" x2="345" y2="590" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="785.0" y="582.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">consume</text>
+<line x1="1300" y1="590" x2="1300" y2="780" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="7,6"/>
+<text x="1300.0" y="677.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">scrape</text>
+<line x1="1300" y1="850" x2="1300" y2="900" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="1300.0" y="867.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">query</text>
+<line x1="160" y1="555" x2="128" y2="785" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="144.0" y="662.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">store</text>
+<line x1="335" y1="555" x2="258" y2="785" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="296.5" y="662.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">store</text>
+<line x1="520" y1="555" x2="388" y2="785" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="454.0" y="662.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">store</text>
+<line x1="740" y1="555" x2="532" y2="785" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="636.0" y="662.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">store</text>
+<line x1="950" y1="555" x2="692" y2="785" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="821.0" y="662.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">store</text>
+<line x1="345" y1="645" x2="858" y2="785" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="601.5" y="707.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">store</text>
+<line x1="950" y1="645" x2="1012" y2="785" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="981.0" y="707.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">store</text>
+<line x1="330" y1="360" x2="145" y2="910" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="237.5" y="627.0" font-family="Times New Roman, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="middle" dominant-baseline="middle">store</text>
+</svg>

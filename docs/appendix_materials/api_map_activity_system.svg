@@ -1,0 +1,200 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1400" viewBox="0 0 1900 1400">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#111111"/>
+    </marker>
+    <style>
+      .bg { fill: #ffffff; }
+      .zone { fill: #ffffff; stroke: #111111; stroke-width: 1.2; }
+      .box { fill: #ffffff; stroke: #111111; stroke-width: 1.35; }
+      .gateway { fill: #ffffff; stroke: #111111; stroke-width: 1.55; }
+      .header { fill: #efefef; stroke: #111111; stroke-width: 1.0; }
+      .line { fill: none; stroke: #111111; stroke-width: 1.25; stroke-linecap: square; stroke-linejoin: miter; marker-end: url(#arrow); }
+      .bus { fill: none; stroke: #111111; stroke-width: 1.15; stroke-linecap: square; stroke-linejoin: miter; }
+      .title { font-family: "Times New Roman", serif; font-size: 27px; font-weight: bold; fill: #111111; }
+      .zone-title { font-family: "Times New Roman", serif; font-size: 18px; font-weight: bold; fill: #111111; }
+      .box-title { font-family: "Times New Roman", serif; font-size: 16px; font-weight: bold; fill: #111111; }
+      .text { font-family: "Times New Roman", serif; font-size: 14px; fill: #111111; }
+      .small { font-family: "Times New Roman", serif; font-size: 13px; fill: #111111; }
+      .tiny { font-family: "Times New Roman", serif; font-size: 12px; fill: #111111; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1900" height="1400"/>
+  <text class="title" x="950" y="45" text-anchor="middle">Карта API системы учета и анализа компьютерной активности пользователей</text>
+
+  <rect class="zone" x="40" y="80" width="300" height="1250"/>
+  <rect class="zone" x="370" y="80" width="830" height="1250"/>
+  <rect class="zone" x="1230" y="80" width="630" height="1250"/>
+
+  <text class="zone-title" x="190" y="112" text-anchor="middle">Потребители API</text>
+  <text class="zone-title" x="785" y="112" text-anchor="middle">API Gateway и группы маршрутов</text>
+  <text class="zone-title" x="1545" y="112" text-anchor="middle">Сервисы, данные и результат</text>
+
+  <!-- API consumers -->
+  <rect class="box" x="80" y="145" width="220" height="112"/>
+  <rect class="header" x="80" y="145" width="220" height="30"/>
+  <text class="box-title" x="190" y="166" text-anchor="middle">Frontend React</text>
+  <text class="small" x="190" y="199" text-anchor="middle">административная панель</text>
+  <text class="tiny" x="190" y="224" text-anchor="middle">Dashboard, Users, Agents</text>
+  <text class="tiny" x="190" y="244" text-anchor="middle">Reports, Settings</text>
+
+  <rect class="box" x="80" y="300" width="220" height="112"/>
+  <rect class="header" x="80" y="300" width="220" height="30"/>
+  <text class="box-title" x="190" y="321" text-anchor="middle">Endpoint-агент</text>
+  <text class="small" x="190" y="354" text-anchor="middle">рабочая станция</text>
+  <text class="tiny" x="190" y="379" text-anchor="middle">синхронизация политик</text>
+  <text class="tiny" x="190" y="399" text-anchor="middle">и команд</text>
+
+  <rect class="box" x="80" y="455" width="220" height="112"/>
+  <rect class="header" x="80" y="455" width="220" height="30"/>
+  <text class="box-title" x="190" y="476" text-anchor="middle">Администратор</text>
+  <text class="small" x="190" y="509" text-anchor="middle">работа через браузер</text>
+  <text class="tiny" x="190" y="534" text-anchor="middle">JWT, роли, аудит</text>
+
+  <!-- Gateway -->
+  <rect class="gateway" x="610" y="145" width="350" height="118"/>
+  <rect class="header" x="610" y="145" width="350" height="32"/>
+  <text class="box-title" x="785" y="168" text-anchor="middle">REST API Gateway</text>
+  <text class="small" x="785" y="201" text-anchor="middle">единая точка входа в серверную часть</text>
+  <text class="tiny" x="785" y="227" text-anchor="middle">JWT-аутентификация, RBAC, аудит, SSE</text>
+  <text class="tiny" x="785" y="247" text-anchor="middle">/health, /gateway/info, /metrics</text>
+
+  <!-- Consumer-to-gateway connections -->
+  <path class="line" d="M300 201 H610"/>
+  <path class="line" d="M300 356 H540 V223 H610"/>
+  <path class="line" d="M300 511 H555 V245 H610"/>
+
+  <!-- Route bus -->
+  <path class="bus" d="M425 306 V1230"/>
+  <path class="bus" d="M785 263 V286 H425"/>
+  <text class="tiny" x="455" y="293">внутренняя маршрутизация REST</text>
+
+  <!-- Row 1 -->
+  <rect class="box" x="460" y="300" width="640" height="104"/>
+  <rect class="header" x="460" y="300" width="640" height="28"/>
+  <text class="box-title" x="780" y="320" text-anchor="middle">Auth API</text>
+  <text class="small" x="480" y="350">POST /api/auth/login, /register, /logout</text>
+  <text class="small" x="480" y="373">GET /api/auth/me</text>
+  <text class="tiny" x="480" y="394">назначение: вход в систему и получение профиля текущего пользователя</text>
+  <path class="line" d="M425 352 H460"/>
+
+  <rect class="box" x="1270" y="300" width="540" height="104"/>
+  <rect class="header" x="1270" y="300" width="540" height="28"/>
+  <text class="box-title" x="1540" y="320" text-anchor="middle">AuthService</text>
+  <text class="small" x="1290" y="350">данные: roles, auth_users, sessions</text>
+  <text class="small" x="1290" y="373">результат: JWT-токен, профиль, закрытие сессии</text>
+  <path class="line" d="M1100 352 H1270"/>
+
+  <!-- Row 2 -->
+  <rect class="box" x="460" y="425" width="640" height="104"/>
+  <rect class="header" x="460" y="425" width="640" height="28"/>
+  <text class="box-title" x="780" y="445" text-anchor="middle">Users API</text>
+  <text class="small" x="480" y="475">GET/POST /api/user/users</text>
+  <text class="small" x="480" y="498">GET/PUT/DELETE /api/user/users/{id}</text>
+  <text class="tiny" x="480" y="519">назначение: учет пользователей, отделов и привязанных компьютеров</text>
+  <path class="line" d="M425 477 H460"/>
+
+  <rect class="box" x="1270" y="425" width="540" height="104"/>
+  <rect class="header" x="1270" y="425" width="540" height="28"/>
+  <text class="box-title" x="1540" y="445" text-anchor="middle">UserService</text>
+  <text class="small" x="1290" y="475">данные: users, computers</text>
+  <text class="small" x="1290" y="498">результат: карточки пользователей и рабочих мест</text>
+  <path class="line" d="M1100 477 H1270"/>
+
+  <!-- Row 3 -->
+  <rect class="box" x="460" y="550" width="640" height="104"/>
+  <rect class="header" x="460" y="550" width="640" height="28"/>
+  <text class="box-title" x="780" y="570" text-anchor="middle">Agents API</text>
+  <text class="small" x="480" y="600">/api/agent/agents, /policy, /policy/versions</text>
+  <text class="small" x="480" y="623">/commands, /commands/block, /rollouts/*</text>
+  <text class="tiny" x="480" y="644">назначение: учет агентов, политики мониторинга, команды и обновления</text>
+  <path class="line" d="M425 602 H460"/>
+
+  <rect class="box" x="1270" y="550" width="540" height="104"/>
+  <rect class="header" x="1270" y="550" width="540" height="28"/>
+  <text class="box-title" x="1540" y="570" text-anchor="middle">AgentManagementService</text>
+  <text class="small" x="1290" y="600">данные: agents, agent_policies, policy_versions</text>
+  <text class="small" x="1290" y="623">результат: команды, версии политик, планы раскатки</text>
+  <path class="line" d="M1100 602 H1270"/>
+
+  <!-- Row 4 -->
+  <rect class="box" x="460" y="675" width="640" height="104"/>
+  <rect class="header" x="460" y="675" width="640" height="28"/>
+  <text class="box-title" x="780" y="695" text-anchor="middle">Activity, Dashboard, Search API</text>
+  <text class="small" x="480" y="725">/api/dashboard/stats, /activities, /anomalies</text>
+  <text class="small" x="480" y="748">/api/search/*, /api/live/stream</text>
+  <text class="tiny" x="480" y="769">назначение: просмотр активности, поиск событий, поток обновлений</text>
+  <path class="line" d="M425 727 H460"/>
+
+  <rect class="box" x="1270" y="675" width="540" height="104"/>
+  <rect class="header" x="1270" y="675" width="540" height="28"/>
+  <text class="box-title" x="1540" y="695" text-anchor="middle">ActivityService</text>
+  <text class="small" x="1290" y="725">данные: activities, anomalies, activities_archive</text>
+  <text class="small" x="1290" y="748">результат: события, аномалии, данные для дашборда</text>
+  <path class="line" d="M1100 727 H1270"/>
+
+  <!-- Row 5 -->
+  <rect class="box" x="460" y="800" width="640" height="104"/>
+  <rect class="header" x="460" y="800" width="640" height="28"/>
+  <text class="box-title" x="780" y="820" text-anchor="middle">Metrics and Lists API</text>
+  <text class="small" x="480" y="850">GET/POST /api/metrics/metrics</text>
+  <text class="small" x="480" y="873">/whitelist/{metricId}, /blacklist/{metricId}</text>
+  <text class="tiny" x="480" y="894">назначение: показатели активности, белые и черные списки</text>
+  <path class="line" d="M425 852 H460"/>
+
+  <rect class="box" x="1270" y="800" width="540" height="104"/>
+  <rect class="header" x="1270" y="800" width="540" height="28"/>
+  <text class="box-title" x="1540" y="820" text-anchor="middle">MetricsService</text>
+  <text class="small" x="1290" y="850">данные: metrics, whitelists, blacklists, rollups</text>
+  <text class="small" x="1290" y="873">результат: рассчитанные метрики и правила фильтрации</text>
+  <path class="line" d="M1100 852 H1270"/>
+
+  <!-- Row 6 -->
+  <rect class="box" x="460" y="925" width="640" height="104"/>
+  <rect class="header" x="460" y="925" width="640" height="28"/>
+  <text class="box-title" x="780" y="945" text-anchor="middle">Reports API</text>
+  <text class="small" x="480" y="975">GET /api/reports/daily, /weekly, /monthly, /custom</text>
+  <text class="small" x="480" y="998">POST /api/report/daily, /export; GET /summary</text>
+  <text class="tiny" x="480" y="1019">назначение: подготовка отчетов и выгрузка результатов анализа</text>
+  <path class="line" d="M425 977 H460"/>
+
+  <rect class="box" x="1270" y="925" width="540" height="104"/>
+  <rect class="header" x="1270" y="925" width="540" height="28"/>
+  <text class="box-title" x="1540" y="945" text-anchor="middle">ReportService</text>
+  <text class="small" x="1290" y="975">данные: daily_reports, user_stats, агрегаты</text>
+  <text class="small" x="1290" y="998">результат: отчеты, сводки, экспортируемые файлы</text>
+  <path class="line" d="M1100 977 H1270"/>
+
+  <!-- Row 7 -->
+  <rect class="box" x="460" y="1050" width="640" height="104"/>
+  <rect class="header" x="460" y="1050" width="640" height="28"/>
+  <text class="box-title" x="780" y="1070" text-anchor="middle">Notifications API</text>
+  <text class="small" x="480" y="1100">GET /api/notifications, /unread, /unread-count</text>
+  <text class="small" x="480" y="1123">PUT /read-all; POST/PUT /{id}/read; DELETE /{id}</text>
+  <text class="tiny" x="480" y="1144">назначение: доставка и обработка уведомлений об аномалиях</text>
+  <path class="line" d="M425 1102 H460"/>
+
+  <rect class="box" x="1270" y="1050" width="540" height="104"/>
+  <rect class="header" x="1270" y="1050" width="540" height="28"/>
+  <text class="box-title" x="1540" y="1070" text-anchor="middle">NotificationService</text>
+  <text class="small" x="1290" y="1100">данные: notifications, templates</text>
+  <text class="small" x="1290" y="1123">результат: непрочитанные события и подтверждения прочтения</text>
+  <path class="line" d="M1100 1102 H1270"/>
+
+  <!-- Row 8 -->
+  <rect class="box" x="460" y="1175" width="640" height="104"/>
+  <rect class="header" x="460" y="1175" width="640" height="28"/>
+  <text class="box-title" x="780" y="1195" text-anchor="middle">Administration and System API</text>
+  <text class="small" x="480" y="1225">/api/app-settings, /alert-rules, /rbac/matrix</text>
+  <text class="small" x="480" y="1248">/api/audit/events, /system/health, /downloads/{fileName}</text>
+  <text class="tiny" x="480" y="1269">назначение: настройки приложения, правила, права, аудит и служебные файлы</text>
+  <path class="line" d="M425 1227 H460"/>
+
+  <rect class="box" x="1270" y="1175" width="540" height="104"/>
+  <rect class="header" x="1270" y="1175" width="540" height="28"/>
+  <text class="box-title" x="1540" y="1195" text-anchor="middle">Gateway Runtime DB and Infrastructure</text>
+  <text class="small" x="1290" y="1225">данные: app_settings, alert_rules, role_permissions</text>
+  <text class="small" x="1290" y="1248">инфраструктура: PostgreSQL, RabbitMQ, Prometheus</text>
+  <path class="line" d="M1100 1227 H1270"/>
+</svg>

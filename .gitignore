@@ -36,6 +36,7 @@ Frontend/certs/privkey.pem
 LocalEndpointAgent/src/local_endpoint_agent.egg-info/
 LocalEndpointAgent/src/endpoint_agent/__pycache__/
 LocalEndpointAgent/src/endpoint_agent/protos/__pycache__/
+LocalEndpointAgent/src/endpoint_agent/embedded_config.py
 
 # Logs
 *.log

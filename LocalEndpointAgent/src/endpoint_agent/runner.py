@@ -102,6 +102,7 @@ class EndpointAgentRunner:
                 "agent_version": self.cfg.agent.version,
                 "device_name": self.cfg.agent.device_name,
                 "agent_user_id": self.cfg.agent.user_id,
+                "agent_session_id": self.cfg.agent.session_id,
                 "username": rust_bridge.current_username(),
                 "presence": "active",
                 "capabilities": self._caps,
@@ -386,6 +387,7 @@ class EndpointAgentRunner:
             event.agent_id = event.agent_id if event.agent_id is not None else self.agent_client.agent_id
             event.agent_version = event.agent_version or self.cfg.agent.version
             event.device_name = event.device_name or self.cfg.agent.device_name
+            event.details.setdefault("agent_session_id", self.cfg.agent.session_id)
             event.collector = event.collector or "unknown"
             event.event_id = event.event_id or str(uuid.uuid4())
             event.sequence = event.sequence or self.state_store.next_sequence()

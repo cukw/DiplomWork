@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1450" viewBox="0 0 1900 1450">
+  <rect width="1900" height="1450" fill="#fff"/>
+  <style>
+    svg { font-family: 'Times New Roman', Times, serif; }
+    .rel { stroke:#111; stroke-width:1.25; fill:none; }
+    .card { font-size:18px; fill:#111; font-weight:700; }
+  </style>
+  <path class="rel" d="M 360 205 L 430 205"/><text class="card" x="378" y="195" text-anchor="middle">1</text><text class="card" x="412" y="195" text-anchor="middle">*</text>
+<path class="rel" d="M 605 296 L 605 395"/><text class="card" x="588" y="318" text-anchor="middle">1</text><text class="card" x="588" y="382" text-anchor="middle">1</text>
+<path class="rel" d="M 430 235 L 410 235 L 410 515 L 390 515"/><text class="card" x="414" y="252" text-anchor="middle">1</text><text class="card" x="398" y="500" text-anchor="middle">*</text>
+<path class="rel" d="M 430 258 L 400 258 L 400 1030 L 390 1030"/><text class="card" x="414" y="276" text-anchor="middle">1</text><text class="card" x="407" y="1016" text-anchor="middle">*</text>
+<path class="rel" d="M 430 280 L 418 280 L 418 965 L 430 965"/><text class="card" x="428" y="300" text-anchor="middle">1</text><text class="card" x="428" y="948" text-anchor="middle">*</text>
+<path class="rel" d="M 430 625 L 422 625 L 422 1082 L 390 1082"/><text class="card" x="435" y="612" text-anchor="middle">1</text><text class="card" x="407" y="1068" text-anchor="middle">*</text>
+<path class="rel" d="M 780 540 L 880 540"/><text class="card" x="800" y="528" text-anchor="middle">1</text><text class="card" x="860" y="528" text-anchor="middle">1</text>
+<path class="rel" d="M 605 664 L 605 850"/><text class="card" x="588" y="686" text-anchor="middle">1</text><text class="card" x="588" y="835" text-anchor="middle">*</text>
+<path class="rel" d="M 880 625 L 840 625 L 840 965 L 810 965"/><text class="card" x="860" y="612" text-anchor="middle">1</text><text class="card" x="822" y="950" text-anchor="middle">*</text>
+<path class="rel" d="M 1240 470 L 1282 470 L 1282 350 L 1320 350"/><text class="card" x="1258" y="458" text-anchor="middle">1</text><text class="card" x="1302" y="338" text-anchor="middle">1</text>
+<path class="rel" d="M 1240 610 L 1282 610 L 1282 705 L 1320 705"/><text class="card" x="1258" y="598" text-anchor="middle">1</text><text class="card" x="1302" y="693" text-anchor="middle">*</text>
+<path class="rel" d="M 810 1010 L 880 1010"/><text class="card" x="830" y="998" text-anchor="middle">1</text><text class="card" x="858" y="998" text-anchor="middle">0..1</text>
+<path class="rel" d="M 1230 1030 L 1268 1030 L 1268 1115 L 1320 1115"/><text class="card" x="1248" y="1018" text-anchor="middle">1</text><text class="card" x="1302" y="1102" text-anchor="middle">*</text>
+<path class="rel" d="M 680 60 L 680 35 L 1745 35 L 1745 1115 L 1700 1115"/><text class="card" x="704" y="52" text-anchor="middle">1</text><text class="card" x="1722" y="1102" text-anchor="middle">*</text>
+  <g id="roles">
+    <rect x="60" y="80" width="300" height="147" fill="#d8d8d8" stroke="#111" stroke-width="1.5"/>
+    <rect x="60" y="80" width="300" height="42" fill="#fff" stroke="#111" stroke-width="1.5"/>
+    <text x="210" y="107" text-anchor="middle" font-size="18" fill="#111">Роли</text>
+    <line x1="60" y1="157" x2="360" y2="157" stroke="#111" stroke-width="1" stroke-dasharray="2 3"/>
+    <g><rect x="72" y="124.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="87" y="138.5" text-anchor="middle" font-size="11" fill="#fff">PK</text><text x="120" y="142.5" font-size="18" fill="#111">ID роли</text></g>
+<g><text x="120" y="173.5" font-size="18" fill="#111">Название</text></g>
+<g><text x="120" y="204.5" font-size="18" fill="#111">Описание</text></g>
+  </g>
+<g id="users">
+    <rect x="430" y="60" width="350" height="240" fill="#d8d8d8" stroke="#111" stroke-width="1.5"/>
+    <rect x="430" y="60" width="350" height="42" fill="#fff" stroke="#111" stroke-width="1.5"/>
+    <text x="605" y="87" text-anchor="middle" font-size="18" fill="#111">Пользователи системы</text>
+    <line x1="430" y1="261" x2="780" y2="261" stroke="#111" stroke-width="1" stroke-dasharray="2 3"/>
+    <g><rect x="442" y="104.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="457" y="118.5" text-anchor="middle" font-size="11" fill="#fff">PK</text><text x="490" y="122.5" font-size="18" fill="#111">ID пользователя</text></g>
+<g><text x="490" y="153.5" font-size="18" fill="#111">Логин</text></g>
+<g><text x="490" y="184.5" font-size="18" fill="#111">Email</text></g>
+<g><text x="490" y="215.5" font-size="18" fill="#111">Хеш пароля</text></g>
+<g><rect x="442" y="228.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="457" y="242.5" text-anchor="middle" font-size="11" fill="#fff">FK</text><text x="490" y="246.5" font-size="18" fill="#111">ID роли</text></g>
+<g><text x="490" y="277.5" font-size="18" fill="#111">Активность</text></g>
+  </g>
+<g id="audit">
+    <rect x="60" y="395" width="330" height="240" fill="#d8d8d8" stroke="#111" stroke-width="1.5"/>
+    <rect x="60" y="395" width="330" height="42" fill="#fff" stroke="#111" stroke-width="1.5"/>
+    <text x="225" y="422" text-anchor="middle" font-size="18" fill="#111">Журнал аудита</text>
+    <line x1="60" y1="503" x2="390" y2="503" stroke="#111" stroke-width="1" stroke-dasharray="2 3"/>
+    <g><rect x="72" y="439.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="87" y="453.5" text-anchor="middle" font-size="11" fill="#fff">PK</text><text x="120" y="457.5" font-size="18" fill="#111">ID записи</text></g>
+<g><rect x="72" y="470.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="87" y="484.5" text-anchor="middle" font-size="11" fill="#fff">FK</text><text x="120" y="488.5" font-size="18" fill="#111">ID администратора</text></g>
+<g><text x="120" y="519.5" font-size="18" fill="#111">Действие</text></g>
+<g><text x="120" y="550.5" font-size="18" fill="#111">Целевой объект</text></g>
+<g><text x="120" y="581.5" font-size="18" fill="#111">Результат</text></g>
+<g><text x="120" y="612.5" font-size="18" fill="#111">Дата и время</text></g>
+  </g>
+<g id="reports">
+    <rect x="60" y="910" width="330" height="271" fill="#d8d8d8" stroke="#111" stroke-width="1.5"/>
+    <rect x="60" y="910" width="330" height="42" fill="#fff" stroke="#111" stroke-width="1.5"/>
+    <text x="225" y="937" text-anchor="middle" font-size="18" fill="#111">Отчеты</text>
+    <line x1="60" y1="1049" x2="390" y2="1049" stroke="#111" stroke-width="1" stroke-dasharray="2 3"/>
+    <g><rect x="72" y="954.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="87" y="968.5" text-anchor="middle" font-size="11" fill="#fff">PK</text><text x="120" y="972.5" font-size="18" fill="#111">ID отчета</text></g>
+<g><rect x="72" y="985.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="87" y="999.5" text-anchor="middle" font-size="11" fill="#fff">FK</text><text x="120" y="1003.5" font-size="18" fill="#111">ID пользователя</text></g>
+<g><rect x="72" y="1016.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="87" y="1030.5" text-anchor="middle" font-size="11" fill="#fff">FK</text><text x="120" y="1034.5" font-size="18" fill="#111">ID станции</text></g>
+<g><text x="120" y="1065.5" font-size="18" fill="#111">Дата отчета</text></g>
+<g><text x="120" y="1096.5" font-size="18" fill="#111">Количество событий</text></g>
+<g><text x="120" y="1127.5" font-size="18" fill="#111">Количество аномалий</text></g>
+<g><text x="120" y="1158.5" font-size="18" fill="#111">Средний риск</text></g>
+  </g>
+<g id="computers">
+    <rect x="430" y="395" width="350" height="271" fill="#d8d8d8" stroke="#111" stroke-width="1.5"/>
+    <rect x="430" y="395" width="350" height="42" fill="#fff" stroke="#111" stroke-width="1.5"/>
+    <text x="605" y="422" text-anchor="middle" font-size="18" fill="#111">Рабочие станции</text>
+    <line x1="430" y1="503" x2="780" y2="503" stroke="#111" stroke-width="1" stroke-dasharray="2 3"/>
+    <g><rect x="442" y="439.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="457" y="453.5" text-anchor="middle" font-size="11" fill="#fff">PK</text><text x="490" y="457.5" font-size="18" fill="#111">ID станции</text></g>
+<g><rect x="442" y="470.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="457" y="484.5" text-anchor="middle" font-size="11" fill="#fff">FK</text><text x="490" y="488.5" font-size="18" fill="#111">ID пользователя</text></g>
+<g><text x="490" y="519.5" font-size="18" fill="#111">Имя хоста</text></g>
+<g><text x="490" y="550.5" font-size="18" fill="#111">IP-адрес</text></g>
+<g><text x="490" y="581.5" font-size="18" fill="#111">MAC-адрес</text></g>
+<g><text x="490" y="612.5" font-size="18" fill="#111">ОС</text></g>
+<g><text x="490" y="643.5" font-size="18" fill="#111">Статус</text></g>
+  </g>
+<g id="activities">
+    <rect x="430" y="850" width="380" height="364" fill="#d8d8d8" stroke="#111" stroke-width="1.5"/>
+    <rect x="430" y="850" width="380" height="42" fill="#fff" stroke="#111" stroke-width="1.5"/>
+    <text x="620" y="877" text-anchor="middle" font-size="18" fill="#111">События активности</text>
+    <line x1="430" y1="1020" x2="810" y2="1020" stroke="#111" stroke-width="1" stroke-dasharray="2 3"/>
+    <g><rect x="442" y="894.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="457" y="908.5" text-anchor="middle" font-size="11" fill="#fff">PK</text><text x="490" y="912.5" font-size="18" fill="#111">ID события</text></g>
+<g><rect x="442" y="925.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="457" y="939.5" text-anchor="middle" font-size="11" fill="#fff">FK</text><text x="490" y="943.5" font-size="18" fill="#111">ID пользователя</text></g>
+<g><rect x="442" y="956.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="457" y="970.5" text-anchor="middle" font-size="11" fill="#fff">FK</text><text x="490" y="974.5" font-size="18" fill="#111">ID станции</text></g>
+<g><rect x="442" y="987.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="457" y="1001.5" text-anchor="middle" font-size="11" fill="#fff">FK</text><text x="490" y="1005.5" font-size="18" fill="#111">ID агента</text></g>
+<g><text x="490" y="1036.5" font-size="18" fill="#111">Тип события</text></g>
+<g><text x="490" y="1067.5" font-size="18" fill="#111">Дата и время</text></g>
+<g><text x="490" y="1098.5" font-size="18" fill="#111">Процесс</text></g>
+<g><text x="490" y="1129.5" font-size="18" fill="#111">URL</text></g>
+<g><text x="490" y="1160.5" font-size="18" fill="#111">Оценка риска</text></g>
+<g><text x="490" y="1191.5" font-size="18" fill="#111">Данные JSON</text></g>
+  </g>
+<g id="agents">
+    <rect x="880" y="395" width="360" height="271" fill="#d8d8d8" stroke="#111" stroke-width="1.5"/>
+    <rect x="880" y="395" width="360" height="42" fill="#fff" stroke="#111" stroke-width="1.5"/>
+    <text x="1060" y="422" text-anchor="middle" font-size="18" fill="#111">Endpoint-агенты</text>
+    <line x1="880" y1="503" x2="1240" y2="503" stroke="#111" stroke-width="1" stroke-dasharray="2 3"/>
+    <g><rect x="892" y="439.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="907" y="453.5" text-anchor="middle" font-size="11" fill="#fff">PK</text><text x="940" y="457.5" font-size="18" fill="#111">ID агента</text></g>
+<g><rect x="892" y="470.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="907" y="484.5" text-anchor="middle" font-size="11" fill="#fff">FK</text><text x="940" y="488.5" font-size="18" fill="#111">ID станции</text></g>
+<g><text x="940" y="519.5" font-size="18" fill="#111">Версия</text></g>
+<g><text x="940" y="550.5" font-size="18" fill="#111">Статус</text></g>
+<g><text x="940" y="581.5" font-size="18" fill="#111">Последний heartbeat</text></g>
+<g><text x="940" y="612.5" font-size="18" fill="#111">Размер очереди</text></g>
+<g><text x="940" y="643.5" font-size="18" fill="#111">Диагностика</text></g>
+  </g>
+<g id="anomalies">
+    <rect x="880" y="850" width="350" height="240" fill="#d8d8d8" stroke="#111" stroke-width="1.5"/>
+    <rect x="880" y="850" width="350" height="42" fill="#fff" stroke="#111" stroke-width="1.5"/>
+    <text x="1055" y="877" text-anchor="middle" font-size="18" fill="#111">Аномалии</text>
+    <line x1="880" y1="958" x2="1230" y2="958" stroke="#111" stroke-width="1" stroke-dasharray="2 3"/>
+    <g><rect x="892" y="894.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="907" y="908.5" text-anchor="middle" font-size="11" fill="#fff">PK</text><text x="940" y="912.5" font-size="18" fill="#111">ID аномалии</text></g>
+<g><rect x="892" y="925.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="907" y="939.5" text-anchor="middle" font-size="11" fill="#fff">FK</text><text x="940" y="943.5" font-size="18" fill="#111">ID события</text></g>
+<g><text x="940" y="974.5" font-size="18" fill="#111">Тип аномалии</text></g>
+<g><text x="940" y="1005.5" font-size="18" fill="#111">Уровень риска</text></g>
+<g><text x="940" y="1036.5" font-size="18" fill="#111">Описание</text></g>
+<g><text x="940" y="1067.5" font-size="18" fill="#111">Дата выявления</text></g>
+  </g>
+<g id="policies">
+    <rect x="1320" y="190" width="380" height="302" fill="#d8d8d8" stroke="#111" stroke-width="1.5"/>
+    <rect x="1320" y="190" width="380" height="42" fill="#fff" stroke="#111" stroke-width="1.5"/>
+    <text x="1510" y="217" text-anchor="middle" font-size="18" fill="#111">Политики мониторинга</text>
+    <line x1="1320" y1="298" x2="1700" y2="298" stroke="#111" stroke-width="1" stroke-dasharray="2 3"/>
+    <g><rect x="1332" y="234.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="1347" y="248.5" text-anchor="middle" font-size="11" fill="#fff">PK</text><text x="1380" y="252.5" font-size="18" fill="#111">ID политики</text></g>
+<g><rect x="1332" y="265.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="1347" y="279.5" text-anchor="middle" font-size="11" fill="#fff">FK</text><text x="1380" y="283.5" font-size="18" fill="#111">ID агента</text></g>
+<g><text x="1380" y="314.5" font-size="18" fill="#111">Версия политики</text></g>
+<g><text x="1380" y="345.5" font-size="18" fill="#111">Интервал сбора</text></g>
+<g><text x="1380" y="376.5" font-size="18" fill="#111">Порог риска</text></g>
+<g><text x="1380" y="407.5" font-size="18" fill="#111">Белый список</text></g>
+<g><text x="1380" y="438.5" font-size="18" fill="#111">Черный список</text></g>
+<g><text x="1380" y="469.5" font-size="18" fill="#111">Подпись</text></g>
+  </g>
+<g id="commands">
+    <rect x="1320" y="570" width="380" height="271" fill="#d8d8d8" stroke="#111" stroke-width="1.5"/>
+    <rect x="1320" y="570" width="380" height="42" fill="#fff" stroke="#111" stroke-width="1.5"/>
+    <text x="1510" y="597" text-anchor="middle" font-size="18" fill="#111">Команды агентов</text>
+    <line x1="1320" y1="678" x2="1700" y2="678" stroke="#111" stroke-width="1" stroke-dasharray="2 3"/>
+    <g><rect x="1332" y="614.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="1347" y="628.5" text-anchor="middle" font-size="11" fill="#fff">PK</text><text x="1380" y="632.5" font-size="18" fill="#111">ID команды</text></g>
+<g><rect x="1332" y="645.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="1347" y="659.5" text-anchor="middle" font-size="11" fill="#fff">FK</text><text x="1380" y="663.5" font-size="18" fill="#111">ID агента</text></g>
+<g><text x="1380" y="694.5" font-size="18" fill="#111">Тип команды</text></g>
+<g><text x="1380" y="725.5" font-size="18" fill="#111">Статус</text></g>
+<g><text x="1380" y="756.5" font-size="18" fill="#111">Дата создания</text></g>
+<g><text x="1380" y="787.5" font-size="18" fill="#111">Попытки доставки</text></g>
+<g><text x="1380" y="818.5" font-size="18" fill="#111">Результат</text></g>
+  </g>
+<g id="notifications">
+    <rect x="1320" y="970" width="380" height="302" fill="#d8d8d8" stroke="#111" stroke-width="1.5"/>
+    <rect x="1320" y="970" width="380" height="42" fill="#fff" stroke="#111" stroke-width="1.5"/>
+    <text x="1510" y="997" text-anchor="middle" font-size="18" fill="#111">Уведомления</text>
+    <line x1="1320" y1="1109" x2="1700" y2="1109" stroke="#111" stroke-width="1" stroke-dasharray="2 3"/>
+    <g><rect x="1332" y="1014.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="1347" y="1028.5" text-anchor="middle" font-size="11" fill="#fff">PK</text><text x="1380" y="1032.5" font-size="18" fill="#111">ID уведомления</text></g>
+<g><rect x="1332" y="1045.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="1347" y="1059.5" text-anchor="middle" font-size="11" fill="#fff">FK</text><text x="1380" y="1063.5" font-size="18" fill="#111">ID пользователя</text></g>
+<g><rect x="1332" y="1076.5" width="30" height="20" fill="#666" stroke="#444" stroke-width="0.8"/><text x="1347" y="1090.5" text-anchor="middle" font-size="11" fill="#fff">FK</text><text x="1380" y="1094.5" font-size="18" fill="#111">ID аномалии</text></g>
+<g><text x="1380" y="1125.5" font-size="18" fill="#111">Тип</text></g>
+<g><text x="1380" y="1156.5" font-size="18" fill="#111">Заголовок</text></g>
+<g><text x="1380" y="1187.5" font-size="18" fill="#111">Канал доставки</text></g>
+<g><text x="1380" y="1218.5" font-size="18" fill="#111">Статус доставки</text></g>
+<g><text x="1380" y="1249.5" font-size="18" fill="#111">Прочитано</text></g>
+  </g>
+</svg>

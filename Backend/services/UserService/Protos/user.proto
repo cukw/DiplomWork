@@ -12,6 +12,8 @@ service UserService {
   rpc GetUsersByDepartment (GetUsersByDepartmentRequest) returns (GetUsersByDepartmentResponse);
   rpc GetAllUsers (GetAllUsersRequest) returns (GetAllUsersResponse);
   rpc CreateUser (CreateUserRequest) returns (CreateUserResponse);
+  rpc EnrollComputerForAuthUser (EnrollComputerForAuthUserRequest) returns (EnrollComputerForAuthUserResponse);
+  rpc EndComputerSessionForAuthUser (EndComputerSessionForAuthUserRequest) returns (EndComputerSessionForAuthUserResponse);
   rpc DeleteUser (DeleteUserRequest) returns (DeleteUserResponse);
 }
 
@@ -101,6 +103,41 @@ message CreateUserResponse {
   ComputerInfo computer = 4;
 }
 
+message EnrollComputerForAuthUserRequest {
+  int64 auth_user_id = 1;
+  string full_name = 2;
+  string department = 3;
+  string hostname = 4;
+  string os_version = 5;
+  string ip_address = 6;
+  string mac_address = 7;
+}
+
+message EnrollComputerForAuthUserResponse {
+  bool success = 1;
+  string message = 2;
+  UserProfile user_profile = 3;
+  ComputerInfo computer = 4;
+  bool created_user = 5;
+  bool created_computer = 6;
+  int64 session_id = 7;
+  bool created_session = 8;
+  string session_expires_at = 9;
+}
+
+message EndComputerSessionForAuthUserRequest {
+  int64 auth_user_id = 1;
+  int64 session_id = 2;
+  int64 computer_id = 3;
+}
+
+message EndComputerSessionForAuthUserResponse {
+  bool success = 1;
+  string message = 2;
+  int64 session_id = 3;
+  ComputerInfo computer = 4;
+}
+
 message DeleteUserRequest {
   int64 user_id = 1;
 }
@@ -117,6 +154,7 @@ message UserProfile {
   string department = 4;
   string created_at = 5;
   ComputerInfo computer = 6;
+  repeated ComputerInfo computers = 7;
 }
 
 message ComputerInfo {

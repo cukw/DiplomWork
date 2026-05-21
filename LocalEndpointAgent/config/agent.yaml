@@ -1,12 +1,17 @@
 agent:
-  computer_id: 1
+  computer_id: 0
   user_id: null
+  session_id: null
+  session_expires_at: null
+  auth_refresh_token: null
   version: "0.1.0"
   device_name: "unknown-device"
 
 services:
-  activity_service_url: "localhost:5001"
-  agent_management_url: "localhost:5015"
+  gateway_url: "https://2.26.89.86"
+  gateway_tls_insecure: true
+  activity_service_url: "2.26.89.86:5001"
+  agent_management_url: "2.26.89.86:5015"
 
 runtime:
   state_dir: "./state"

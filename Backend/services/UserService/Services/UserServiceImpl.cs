@@ -26,7 +26,7 @@ public class UserServiceImpl : UserService.UserServiceBase
         try
         {
             var user = await _db.Users
-                .Include(u => u.Computer)
+                .Include(u => u.Computers)
                 .FirstOrDefaultAsync(u => u.Id == request.UserId);
 
             if (user == null)
@@ -63,7 +63,7 @@ public class UserServiceImpl : UserService.UserServiceBase
         try
         {
             var user = await _db.Users
-                .Include(u => u.Computer)
+                .Include(u => u.Computers)
                 .FirstOrDefaultAsync(u => u.Id == request.UserId);
 
             if (user == null)
@@ -232,7 +232,7 @@ public class UserServiceImpl : UserService.UserServiceBase
         try
         {
             var users = await _db.Users
-                .Include(u => u.Computer)
+                .Include(u => u.Computers)
                 .Where(u => u.Department == request.Department)
                 .ToListAsync();
 
@@ -265,7 +265,7 @@ public class UserServiceImpl : UserService.UserServiceBase
             var page = request.Page > 0 ? request.Page : 1;
             var pageSize = request.PageSize > 0 ? request.PageSize : 10;
             
-            var query = _db.Users.Include(u => u.Computer).AsQueryable();
+            var query = _db.Users.Include(u => u.Computers).AsQueryable();
             
             var totalCount = await query.CountAsync();
             var users = await query
@@ -310,16 +310,8 @@ public class UserServiceImpl : UserService.UserServiceBase
             }
 
             var hostname = request.Hostname?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(hostname))
-            {
-                return new CreateUserResponse
-                {
-                    Success = false,
-                    Message = "Hostname is required (1:1 user-computer policy)"
-                };
-            }
-
             var normalizedMac = string.IsNullOrWhiteSpace(request.MacAddress) ? string.Empty : request.MacAddress.Trim();
+            var shouldCreateComputer = !string.IsNullOrWhiteSpace(hostname);
 
             // Check if user already exists
             var existingUser = await _db.Users
@@ -334,7 +326,7 @@ public class UserServiceImpl : UserService.UserServiceBase
                 };
             }
 
-            if (await _db.Computers.AnyAsync(c => c.Hostname == hostname))
+            if (shouldCreateComputer && await _db.Computers.AnyAsync(c => c.Hostname == hostname))
             {
                 return new CreateUserResponse
                 {
@@ -343,7 +335,7 @@ public class UserServiceImpl : UserService.UserServiceBase
                 };
             }
 
-            if (!string.IsNullOrWhiteSpace(normalizedMac) && await _db.Computers.AnyAsync(c => c.MacAddress == normalizedMac))
+            if (shouldCreateComputer && !string.IsNullOrWhiteSpace(normalizedMac) && await _db.Computers.AnyAsync(c => c.MacAddress == normalizedMac))
             {
                 return new CreateUserResponse
                 {
@@ -364,30 +356,51 @@ public class UserServiceImpl : UserService.UserServiceBase
             _db.Users.Add(user);
             await _db.SaveChangesAsync(context.CancellationToken);
 
-            var computer = new Computer
+            Computer? computer = null;
+            if (shouldCreateComputer)
             {
-                UserId = user.Id,
-                Hostname = hostname,
-                OsVersion = request.OsVersion,
-                IpAddress = request.IpAddress,
-                MacAddress = normalizedMac,
-                Status = "active",
-                LastSeen = DateTime.UtcNow
-            };
+                var now = DateTime.UtcNow;
+                var expiresAt = GetCurrentMoscowSessionExpiresAtUtc(now);
+                computer = new Computer
+                {
+                    UserId = user.Id,
+                    Hostname = hostname,
+                    OsVersion = request.OsVersion,
+                    IpAddress = request.IpAddress,
+                    MacAddress = normalizedMac,
+                    Status = "active",
+                    LastSeen = now
+                };
 
-            _db.Computers.Add(computer);
-            await _db.SaveChangesAsync(context.CancellationToken);
+                _db.Computers.Add(computer);
+                await _db.SaveChangesAsync(context.CancellationToken);
+
+                _db.ComputerSessions.Add(new ComputerSession
+                {
+                    UserId = user.Id,
+                    AuthUserId = (int)request.AuthUserId,
+                    ComputerId = computer.Id,
+                    StartedAt = now,
+                    ExpiresAt = expiresAt,
+                    LastSeen = now,
+                    Status = "active"
+                });
+                await _db.SaveChangesAsync(context.CancellationToken);
+            }
             await transaction.CommitAsync(context.CancellationToken);
 
-            user.Computer = computer;
+            if (computer != null)
+                user.Computers.Add(computer);
 
-            return new CreateUserResponse
+            var response = new CreateUserResponse
             {
                 Success = true,
                 Message = "User created successfully",
-                UserProfile = MapUserToProto(user),
-                Computer = MapComputerToProto(computer)
+                UserProfile = MapUserToProto(user)
             };
+            if (computer != null)
+                response.Computer = MapComputerToProto(computer);
+            return response;
         }
         catch (DbUpdateException ex)
         {
@@ -409,6 +422,261 @@ public class UserServiceImpl : UserService.UserServiceBase
         }
     }
 
+    public override async Task<EnrollComputerForAuthUserResponse> EnrollComputerForAuthUser(EnrollComputerForAuthUserRequest request, ServerCallContext context)
+    {
+        _logger.LogInformation("Enroll computer request for auth user ID: {AuthUserId}, hostname: {Hostname}", request.AuthUserId, request.Hostname);
+
+        try
+        {
+            if (request.AuthUserId <= 0)
+            {
+                return new EnrollComputerForAuthUserResponse
+                {
+                    Success = false,
+                    Message = "AuthUserId must be greater than 0"
+                };
+            }
+
+            var hostname = NormalizeRequired(request.Hostname);
+            if (string.IsNullOrWhiteSpace(hostname))
+            {
+                return new EnrollComputerForAuthUserResponse
+                {
+                    Success = false,
+                    Message = "Hostname is required"
+                };
+            }
+
+            var normalizedMac = NormalizeOptional(request.MacAddress);
+            var now = DateTime.UtcNow;
+            var expiresAt = GetCurrentMoscowSessionExpiresAtUtc(now);
+
+            await using var transaction = await _db.Database.BeginTransactionAsync(context.CancellationToken);
+            await CloseExpiredSessionsAsync(now, context.CancellationToken);
+
+            var user = await _db.Users
+                .Include(u => u.Computers)
+                .FirstOrDefaultAsync(u => u.AuthUserId == request.AuthUserId, context.CancellationToken);
+
+            var createdUser = false;
+            if (user == null)
+            {
+                user = new User
+                {
+                    AuthUserId = (int)request.AuthUserId,
+                    FullName = string.IsNullOrWhiteSpace(request.FullName) ? $"User {request.AuthUserId}" : request.FullName.Trim(),
+                    Department = NormalizeOptional(request.Department)
+                };
+                _db.Users.Add(user);
+                await _db.SaveChangesAsync(context.CancellationToken);
+                createdUser = true;
+            }
+
+            var activeUserSession = await _db.ComputerSessions
+                .Include(s => s.Computer)
+                .FirstOrDefaultAsync(s => s.UserId == user.Id && s.EndedAt == null, context.CancellationToken);
+
+            Computer? computer = null;
+            if (!string.IsNullOrWhiteSpace(normalizedMac))
+            {
+                computer = await _db.Computers
+                    .Include(c => c.User)
+                    .FirstOrDefaultAsync(c => c.MacAddress == normalizedMac, context.CancellationToken);
+            }
+
+            computer ??= await _db.Computers
+                .Include(c => c.User)
+                .FirstOrDefaultAsync(c => c.Hostname == hostname, context.CancellationToken);
+
+            if (activeUserSession != null && computer != null && activeUserSession.ComputerId != computer.Id)
+            {
+                return new EnrollComputerForAuthUserResponse
+                {
+                    Success = false,
+                    Message = $"User already has active session on computer {activeUserSession.ComputerId}"
+                };
+            }
+
+            if (activeUserSession != null && computer == null)
+            {
+                return new EnrollComputerForAuthUserResponse
+                {
+                    Success = false,
+                    Message = $"User already has active session on computer {activeUserSession.ComputerId}"
+                };
+            }
+
+            var createdComputer = false;
+            if (computer == null)
+            {
+                computer = new Computer
+                {
+                    Hostname = hostname,
+                    OsVersion = NormalizeOptional(request.OsVersion),
+                    IpAddress = NormalizeOptional(request.IpAddress),
+                    MacAddress = normalizedMac,
+                    Status = "active",
+                    LastSeen = now
+                };
+                _db.Computers.Add(computer);
+                await _db.SaveChangesAsync(context.CancellationToken);
+                createdComputer = true;
+            }
+            else
+            {
+                var activeComputerSession = await _db.ComputerSessions
+                    .Include(s => s.User)
+                    .FirstOrDefaultAsync(s => s.ComputerId == computer.Id && s.EndedAt == null, context.CancellationToken);
+
+                if (activeComputerSession != null && activeComputerSession.UserId != user.Id)
+                {
+                    return new EnrollComputerForAuthUserResponse
+                    {
+                        Success = false,
+                        Message = $"Computer {computer.Id} already has active session for another user"
+                    };
+                }
+
+                UpdateComputerRuntimeFields(computer, hostname, request.OsVersion, request.IpAddress, normalizedMac, now);
+            }
+
+            var session = activeUserSession;
+            var createdSession = false;
+            if (session == null)
+            {
+                session = new ComputerSession
+                {
+                    UserId = user.Id,
+                    AuthUserId = (int)request.AuthUserId,
+                    ComputerId = computer.Id,
+                    StartedAt = now,
+                    ExpiresAt = expiresAt,
+                    LastSeen = now,
+                    Status = "active"
+                };
+                _db.ComputerSessions.Add(session);
+                createdSession = true;
+            }
+            else
+            {
+                session.LastSeen = now;
+                session.Status = "active";
+                if (session.ExpiresAt == default || session.ExpiresAt > expiresAt)
+                    session.ExpiresAt = expiresAt;
+            }
+
+            computer.UserId = user.Id;
+            computer.Status = "active";
+            computer.LastSeen = now;
+
+            await _db.SaveChangesAsync(context.CancellationToken);
+            await transaction.CommitAsync(context.CancellationToken);
+
+            user.Computers = new List<Computer> { computer };
+
+            return new EnrollComputerForAuthUserResponse
+            {
+                Success = true,
+                Message = createdSession ? "Computer session started" : "Computer session refreshed",
+                UserProfile = MapUserToProto(user),
+                Computer = MapComputerToProto(computer),
+                CreatedUser = createdUser,
+                CreatedComputer = createdComputer,
+                SessionId = session.Id,
+                CreatedSession = createdSession,
+                SessionExpiresAt = session.ExpiresAt.ToString("o")
+            };
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Computer enrollment conflict for auth user ID: {AuthUserId}", request.AuthUserId);
+            return new EnrollComputerForAuthUserResponse
+            {
+                Success = false,
+                Message = "Active session conflict: user or computer is already busy"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error enrolling computer for auth user ID: {AuthUserId}", request.AuthUserId);
+            return new EnrollComputerForAuthUserResponse
+            {
+                Success = false,
+                Message = "An error occurred while enrolling computer"
+            };
+        }
+    }
+
+    public override async Task<EndComputerSessionForAuthUserResponse> EndComputerSessionForAuthUser(EndComputerSessionForAuthUserRequest request, ServerCallContext context)
+    {
+        _logger.LogInformation("End computer session request for auth user ID: {AuthUserId}, session ID: {SessionId}", request.AuthUserId, request.SessionId);
+
+        try
+        {
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.AuthUserId == request.AuthUserId, context.CancellationToken);
+            if (user == null)
+            {
+                return new EndComputerSessionForAuthUserResponse
+                {
+                    Success = false,
+                    Message = "User profile not found"
+                };
+            }
+
+            var query = _db.ComputerSessions
+                .Include(s => s.Computer)
+                .Where(s => s.UserId == user.Id && s.EndedAt == null);
+
+            if (request.SessionId > 0)
+                query = query.Where(s => s.Id == request.SessionId);
+            else if (request.ComputerId > 0)
+                query = query.Where(s => s.ComputerId == request.ComputerId);
+
+            var session = await query.FirstOrDefaultAsync(context.CancellationToken);
+            if (session == null)
+            {
+                return new EndComputerSessionForAuthUserResponse
+                {
+                    Success = false,
+                    Message = "Active session not found"
+                };
+            }
+
+            var now = DateTime.UtcNow;
+            session.EndedAt = now;
+            session.LastSeen = now;
+            session.Status = "ended";
+
+            if (session.Computer != null && session.Computer.UserId == user.Id)
+            {
+                session.Computer.UserId = null;
+                session.Computer.LastSeen = now;
+                session.Computer.Status = "active";
+            }
+
+            await _db.SaveChangesAsync(context.CancellationToken);
+
+            var response = new EndComputerSessionForAuthUserResponse
+            {
+                Success = true,
+                Message = "Computer session ended",
+                SessionId = session.Id
+            };
+            if (session.Computer != null)
+                response.Computer = MapComputerToProto(session.Computer);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error ending computer session for auth user ID: {AuthUserId}", request.AuthUserId);
+            return new EndComputerSessionForAuthUserResponse
+            {
+                Success = false,
+                Message = "An error occurred while ending computer session"
+            };
+        }
+    }
+
     public override async Task<DeleteUserResponse> DeleteUser(DeleteUserRequest request, ServerCallContext context)
     {
         _logger.LogInformation("Delete user request for user ID: {UserId}", request.UserId);
@@ -416,7 +684,7 @@ public class UserServiceImpl : UserService.UserServiceBase
         try
         {
             var user = await _db.Users
-                .Include(u => u.Computer)
+                .Include(u => u.Computers)
                 .FirstOrDefaultAsync(u => u.Id == request.UserId);
 
             if (user == null)
@@ -428,10 +696,10 @@ public class UserServiceImpl : UserService.UserServiceBase
                 };
             }
 
-            // Remove computer if exists
-            if (user.Computer != null)
+            // Remove computers if any
+            if (user.Computers.Count > 0)
             {
-                _db.Computers.Remove(user.Computer);
+                _db.Computers.RemoveRange(user.Computers);
             }
 
             // Remove user
@@ -466,9 +734,17 @@ public class UserServiceImpl : UserService.UserServiceBase
             CreatedAt = user.CreatedAt.ToString("o")
         };
 
-        if (user.Computer != null)
+        var computers = user.Computers
+            .OrderByDescending(c => c.UserId == user.Id)
+            .ThenByDescending(c => c.LastSeen ?? c.CreatedAt)
+            .ToList();
+
+        if (computers.Count > 0)
         {
-            userProfile.Computer = MapComputerToProto(user.Computer);
+            foreach (var computer in computers)
+                userProfile.Computers.Add(MapComputerToProto(computer));
+
+            userProfile.Computer = userProfile.Computers[0];
         }
 
         return userProfile;
@@ -479,7 +755,7 @@ public class UserServiceImpl : UserService.UserServiceBase
         return new ComputerInfo
         {
             Id = computer.Id,
-            UserId = computer.UserId,
+            UserId = computer.UserId ?? 0,
             Hostname = computer.Hostname,
             OsVersion = computer.OsVersion ?? "",
             IpAddress = computer.IpAddress ?? "",
@@ -488,5 +764,93 @@ public class UserServiceImpl : UserService.UserServiceBase
             LastSeen = computer.LastSeen?.ToString("o") ?? "",
             CreatedAt = computer.CreatedAt.ToString("o")
         };
+    }
+
+    private static string NormalizeRequired(string? value) => (value ?? string.Empty).Trim();
+
+    private static string? NormalizeOptional(string? value)
+    {
+        var normalized = (value ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
+    private static void UpdateComputerRuntimeFields(
+        Computer computer,
+        string hostname,
+        string? osVersion,
+        string? ipAddress,
+        string? macAddress,
+        DateTime lastSeen)
+    {
+        if (!string.IsNullOrWhiteSpace(hostname))
+            computer.Hostname = hostname;
+        if (!string.IsNullOrWhiteSpace(osVersion))
+            computer.OsVersion = osVersion.Trim();
+        if (!string.IsNullOrWhiteSpace(ipAddress))
+            computer.IpAddress = ipAddress.Trim();
+        if (!string.IsNullOrWhiteSpace(macAddress))
+            computer.MacAddress = macAddress;
+        computer.LastSeen = lastSeen;
+    }
+
+    private async Task CloseExpiredSessionsAsync(DateTime nowUtc, CancellationToken cancellationToken)
+    {
+        var expiredSessions = await _db.ComputerSessions
+            .Include(s => s.Computer)
+            .Where(s => s.EndedAt == null && s.ExpiresAt <= nowUtc)
+            .ToListAsync(cancellationToken);
+
+        if (expiredSessions.Count == 0)
+            return;
+
+        foreach (var session in expiredSessions)
+        {
+            var endedAt = session.ExpiresAt <= nowUtc ? session.ExpiresAt : nowUtc;
+            session.EndedAt = endedAt;
+            session.LastSeen = nowUtc;
+            session.Status = "expired";
+
+            if (session.Computer != null && session.Computer.UserId == session.UserId)
+            {
+                session.Computer.UserId = null;
+                session.Computer.LastSeen = nowUtc;
+            }
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static DateTime GetCurrentMoscowSessionExpiresAtUtc(DateTime nowUtc)
+    {
+        if (nowUtc.Kind != DateTimeKind.Utc)
+            nowUtc = DateTime.SpecifyKind(nowUtc, DateTimeKind.Utc);
+
+        var moscowTz = GetMoscowTimeZone();
+        var moscowNow = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, moscowTz);
+        var moscowExpiry = new DateTime(
+            moscowNow.Year,
+            moscowNow.Month,
+            moscowNow.Day,
+            23,
+            0,
+            0,
+            DateTimeKind.Unspecified);
+
+        if (moscowNow >= moscowExpiry)
+            moscowExpiry = moscowExpiry.AddDays(1);
+
+        return TimeZoneInfo.ConvertTimeToUtc(moscowExpiry, moscowTz);
+    }
+
+    private static TimeZoneInfo GetMoscowTimeZone()
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("Europe/Moscow");
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("Russian Standard Time");
+        }
     }
 }

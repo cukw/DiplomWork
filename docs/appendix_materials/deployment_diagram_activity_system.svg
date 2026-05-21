@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="880" viewBox="0 0 1500 880">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#111"/>
+    </marker>
+    <style>
+      .bg { fill: #fff; }
+      .line { fill: none; stroke: #111; stroke-width: 1.4; stroke-linecap: square; stroke-linejoin: miter; }
+      .dash { fill: none; stroke: #111; stroke-width: 1.35; stroke-dasharray: 8 6; stroke-linecap: square; stroke-linejoin: miter; }
+      .arrow { fill: none; stroke: #111; stroke-width: 1.35; stroke-dasharray: 8 6; stroke-linecap: square; stroke-linejoin: miter; marker-end: url(#arrow); }
+      .box { fill: #fff; stroke: #111; stroke-width: 1.35; }
+      .label { font-family: "Times New Roman", serif; font-size: 18px; fill: #111; }
+      .small { font-family: "Times New Roman", serif; font-size: 16px; fill: #111; }
+      .tiny { font-family: "Times New Roman", serif; font-size: 14px; fill: #111; }
+      .title { font-family: "Times New Roman", serif; font-size: 20px; font-weight: bold; fill: #111; }
+      .label-bg { fill: #fff; stroke: none; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1500" height="880"/>
+
+  <text class="title" x="750" y="38" text-anchor="middle">Схема развертывания системы учета и анализа компьютерной активности пользователей</text>
+
+  <!-- Protected link note -->
+  <path class="box" d="M72 63 H290 L315 88 V135 H72 Z"/>
+  <path class="line" d="M290 63 V88 H315"/>
+  <text class="small" x="88" y="92">
+    <tspan x="88" dy="0">Защищенная линия</tspan>
+    <tspan x="88" dy="20">связи HTTPS / gRPC</tspan>
+  </text>
+  <path class="dash" d="M300 136 C455 190 610 178 754 198"/>
+
+  <!-- Administrator terminal node -->
+  <g id="admin-terminal">
+    <rect class="box" x="70" y="185" width="310" height="160"/>
+    <path class="line" d="M70 185 L100 165 H410 L380 185"/>
+    <path class="line" d="M380 185 L410 165 V325 L380 345"/>
+    <path class="line" d="M70 345 L380 345"/>
+    <text class="label" x="225" y="215" text-anchor="middle">"терминал"</text>
+    <text class="label" x="225" y="240" text-anchor="middle">Рабочее место администратора</text>
+
+    <rect class="box" x="140" y="280" width="165" height="54"/>
+    <rect class="box" x="118" y="294" width="32" height="12"/>
+    <rect class="box" x="118" y="316" width="32" height="12"/>
+    <text class="small" x="222" y="312" text-anchor="middle">browser</text>
+    <text class="tiny" x="222" y="330" text-anchor="middle">админ-панель</text>
+  </g>
+
+  <!-- User workstation node -->
+  <g id="user-workstation">
+    <rect class="box" x="70" y="510" width="310" height="170"/>
+    <path class="line" d="M70 510 L100 490 H410 L380 510"/>
+    <path class="line" d="M380 510 L410 490 V660 L380 680"/>
+    <path class="line" d="M70 680 L380 680"/>
+    <text class="label" x="225" y="540" text-anchor="middle">"процессор"</text>
+    <text class="label" x="225" y="565" text-anchor="middle">Рабочая станция пользователя</text>
+
+    <rect class="box" x="125" y="606" width="190" height="54"/>
+    <rect class="box" x="103" y="620" width="32" height="12"/>
+    <rect class="box" x="103" y="642" width="32" height="12"/>
+    <text class="small" x="220" y="638" text-anchor="middle">endpoint-agent</text>
+    <text class="tiny" x="220" y="656" text-anchor="middle">сбор активности</text>
+  </g>
+
+  <!-- Application server node -->
+  <g id="server">
+    <rect class="box" x="650" y="115" width="740" height="630"/>
+    <path class="line" d="M650 115 L690 90 H1430 L1390 115"/>
+    <path class="line" d="M1390 115 L1430 90 V720 L1390 745"/>
+    <path class="line" d="M650 745 L1390 745"/>
+    <text class="label" x="1020" y="145" text-anchor="middle">"сервер"</text>
+    <text class="label" x="1020" y="170" text-anchor="middle">Сервер информационной системы</text>
+
+    <!-- Frontend artifact -->
+    <rect class="box" x="705" y="210" width="220" height="74"/>
+    <rect class="box" x="681" y="228" width="35" height="13"/>
+    <rect class="box" x="681" y="254" width="35" height="13"/>
+    <text class="small" x="815" y="238" text-anchor="middle">Frontend</text>
+    <text class="tiny" x="815" y="259" text-anchor="middle">React + Nginx</text>
+    <text class="tiny" x="815" y="278" text-anchor="middle">3000 / 3443</text>
+
+    <!-- Gateway artifact -->
+    <rect class="box" x="1000" y="210" width="230" height="74"/>
+    <rect class="box" x="976" y="228" width="35" height="13"/>
+    <rect class="box" x="976" y="254" width="35" height="13"/>
+    <text class="small" x="1115" y="238" text-anchor="middle">API Gateway</text>
+    <text class="tiny" x="1115" y="259" text-anchor="middle">REST API, JWT, RBAC</text>
+    <text class="tiny" x="1115" y="278" text-anchor="middle">8080</text>
+
+    <!-- Backend services -->
+    <rect class="box" x="705" y="360" width="230" height="190"/>
+    <rect class="box" x="681" y="378" width="35" height="13"/>
+    <rect class="box" x="681" y="404" width="35" height="13"/>
+    <text class="small" x="820" y="390" text-anchor="middle">Backend services</text>
+    <text class="tiny" x="724" y="422">AuthService</text>
+    <text class="tiny" x="724" y="444">UserService</text>
+    <text class="tiny" x="724" y="466">ActivityService</text>
+    <text class="tiny" x="724" y="488">AgentManagementService</text>
+    <text class="tiny" x="724" y="510">MetricsService</text>
+    <text class="tiny" x="724" y="532">NotificationService, ReportService</text>
+
+    <!-- RabbitMQ -->
+    <rect class="box" x="1010" y="360" width="210" height="82"/>
+    <rect class="box" x="986" y="379" width="35" height="13"/>
+    <rect class="box" x="986" y="405" width="35" height="13"/>
+    <text class="small" x="1115" y="392" text-anchor="middle">RabbitMQ</text>
+    <text class="tiny" x="1115" y="414" text-anchor="middle">брокер сообщений</text>
+    <text class="tiny" x="1115" y="433" text-anchor="middle">activity / anomaly events</text>
+
+    <!-- PostgreSQL DB -->
+    <rect class="box" x="1010" y="520" width="250" height="135"/>
+    <text class="label" x="1135" y="552" text-anchor="middle">"база данных"</text>
+    <text class="label" x="1135" y="576" text-anchor="middle">PostgreSQL</text>
+    <text class="tiny" x="1135" y="604" text-anchor="middle">activities, auth, users</text>
+    <text class="tiny" x="1135" y="624" text-anchor="middle">agents, metrics</text>
+    <text class="tiny" x="1135" y="644" text-anchor="middle">notifications, reports</text>
+
+    <!-- Observability -->
+    <rect class="box" x="705" y="620" width="230" height="74"/>
+    <rect class="box" x="681" y="638" width="35" height="13"/>
+    <rect class="box" x="681" y="664" width="35" height="13"/>
+    <text class="small" x="820" y="650" text-anchor="middle">Observability</text>
+    <text class="tiny" x="820" y="671" text-anchor="middle">Prometheus + Grafana</text>
+    <text class="tiny" x="820" y="690" text-anchor="middle">метрики состояния</text>
+
+    <!-- Internal server links -->
+    <path class="line" d="M925 247 H1000"/>
+    <rect class="label-bg" x="940" y="223" width="44" height="18"/>
+    <text class="tiny" x="962" y="236" text-anchor="middle">REST</text>
+
+    <path class="line" d="M1115 284 V325 H820 V360"/>
+    <rect class="label-bg" x="946" y="301" width="44" height="18"/>
+    <text class="tiny" x="968" y="314" text-anchor="middle">gRPC</text>
+
+    <path class="dash" d="M935 455 H1010"/>
+    <rect class="label-bg" x="950" y="431" width="44" height="18"/>
+    <text class="tiny" x="972" y="444" text-anchor="middle">events</text>
+
+    <path class="dash" d="M1115 442 V520"/>
+    <rect class="label-bg" x="1122" y="472" width="92" height="18"/>
+    <text class="tiny" x="1168" y="485" text-anchor="middle">consumers</text>
+
+    <path class="line" d="M935 520 H1010"/>
+    <rect class="label-bg" x="952" y="495" width="40" height="18"/>
+    <text class="tiny" x="972" y="508" text-anchor="middle">SQL</text>
+
+    <path class="dash" d="M935 657 H1010 V635"/>
+    <rect class="label-bg" x="952" y="662" width="48" height="18"/>
+    <text class="tiny" x="976" y="675" text-anchor="middle">metrics</text>
+  </g>
+
+  <!-- External protected communications -->
+  <path class="arrow" d="M305 307 H600 V247 H705"/>
+  <rect class="label-bg" x="382" y="273" width="180" height="18"/>
+  <text class="tiny" x="472" y="286" text-anchor="middle">HTTPS: работа администратора</text>
+
+  <path class="arrow" d="M315 633 H592 V432 H705"/>
+  <rect class="label-bg" x="372" y="597" width="232" height="18"/>
+  <text class="tiny" x="488" y="610" text-anchor="middle">gRPC: отправка событий активности</text>
+
+  <path class="arrow" d="M705 505 H585 V655 H315"/>
+  <rect class="label-bg" x="407" y="659" width="200" height="18"/>
+  <text class="tiny" x="507" y="672" text-anchor="middle">политики и команды агенту</text>
+</svg>

@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1450" height="700" viewBox="0 0 1450 700">
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L9,3.5 L0,7 Z" fill="#111"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="140%">
+      <feDropShadow dx="7" dy="7" stdDeviation="0.45" flood-color="#111" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1450" height="700" fill="#ffffff"/>
+
+  <g font-family="Times New Roman, serif" font-size="13" fill="#111111" stroke="#111111" stroke-width="1.15">
+    <!-- Sequential decomposition of activity event processing -->
+    <g fill="#ffffff" filter="url(#shadow)">
+      <rect x="120" y="90" width="195" height="82"/>
+      <rect x="385" y="220" width="215" height="82"/>
+      <rect x="665" y="350" width="215" height="82"/>
+      <rect x="940" y="480" width="235" height="82"/>
+    </g>
+    <g fill="none">
+      <rect x="120" y="90" width="195" height="82"/>
+      <rect x="385" y="220" width="215" height="82"/>
+      <rect x="665" y="350" width="215" height="82"/>
+      <rect x="940" y="480" width="235" height="82"/>
+    </g>
+
+    <g stroke="none" fill="#111111" font-size="14">
+      <text x="218" y="122" text-anchor="middle">
+        <tspan x="218" dy="0">Принимать события</tspan>
+        <tspan x="218" dy="17">от агентов</tspan>
+      </text>
+      <text x="301" y="160" text-anchor="end" font-size="12">1</text>
+
+      <text x="493" y="253" text-anchor="middle">
+        <tspan x="493" dy="0">Проверять</tspan>
+        <tspan x="493" dy="17">и нормализовать</tspan>
+      </text>
+      <text x="586" y="290" text-anchor="end" font-size="12">2</text>
+
+      <text x="773" y="383" text-anchor="middle">
+        <tspan x="773" dy="0">Сохранять событие</tspan>
+        <tspan x="773" dy="17">в базе данных</tspan>
+      </text>
+      <text x="866" y="420" text-anchor="end" font-size="12">3</text>
+
+      <text x="1058" y="512" text-anchor="middle">
+        <tspan x="1058" dy="0">Публиковать событие</tspan>
+        <tspan x="1058" dy="17">для потребителей</tspan>
+      </text>
+      <text x="1160" y="550" text-anchor="end" font-size="12">4</text>
+    </g>
+
+    <!-- Controls -->
+    <path d="M218 50 V90" fill="none" marker-end="url(#arrow)"/>
+    <path d="M493 50 V220" fill="none" marker-end="url(#arrow)"/>
+    <path d="M773 50 V350" fill="none" marker-end="url(#arrow)"/>
+    <path d="M1058 50 V480" fill="none" marker-end="url(#arrow)"/>
+    <g stroke="none" fill="#111111">
+      <text x="155" y="28">Транспортная</text>
+      <text x="155" y="44">аутентификация</text>
+      <text x="410" y="28">Правила валидации</text>
+      <text x="710" y="28">Схема хранения</text>
+      <text x="1012" y="28">Настройки RabbitMQ</text>
+    </g>
+
+    <!-- Inputs -->
+    <path d="M15 131 H120" fill="none" marker-end="url(#arrow)"/>
+    <path d="M15 248 H385" fill="none" marker-end="url(#arrow)"/>
+    <g stroke="none" fill="#111111">
+      <text x="15" y="104">Событие активности</text>
+      <text x="15" y="120">рабочей станции</text>
+      <text x="15" y="222">Сведения о пользователе</text>
+      <text x="15" y="238">и компьютере</text>
+    </g>
+
+    <!-- Main chain -->
+    <path d="M315 131 H350 V261 H385" fill="none" marker-end="url(#arrow)"/>
+    <path d="M600 261 H635 V391 H665" fill="none" marker-end="url(#arrow)"/>
+    <path d="M880 391 H910 V521 H940" fill="none" marker-end="url(#arrow)"/>
+    <g stroke="none" fill="#111111">
+      <text x="330" y="103">Принятое</text>
+      <text x="330" y="119">событие</text>
+      <text x="615" y="232">Нормализованная</text>
+      <text x="615" y="248">активность</text>
+      <text x="895" y="362">Сохраненная</text>
+      <text x="895" y="378">запись</text>
+    </g>
+
+    <!-- Outputs -->
+    <path d="M880 412 H1425" fill="none" marker-end="url(#arrow)"/>
+    <path d="M1175 505 H1425" fill="none" marker-end="url(#arrow)"/>
+    <path d="M1175 540 H1425" fill="none" marker-end="url(#arrow)"/>
+    <g stroke="none" fill="#111111">
+      <text x="1038" y="380">Журнал активности</text>
+      <text x="1188" y="488">Событие activity.created</text>
+      <text x="1188" y="526">Событие anomaly-detected</text>
+    </g>
+
+    <!-- Mechanisms -->
+    <path d="M160 610 V172" fill="none" marker-end="url(#arrow)"/>
+    <path d="M240 610 V172" fill="none" marker-end="url(#arrow)"/>
+    <path d="M455 610 V302" fill="none" marker-end="url(#arrow)"/>
+    <path d="M540 610 V302" fill="none" marker-end="url(#arrow)"/>
+    <path d="M773 610 V432" fill="none" marker-end="url(#arrow)"/>
+    <path d="M1058 610 V562" fill="none" marker-end="url(#arrow)"/>
+
+    <g stroke="none" fill="#111111">
+      <text x="88" y="635">Endpoint-агент</text>
+      <text x="88" y="651">рабочей станции</text>
+      <text x="222" y="635">gRPC API</text>
+      <text x="410" y="635">ActivityService</text>
+      <text x="555" y="635">UserService</text>
+      <text x="720" y="635">PostgreSQL</text>
+      <text x="720" y="651">activities</text>
+      <text x="1015" y="635">Outbox dispatcher</text>
+      <text x="1015" y="651">и RabbitMQ</text>
+    </g>
+  </g>
+</svg>

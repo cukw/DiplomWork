@@ -6,7 +6,7 @@ public class Computer
 {
     public int Id { get; set; }
     
-    public int UserId { get; set; }
+    public int? UserId { get; set; }
     
     [Required]
     [MaxLength(255)]
@@ -30,4 +30,5 @@ public class Computer
     
     // Navigation properties
     public virtual User? User { get; set; }
+    public virtual ICollection<ComputerSession> Sessions { get; set; } = new List<ComputerSession>();
 }

@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1080" viewBox="0 0 1700 1080">
+  <rect width="1700" height="1080" fill="#fff"/>
+  <style>
+    svg { font-family: 'Times New Roman', Times, serif; }
+    .assoc { stroke:#111; stroke-width:1.35; fill:none; }
+    .mult { font-size:16px; fill:#111; font-weight:700; }
+  </style>
+
+  <!-- Связи -->
+  <line class="assoc" x1="350" y1="185" x2="440" y2="185"/>
+  <line class="assoc" x1="750" y1="185" x2="840" y2="185"/>
+  <line class="assoc" x1="1190" y1="185" x2="1270" y2="185"/>
+  <line class="assoc" x1="200" y1="335" x2="200" y2="430"/>
+  <line class="assoc" x1="930" y1="355" x2="750" y2="430"/>
+  <line class="assoc" x1="1015" y1="355" x2="1015" y2="430"/>
+  <line class="assoc" x1="1460" y1="335" x2="1190" y2="430"/>
+  <line class="assoc" x1="750" y1="555" x2="840" y2="555"/>
+  <line class="assoc" x1="595" y1="685" x2="595" y2="760"/>
+  <line class="assoc" x1="750" y1="880" x2="840" y2="880"/>
+
+  <!-- Классы -->
+  <g>
+    <rect x="50" y="60" width="300" height="275" fill="#f7f7f7" stroke="#111" stroke-width="1.5"/>
+    <line x1="50" y1="104" x2="350" y2="104" stroke="#111" stroke-width="1.2"/>
+    <line x1="50" y1="230" x2="350" y2="230" stroke="#111" stroke-width="1.1" stroke-dasharray="3 3"/>
+    <text x="66" y="88" font-size="20" font-weight="700" fill="#111">Пользователь системы</text>
+    <text x="68" y="130" font-size="17" fill="#111">id</text>
+<text x="68" y="152" font-size="17" fill="#111">username</text>
+<text x="68" y="174" font-size="17" fill="#111">role</text>
+<text x="68" y="196" font-size="17" fill="#111">email</text>
+<text x="68" y="218" font-size="17" fill="#111">isActive</text>
+    <text x="68" y="258" font-size="16" fill="#111">авторизоваться()</text>
+<text x="68" y="280" font-size="16" fill="#111">просмотретьДанные()</text>
+<text x="68" y="302" font-size="16" fill="#111">сформироватьОтчет()</text>
+  </g>
+  <g>
+    <rect x="440" y="60" width="310" height="275" fill="#f7f7f7" stroke="#111" stroke-width="1.5"/>
+    <line x1="440" y1="104" x2="750" y2="104" stroke="#111" stroke-width="1.2"/>
+    <line x1="440" y1="230" x2="750" y2="230" stroke="#111" stroke-width="1.1" stroke-dasharray="3 3"/>
+    <text x="456" y="88" font-size="20" font-weight="700" fill="#111">Рабочая станция</text>
+    <text x="458" y="130" font-size="17" fill="#111">id</text>
+<text x="458" y="152" font-size="17" fill="#111">hostname</text>
+<text x="458" y="174" font-size="17" fill="#111">ipAddress</text>
+<text x="458" y="196" font-size="17" fill="#111">osName</text>
+<text x="458" y="218" font-size="17" fill="#111">lastSeenAt</text>
+    <text x="458" y="258" font-size="16" fill="#111">зарегистрировать()</text>
+<text x="458" y="280" font-size="16" fill="#111">обновитьСтатус()</text>
+<text x="458" y="302" font-size="16" fill="#111">привязатьАгента()</text>
+  </g>
+  <g>
+    <rect x="840" y="60" width="350" height="295" fill="#f7f7f7" stroke="#111" stroke-width="1.5"/>
+    <line x1="840" y1="104" x2="1190" y2="104" stroke="#111" stroke-width="1.2"/>
+    <line x1="840" y1="230" x2="1190" y2="230" stroke="#111" stroke-width="1.1" stroke-dasharray="3 3"/>
+    <text x="856" y="88" font-size="20" font-weight="700" fill="#111">Endpoint-агент</text>
+    <text x="858" y="130" font-size="17" fill="#111">id</text>
+<text x="858" y="152" font-size="17" fill="#111">version</text>
+<text x="858" y="174" font-size="17" fill="#111">status</text>
+<text x="858" y="196" font-size="17" fill="#111">lastHeartbeat</text>
+<text x="858" y="218" font-size="17" fill="#111">queueSize</text>
+    <text x="858" y="258" font-size="16" fill="#111">зарегистрироваться()</text>
+<text x="858" y="280" font-size="16" fill="#111">отправитьHeartbeat()</text>
+<text x="858" y="302" font-size="16" fill="#111">собратьСобытия()</text>
+<text x="858" y="324" font-size="16" fill="#111">выполнитьКоманду()</text>
+  </g>
+  <g>
+    <rect x="1270" y="60" width="380" height="275" fill="#f7f7f7" stroke="#111" stroke-width="1.5"/>
+    <line x1="1270" y1="104" x2="1650" y2="104" stroke="#111" stroke-width="1.2"/>
+    <line x1="1270" y1="230" x2="1650" y2="230" stroke="#111" stroke-width="1.1" stroke-dasharray="3 3"/>
+    <text x="1286" y="88" font-size="20" font-weight="700" fill="#111">Политика мониторинга</text>
+    <text x="1288" y="130" font-size="17" fill="#111">id</text>
+<text x="1288" y="152" font-size="17" fill="#111">version</text>
+<text x="1288" y="174" font-size="17" fill="#111">settingsJson</text>
+<text x="1288" y="196" font-size="17" fill="#111">isActive</text>
+<text x="1288" y="218" font-size="17" fill="#111">signature</text>
+    <text x="1288" y="258" font-size="16" fill="#111">активировать()</text>
+<text x="1288" y="280" font-size="16" fill="#111">откатитьВерсию()</text>
+<text x="1288" y="302" font-size="16" fill="#111">подписатьПолитику()</text>
+  </g>
+
+  <g>
+    <rect x="50" y="430" width="300" height="260" fill="#f7f7f7" stroke="#111" stroke-width="1.5"/>
+    <line x1="50" y1="474" x2="350" y2="474" stroke="#111" stroke-width="1.2"/>
+    <line x1="50" y1="600" x2="350" y2="600" stroke="#111" stroke-width="1.1" stroke-dasharray="3 3"/>
+    <text x="66" y="458" font-size="20" font-weight="700" fill="#111">Отчет</text>
+    <text x="68" y="500" font-size="17" fill="#111">id</text>
+<text x="68" y="522" font-size="17" fill="#111">periodStart</text>
+<text x="68" y="544" font-size="17" fill="#111">periodEnd</text>
+<text x="68" y="566" font-size="17" fill="#111">format</text>
+<text x="68" y="588" font-size="17" fill="#111">createdAt</text>
+    <text x="68" y="628" font-size="16" fill="#111">сформировать()</text>
+<text x="68" y="650" font-size="16" fill="#111">экспортировать()</text>
+<text x="68" y="672" font-size="16" fill="#111">получитьСводку()</text>
+  </g>
+  <g>
+    <rect x="440" y="430" width="310" height="260" fill="#f7f7f7" stroke="#111" stroke-width="1.5"/>
+    <line x1="440" y1="474" x2="750" y2="474" stroke="#111" stroke-width="1.2"/>
+    <line x1="440" y1="600" x2="750" y2="600" stroke="#111" stroke-width="1.1" stroke-dasharray="3 3"/>
+    <text x="456" y="458" font-size="20" font-weight="700" fill="#111">Событие активности</text>
+    <text x="458" y="500" font-size="17" fill="#111">id</text>
+<text x="458" y="522" font-size="17" fill="#111">eventType</text>
+<text x="458" y="544" font-size="17" fill="#111">timestamp</text>
+<text x="458" y="566" font-size="17" fill="#111">riskScore</text>
+<text x="458" y="588" font-size="17" fill="#111">detailsJson</text>
+    <text x="458" y="628" font-size="16" fill="#111">создать()</text>
+<text x="458" y="650" font-size="16" fill="#111">рассчитатьРиск()</text>
+<text x="458" y="672" font-size="16" fill="#111">пометитьОбработанным()</text>
+  </g>
+  <g>
+    <rect x="840" y="430" width="350" height="260" fill="#f7f7f7" stroke="#111" stroke-width="1.5"/>
+    <line x1="840" y1="474" x2="1190" y2="474" stroke="#111" stroke-width="1.2"/>
+    <line x1="840" y1="600" x2="1190" y2="600" stroke="#111" stroke-width="1.1" stroke-dasharray="3 3"/>
+    <text x="856" y="458" font-size="20" font-weight="700" fill="#111">Команда агента</text>
+    <text x="858" y="500" font-size="17" fill="#111">id</text>
+<text x="858" y="522" font-size="17" fill="#111">commandType</text>
+<text x="858" y="544" font-size="17" fill="#111">status</text>
+<text x="858" y="566" font-size="17" fill="#111">createdAt</text>
+<text x="858" y="588" font-size="17" fill="#111">acknowledgedAt</text>
+    <text x="858" y="628" font-size="16" fill="#111">отправить()</text>
+<text x="858" y="650" font-size="16" fill="#111">подтвердить()</text>
+<text x="858" y="672" font-size="16" fill="#111">зафиксироватьОшибка()</text>
+  </g>
+
+  <g>
+    <rect x="440" y="760" width="310" height="250" fill="#f7f7f7" stroke="#111" stroke-width="1.5"/>
+    <line x1="440" y1="804" x2="750" y2="804" stroke="#111" stroke-width="1.2"/>
+    <line x1="440" y1="908" x2="750" y2="908" stroke="#111" stroke-width="1.1" stroke-dasharray="3 3"/>
+    <text x="456" y="788" font-size="20" font-weight="700" fill="#111">Аномалия</text>
+    <text x="458" y="830" font-size="17" fill="#111">id</text>
+<text x="458" y="852" font-size="17" fill="#111">severity</text>
+<text x="458" y="874" font-size="17" fill="#111">reason</text>
+<text x="458" y="896" font-size="17" fill="#111">detectedAt</text>
+    <text x="458" y="936" font-size="16" fill="#111">выявить()</text>
+<text x="458" y="958" font-size="16" fill="#111">подтвердить()</text>
+<text x="458" y="980" font-size="16" fill="#111">закрыть()</text>
+  </g>
+  <g>
+    <rect x="840" y="760" width="350" height="250" fill="#f7f7f7" stroke="#111" stroke-width="1.5"/>
+    <line x1="840" y1="804" x2="1190" y2="804" stroke="#111" stroke-width="1.2"/>
+    <line x1="840" y1="908" x2="1190" y2="908" stroke="#111" stroke-width="1.1" stroke-dasharray="3 3"/>
+    <text x="856" y="788" font-size="20" font-weight="700" fill="#111">Уведомление</text>
+    <text x="858" y="830" font-size="17" fill="#111">id</text>
+<text x="858" y="852" font-size="17" fill="#111">channel</text>
+<text x="858" y="874" font-size="17" fill="#111">status</text>
+<text x="858" y="896" font-size="17" fill="#111">createdAt</text>
+    <text x="858" y="936" font-size="16" fill="#111">создать()</text>
+<text x="858" y="958" font-size="16" fill="#111">отправить()</text>
+<text x="858" y="980" font-size="16" fill="#111">повторитьОтправку()</text>
+  </g>
+
+  <!-- Кратности -->
+  <text class="mult" x="370" y="205" text-anchor="middle">1</text> <text class="mult" x="420" y="205" text-anchor="middle">*</text>
+  <text class="mult" x="770" y="205" text-anchor="middle">1</text> <text class="mult" x="820" y="205" text-anchor="middle">1</text>
+  <text class="mult" x="1210" y="205" text-anchor="middle">1</text> <text class="mult" x="1250" y="205" text-anchor="middle">1</text>
+  <text class="mult" x="180" y="360" text-anchor="middle">1</text> <text class="mult" x="180" y="415" text-anchor="middle">*</text>
+  <text class="mult" x="915" y="380" text-anchor="middle">1</text> <text class="mult" x="768" y="415" text-anchor="middle">*</text>
+  <text class="mult" x="995" y="380" text-anchor="middle">1</text> <text class="mult" x="995" y="415" text-anchor="middle">*</text>
+  <text class="mult" x="1445" y="360" text-anchor="middle">1</text> <text class="mult" x="1210" y="415" text-anchor="middle">*</text>
+  <text class="mult" x="780" y="575" text-anchor="middle">0..1</text> <text class="mult" x="820" y="575" text-anchor="middle">*</text>
+  <text class="mult" x="575" y="720" text-anchor="middle">1</text> <text class="mult" x="575" y="752" text-anchor="middle">0..1</text>
+  <text class="mult" x="775" y="900" text-anchor="middle">1</text> <text class="mult" x="820" y="900" text-anchor="middle">*</text>
+</svg>

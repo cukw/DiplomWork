@@ -87,6 +87,32 @@ public class AuthController : ControllerBase
         }
     }
 
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh([FromBody] RefreshDto dto)
+    {
+        try
+        {
+            var resp = await _auth.RefreshTokenAsync(new RefreshTokenRequest
+            {
+                RefreshToken = dto.RefreshToken ?? ""
+            });
+
+            if (!resp.Success)
+                return Unauthorized(new { message = resp.Message });
+
+            return Ok(new
+            {
+                token = resp.Token,
+                refreshToken = resp.RefreshToken,
+                expiresIn = resp.ExpiresIn
+            });
+        }
+        catch (RpcException ex)
+        {
+            return StatusCode(500, new { message = ex.Status.Detail });
+        }
+    }
+
     [HttpGet("me")]
     [Authorize]
     public async Task<IActionResult> Me()
@@ -147,4 +173,5 @@ public class AuthController : ControllerBase
 
     public record LoginDto(string Username, string Password);
     public record RegisterDto(string Username, string Email, string Password, string? Role);
+    public record RefreshDto(string? RefreshToken);
 }

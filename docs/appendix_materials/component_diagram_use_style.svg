@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1050" viewBox="0 0 1500 1050">
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#222"/></marker></defs>
+<rect width="100%" height="100%" fill="white"/>
+<text x="750.0" y="35" font-family="Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" dominant-baseline="middle">Компонентная схема с зависимостями использования</text>
+<rect x="110" y="155" width="270" height="82" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="346" y="167" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="339" y="170" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="339" y="177" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="245.0" y="185.56" font-family="Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" dominant-baseline="middle">Endpoint-агент</text>
+<text x="245.0" y="206.8" font-family="Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" dominant-baseline="middle">LocalEndpointAgent</text>
+<rect x="120" y="410" width="250" height="82" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="336" y="422" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="329" y="425" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="329" y="432" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="245.0" y="439.4" font-family="Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" dominant-baseline="middle">Сервисы</text>
+<text x="245.0" y="463.0" font-family="Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" dominant-baseline="middle">backend-сервисы</text>
+<rect x="170" y="650" width="330" height="82" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="466" y="662" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="459" y="665" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="459" y="672" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="335.0" y="680.56" font-family="Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" dominant-baseline="middle">Бизнес-логика</text>
+<text x="335.0" y="701.8" font-family="Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" dominant-baseline="middle">риск, аномалии, политики</text>
+<rect x="565" y="380" width="260" height="82" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="791" y="392" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="784" y="395" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="784" y="402" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="695.0" y="409.4" font-family="Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" dominant-baseline="middle">Сервер API</text>
+<text x="695.0" y="433.0" font-family="Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" dominant-baseline="middle">API Gateway</text>
+<rect x="650" y="610" width="230" height="82" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="846" y="622" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="839" y="625" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="839" y="632" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="765.0" y="640.56" font-family="Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" dominant-baseline="middle">Клиент</text>
+<text x="765.0" y="661.8" font-family="Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" dominant-baseline="middle">браузер администратора</text>
+<rect x="595" y="850" width="430" height="82" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="991" y="862" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="984" y="865" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="984" y="872" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="810.0" y="880.56" font-family="Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" dominant-baseline="middle">Пользовательский интерфейс</text>
+<text x="810.0" y="901.8" font-family="Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" dominant-baseline="middle">React SPA + Nginx</text>
+<rect x="565" y="145" width="260" height="82" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="791" y="157" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="784" y="160" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="784" y="167" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="695.0" y="175.56" font-family="Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" dominant-baseline="middle">Событийный брокер</text>
+<text x="695.0" y="196.8" font-family="Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" dominant-baseline="middle">RabbitMQ</text>
+<rect x="1070" y="650" width="255" height="82" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="1291" y="662" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1284" y="665" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="1284" y="672" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="1197.5" y="680.56" font-family="Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" dominant-baseline="middle">Наблюдаемость</text>
+<text x="1197.5" y="701.8" font-family="Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" dominant-baseline="middle">Prometheus + Grafana</text>
+<text x="1195" y="85" font-family="Arial, sans-serif" font-size="20" font-weight="700" text-anchor="middle" dominant-baseline="middle">Базы данных</text>
+<rect x="930" y="110" width="500" height="405" rx="4" ry="4" fill="white" stroke="#222" stroke-width="2"/>
+<text x="944" y="134" font-family="Arial, sans-serif" font-size="18" font-weight="700" text-anchor="start" dominant-baseline="middle"></text>
+<rect x="960" y="150" width="180" height="55" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="1106" y="162" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1099" y="165" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="1099" y="172" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="1050.0" y="177.5" font-family="Arial, sans-serif" font-size="16" font-weight="400" text-anchor="middle" dominant-baseline="middle">Auth DB</text>
+<rect x="1210" y="150" width="180" height="55" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="1356" y="162" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1349" y="165" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="1349" y="172" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="1300.0" y="177.5" font-family="Arial, sans-serif" font-size="16" font-weight="400" text-anchor="middle" dominant-baseline="middle">User DB</text>
+<rect x="960" y="225" width="180" height="55" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="1106" y="237" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1099" y="240" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="1099" y="247" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="1050.0" y="252.5" font-family="Arial, sans-serif" font-size="16" font-weight="400" text-anchor="middle" dominant-baseline="middle">Activity DB</text>
+<rect x="1210" y="225" width="180" height="55" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="1356" y="237" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1349" y="240" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="1349" y="247" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="1300.0" y="252.5" font-family="Arial, sans-serif" font-size="16" font-weight="400" text-anchor="middle" dominant-baseline="middle">Agent DB</text>
+<rect x="960" y="300" width="180" height="55" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="1106" y="312" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1099" y="315" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="1099" y="322" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="1050.0" y="327.5" font-family="Arial, sans-serif" font-size="16" font-weight="400" text-anchor="middle" dominant-baseline="middle">Metrics DB</text>
+<rect x="1210" y="300" width="180" height="55" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="1356" y="312" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1349" y="315" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="1349" y="322" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="1300.0" y="327.5" font-family="Arial, sans-serif" font-size="16" font-weight="400" text-anchor="middle" dominant-baseline="middle">Notification DB</text>
+<rect x="960" y="375" width="180" height="55" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="1106" y="387" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1099" y="390" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="1099" y="397" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="1050.0" y="402.5" font-family="Arial, sans-serif" font-size="16" font-weight="400" text-anchor="middle" dominant-baseline="middle">Report DB</text>
+<rect x="1210" y="375" width="180" height="55" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="1356" y="387" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1349" y="390" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="1349" y="397" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="1300.0" y="402.5" font-family="Arial, sans-serif" font-size="16" font-weight="400" text-anchor="middle" dominant-baseline="middle">Gateway DB</text>
+<rect x="1085" y="450" width="180" height="55" rx="4" ry="4" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+<rect x="1231" y="462" width="20" height="16" fill="none" stroke="#888" stroke-width="1"/>
+<rect x="1224" y="465" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<rect x="1224" y="472" width="8" height="4" fill="#f4f4f4" stroke="#888" stroke-width="1"/>
+<text x="1175.0" y="477.5" font-family="Arial, sans-serif" font-size="16" font-weight="400" text-anchor="middle" dominant-baseline="middle">SQLite queue</text>
+<polyline points="765,692 765,850" fill="none" stroke="#222" stroke-width="1.6" stroke-dasharray="8,7" marker-end="url(#arrow)"/>
+<text x="765.0" y="759.0" font-family="Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">«use»</text>
+<polyline points="765,610 695,462" fill="none" stroke="#222" stroke-width="1.6" stroke-dasharray="8,7" marker-end="url(#arrow)"/>
+<text x="730.0" y="524.0" font-family="Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">«use»</text>
+<polyline points="595,850 695,462" fill="none" stroke="#222" stroke-width="1.6" stroke-dasharray="8,7" marker-end="url(#arrow)"/>
+<text x="645.0" y="644.0" font-family="Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">«use»</text>
+<polyline points="565,421 370,451" fill="none" stroke="#222" stroke-width="1.6" stroke-dasharray="8,7" marker-end="url(#arrow)"/>
+<text x="467.5" y="424.0" font-family="Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">«use»</text>
+<polyline points="335,650 245,492" fill="none" stroke="#222" stroke-width="1.6" stroke-dasharray="8,7" marker-end="url(#arrow)"/>
+<text x="290.0" y="559.0" font-family="Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">«use»</text>
+<polyline points="370,451 565,186" fill="none" stroke="#222" stroke-width="1.6" stroke-dasharray="8,7" marker-end="url(#arrow)"/>
+<text x="467.5" y="306.5" font-family="Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">«use»</text>
+<polyline points="245,410 245,237" fill="none" stroke="#222" stroke-width="1.6" stroke-dasharray="8,7" marker-end="url(#arrow)"/>
+<text x="245.0" y="311.5" font-family="Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">«use»</text>
+<polyline points="380,196 565,421" fill="none" stroke="#222" stroke-width="1.6" stroke-dasharray="8,7" marker-end="url(#arrow)"/>
+<text x="472.5" y="296.5" font-family="Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">«use»</text>
+<polyline points="370,451 930,315" fill="none" stroke="#222" stroke-width="1.6" stroke-dasharray="8,7" marker-end="url(#arrow)"/>
+<text x="650.0" y="371.0" font-family="Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">«use»</text>
+<polyline points="695,380 930,315" fill="none" stroke="#222" stroke-width="1.6" stroke-dasharray="8,7" marker-end="url(#arrow)"/>
+<text x="812.5" y="335.5" font-family="Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">«use»</text>
+<polyline points="380,196 1085,477" fill="none" stroke="#222" stroke-width="1.6" stroke-dasharray="8,7" marker-end="url(#arrow)"/>
+<text x="732.5" y="324.5" font-family="Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">«use»</text>
+<polyline points="825,186 1070,691" fill="none" stroke="#222" stroke-width="1.6" stroke-dasharray="8,7" marker-end="url(#arrow)"/>
+<text x="947.5" y="426.5" font-family="Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">«use»</text>
+<polyline points="825,421 1070,691" fill="none" stroke="#222" stroke-width="1.6" stroke-dasharray="8,7" marker-end="url(#arrow)"/>
+<text x="947.5" y="544.0" font-family="Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle" dominant-baseline="middle">«use»</text>
+</svg>
