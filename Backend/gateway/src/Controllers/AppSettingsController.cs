@@ -281,12 +281,29 @@ public sealed class AppSettingsController : ControllerBase
         AppSettingsDocument settings,
         CancellationToken cancellationToken)
     {
-        var syncResult = await _policySyncService.SyncFromSettingsAsync(settings, cancellationToken);
+        PolicyAccessListSyncResult syncResult;
+        try
+        {
+            syncResult = await _policySyncService.SyncFromSettingsAsync(settings, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Access-list sync failed before agent policy updates could be completed.");
+            syncResult = new PolicyAccessListSyncResult
+            {
+                TotalAgents = 0,
+                SyncedAgents = 0,
+                FailedAgents = 1,
+                Errors = [$"Policy sync failed: {ex.Message}"]
+            };
+        }
 
         Response.Headers["X-Policy-Sync-Total-Agents"] = syncResult.TotalAgents.ToString();
         Response.Headers["X-Policy-Sync-Synced-Agents"] = syncResult.SyncedAgents.ToString();
         Response.Headers["X-Policy-Sync-Failed-Agents"] = syncResult.FailedAgents.ToString();
-        Response.Headers["X-Policy-Sync-Status"] = syncResult.Success ? "ok" : "partial";
+        Response.Headers["X-Policy-Sync-Status"] = syncResult.Success
+            ? "ok"
+            : syncResult.TotalAgents > 0 ? "partial" : "failed";
 
         if (!syncResult.Success)
         {
