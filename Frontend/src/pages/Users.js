@@ -490,9 +490,7 @@ const Users = () => {
                     value={formData.role}
                     onChange={(e) => setFormData((prev) => ({ ...prev, role: e.target.value }))}
                   >
-                    <MenuItem value="user">Пользователь</MenuItem>
-                    <MenuItem value="moderator">Модератор</MenuItem>
-                    <MenuItem value="auditor">Аудитор</MenuItem>
+                    <MenuItem value="user">Сотрудник</MenuItem>
                     <MenuItem value="admin">Администратор</MenuItem>
                   </TextField>
                 </Grid>

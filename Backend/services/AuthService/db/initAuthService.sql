@@ -1,7 +1,7 @@
--- Роли: user / admin / moderator
+-- Роли: admin для панели, user для сотрудников локального агента
 CREATE TABLE roles (
     id          SERIAL PRIMARY KEY,
-    name        VARCHAR(50) UNIQUE NOT NULL, -- 'user', 'admin', 'moderator'
+    name        VARCHAR(50) UNIQUE NOT NULL, -- 'admin', 'user'
     description TEXT,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -32,12 +32,10 @@ CREATE INDEX idx_auth_users_role_id ON auth_users(role_id);
 CREATE INDEX idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
 
--- Добавление тестовых ролей
+-- Базовые роли
 INSERT INTO roles (name, description) VALUES
 ('admin', 'Администратор системы'),
-('user', 'Обычный пользователь'),
-('moderator', 'Модератор'),
-('auditor', 'Аудитор безопасности')
+('user', 'Пользователь локального агента')
 ON CONFLICT (name) DO NOTHING;
 
 -- Bootstrap-администратор (логин: admin, пароль: admin123)

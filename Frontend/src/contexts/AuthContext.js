@@ -17,9 +17,16 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      if (String(storedUser?.role || '').toLowerCase() !== 'admin') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        return;
+      }
+
       setAuthState({
         isAuthenticated: true,
-        user: JSON.parse(localStorage.getItem('user') || '{}'),
+        user: storedUser,
         token: token,
         loading: false,
         error: null
@@ -35,6 +42,18 @@ export const AuthProvider = ({ children }) => {
       
       if (response.token) {
         const { token, user } = response;
+        if (String(user?.role || '').toLowerCase() !== 'admin') {
+          const errorMessage = 'Панель доступна только администраторам';
+          setAuthState({
+            isAuthenticated: false,
+            user: null,
+            token: null,
+            loading: false,
+            error: errorMessage
+          });
+          throw new Error(errorMessage);
+        }
+
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
         

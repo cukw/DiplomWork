@@ -125,6 +125,14 @@ public class AuthServiceImpl : AuthService.AuthServiceBase
             var password = request.Password ?? string.Empty;
             var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
             var roleName = string.IsNullOrWhiteSpace(request.Role) ? "user" : request.Role.Trim().ToLowerInvariant();
+            if (roleName is not ("admin" or "user"))
+            {
+                return new RegisterResponse
+                {
+                    Success = false,
+                    Message = "Invalid role specified. Supported roles: admin, user"
+                };
+            }
 
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             {
