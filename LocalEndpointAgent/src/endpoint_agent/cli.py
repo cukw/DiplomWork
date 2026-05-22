@@ -8,7 +8,12 @@ import sys
 from getpass import getpass
 
 from endpoint_agent.config import load_config, load_or_create_config
-from endpoint_agent.enrollment import clear_local_session, enroll_computer, logout_computer_session
+from endpoint_agent.enrollment import (
+    clear_local_session,
+    end_local_session_if_possible,
+    enroll_computer,
+    logout_computer_session,
+)
 from endpoint_agent.login_gui import prompt_login_and_enroll
 from endpoint_agent.prod_defaults import DEFAULT_AGENT_AUTH_HEADER, DEFAULT_AGENT_AUTH_TOKEN
 from endpoint_agent.runner import EndpointAgentRunner
@@ -30,7 +35,16 @@ async def _run_agent(config_path: str | None, log_level: str) -> None:
 
     if not has_active_session(cfg):
         if cfg.agent.session_id:
-            clear_local_session(resolved_config_path)
+            ended = await asyncio.to_thread(
+                end_local_session_if_possible,
+                gateway_url=cfg.services.gateway_url,
+                config_path=resolved_config_path,
+                insecure_tls=cfg.services.gateway_tls_insecure,
+            )
+            if not ended:
+                logging.getLogger("endpoint_agent").warning(
+                    "Local session was stale; cleared local state without server confirmation"
+                )
             cfg = load_config(resolved_config_path)
 
         if not prompt_login_and_enroll(resolved_config_path, cfg):

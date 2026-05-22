@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import platform
+import re
 import socket
 import ssl
 from pathlib import Path
@@ -11,6 +12,17 @@ from urllib.request import Request, urlopen
 
 import psutil
 import yaml
+
+
+class HttpJsonError(RuntimeError):
+    def __init__(self, status_code: int, url: str, body: str) -> None:
+        self.status_code = status_code
+        self.url = url
+        self.body = body
+        self.json_body = _json_dict_or_none(body)
+        self.response_message = _response_message(self.json_body, body)
+        detail = self.response_message or body or "empty response body"
+        super().__init__(f"HTTP {status_code} from {url}: {detail}")
 
 
 def collect_device_identity() -> dict[str, str]:
@@ -54,11 +66,12 @@ def enroll_computer(
     if department:
         payload["department"] = department
 
-    enrollment = _post_json(
-        f"{base}/api/user/computers/enroll",
-        payload,
+    enrollment = _enroll_with_session_conflict_recovery(
+        base=base,
+        payload=payload,
         token=token,
         context=context,
+        config_path=config_path,
     )
     _update_agent_config(
         config_path,
@@ -94,18 +107,36 @@ def logout_computer_session(
         username=username,
         password=password,
     )
+    session_id = _safe_int(agent.get("session_id"))
+    computer_id = _safe_int(agent.get("computer_id"))
+    if session_id <= 0 and computer_id <= 0:
+        raise RuntimeError("Cannot end computer session: no local session identifiers")
+
     payload = {
-        "sessionId": int(agent.get("session_id") or 0),
-        "computerId": int(agent.get("computer_id") or 0),
+        "sessionId": session_id,
+        "computerId": computer_id,
     }
-    result = _post_json(
-        f"{base}/api/user/computers/session/end",
-        payload,
-        token=token,
-        context=context,
-    )
+    result = _end_computer_session(base=base, payload=payload, token=token, context=context)
     clear_local_session(config_path)
     return result
+
+
+def end_local_session_if_possible(
+    *,
+    gateway_url: str,
+    config_path: str | Path,
+    insecure_tls: bool = False,
+) -> bool:
+    try:
+        logout_computer_session(
+            gateway_url=gateway_url,
+            config_path=config_path,
+            insecure_tls=insecure_tls,
+        )
+        return True
+    except Exception:
+        clear_local_session(config_path)
+        return False
 
 
 def clear_local_session(config_path: str | Path) -> None:
@@ -181,9 +212,86 @@ def _post_json(
             return json.loads(body) if body else {}
     except HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"HTTP {exc.code} from {url}: {body}") from exc
+        raise HttpJsonError(exc.code, url, body) from exc
     except URLError as exc:
         raise RuntimeError(f"Cannot connect to {url}: {exc.reason}") from exc
+
+
+def _enroll_with_session_conflict_recovery(
+    *,
+    base: str,
+    payload: dict[str, Any],
+    token: str,
+    context: ssl.SSLContext | None,
+    config_path: str | Path,
+) -> dict[str, Any]:
+    url = f"{base}/api/user/computers/enroll"
+    try:
+        return _post_json(url, payload, token=token, context=context)
+    except HttpJsonError as exc:
+        if exc.status_code != 409:
+            raise
+
+        local_agent = _read_local_agent(config_path)
+        end_payload = _session_end_payload_for_conflict(exc.response_message, local_agent)
+        if end_payload is not None:
+            try:
+                _end_computer_session(base=base, payload=end_payload, token=token, context=context)
+                return _post_json(url, payload, token=token, context=context)
+            except HttpJsonError:
+                raise _friendly_enrollment_conflict(exc) from exc
+            except RuntimeError:
+                raise _friendly_enrollment_conflict(exc) from exc
+
+        raise _friendly_enrollment_conflict(exc) from exc
+
+
+def _end_computer_session(
+    *,
+    base: str,
+    payload: dict[str, Any],
+    token: str,
+    context: ssl.SSLContext | None,
+) -> dict[str, Any]:
+    return _post_json(
+        f"{base}/api/user/computers/session/end",
+        payload,
+        token=token,
+        context=context,
+    )
+
+
+def _session_end_payload_for_conflict(message: str, local_agent: dict[str, Any]) -> dict[str, int] | None:
+    if "for another user" in (message or "").lower():
+        return None
+
+    local_session_id = _safe_int(local_agent.get("session_id"))
+    local_computer_id = _safe_int(local_agent.get("computer_id"))
+    conflict_computer_id = _active_session_computer_id(message)
+
+    if conflict_computer_id > 0:
+        session_id = local_session_id if conflict_computer_id == local_computer_id else 0
+        return {"sessionId": session_id, "computerId": conflict_computer_id}
+
+    if conflict_computer_id <= 0 and (local_session_id > 0 or local_computer_id > 0):
+        return {"sessionId": local_session_id, "computerId": local_computer_id}
+
+    return None
+
+
+def _active_session_computer_id(message: str) -> int:
+    match = re.search(r"active session on computer\s+(\d+)", message or "", flags=re.IGNORECASE)
+    return int(match.group(1)) if match else 0
+
+
+def _friendly_enrollment_conflict(exc: HttpJsonError) -> RuntimeError:
+    message = exc.response_message or exc.body
+    if "already has active session" in message or "Active session conflict" in message:
+        return RuntimeError(
+            "Вход выполнен, но сервер не разрешил создать сессию агента: "
+            f"{message}. Завершите активную сессию пользователя/компьютера и повторите вход."
+        )
+    return RuntimeError(f"Вход выполнен, но регистрация компьютера не удалась: {message}")
 
 
 def _update_agent_config(
@@ -264,6 +372,15 @@ def _token_for_session_end(
     raise RuntimeError("Cannot end computer session: no valid local auth session")
 
 
+def _read_local_agent(path: str | Path) -> dict[str, Any]:
+    try:
+        raw = _read_yaml(path)
+    except FileNotFoundError:
+        return {}
+    agent = raw.get("agent") if isinstance(raw, dict) else {}
+    return agent if isinstance(agent, dict) else {}
+
+
 def _read_yaml(path: str | Path) -> dict[str, Any]:
     config_path = Path(path).expanduser().resolve()
     if not config_path.exists():
@@ -277,3 +394,27 @@ def _write_yaml(path: str | Path, raw: dict[str, Any]) -> None:
     config_path.parent.mkdir(parents=True, exist_ok=True)
     with config_path.open("w", encoding="utf-8") as handle:
         yaml.safe_dump(raw, handle, allow_unicode=True, sort_keys=False)
+
+
+def _safe_int(value: Any) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _json_dict_or_none(body: str) -> dict[str, Any] | None:
+    try:
+        parsed = json.loads(body) if body else None
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _response_message(parsed: dict[str, Any] | None, fallback: str) -> str:
+    if parsed:
+        for key in ("message", "error", "detail", "title"):
+            value = parsed.get(key)
+            if value not in (None, ""):
+                return str(value)
+    return fallback.strip()

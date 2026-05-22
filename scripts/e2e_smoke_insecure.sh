@@ -16,9 +16,9 @@ request_public() {
   headers_file="$(mktemp)"
 
   if [[ -n "$body" ]]; then
-    curl -sS -X "$method" "$url" -H "Content-Type: application/json" -d "$body" -D "$headers_file" -o "$body_file"
+    curl -k -sS -X "$method" "$url" -H "Content-Type: application/json" -d "$body" -D "$headers_file" -o "$body_file"
   else
-    curl -sS -X "$method" "$url" -H "Content-Type: application/json" -D "$headers_file" -o "$body_file"
+    curl -k -sS -X "$method" "$url" -H "Content-Type: application/json" -D "$headers_file" -o "$body_file"
   fi
 
   RESPONSE_STATUS="$(awk 'NR==1 {print $2}' "$headers_file")"
@@ -37,13 +37,13 @@ request_auth() {
   headers_file="$(mktemp)"
 
   if [[ -n "$body" ]]; then
-    curl -sS -X "$method" "$url" \
+    curl -k -sS -X "$method" "$url" \
       -H "Content-Type: application/json" \
       -H "Authorization: Bearer ${token}" \
       -d "$body" \
       -D "$headers_file" -o "$body_file"
   else
-    curl -sS -X "$method" "$url" \
+    curl -k -sS -X "$method" "$url" \
       -H "Content-Type: application/json" \
       -H "Authorization: Bearer ${token}" \
       -D "$headers_file" -o "$body_file"
@@ -144,7 +144,7 @@ EMAIL="${USERNAME}@example.com"
 PASSWORD="P@ssw0rd_${SUFFIX}!"
 
 REGISTER_PAYLOAD=$(cat <<JSON
-{"username":"${USERNAME}","email":"${EMAIL}","password":"${PASSWORD}","role":"user"}
+{"username":"${USERNAME}","email":"${EMAIL}","password":"${PASSWORD}","role":"admin"}
 JSON
 )
 request_public "POST" "${API_BASE}/auth/register" "${REGISTER_PAYLOAD}"
