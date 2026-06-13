@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import time
 import urllib.request
 import uuid
 from datetime import UTC, datetime
@@ -18,6 +19,7 @@ from .policy_cache import PolicyCache
 from .queue_store import OfflineQueueStore
 from .risk_engine import RiskEngine
 from .state_store import AgentStateStore
+from .system_inventory import collect_system_inventory
 from .system_control import SystemController
 from . import rust_bridge
 
@@ -57,6 +59,9 @@ class EndpointAgentRunner:
         self._last_collected_at = ""
         self._last_sent_at = ""
         self._last_error = ""
+        self._system_inventory: dict[str, Any] = {}
+        self._system_inventory_ts = 0.0
+        self._refresh_system_inventory(force=True)
         self._log_connectivity_expectations()
 
     def _bootstrap_policy(self) -> dict[str, Any]:
@@ -93,7 +98,7 @@ class EndpointAgentRunner:
         self._stop.set()
 
     async def _emit_boot_presence(self) -> None:
-        event = ActivityEvent(
+        boot_event = ActivityEvent(
             computer_id=self.cfg.agent.computer_id,
             activity_type="SYSTEM_BOOT",
             timestamp=utc_now_iso(),
@@ -109,8 +114,20 @@ class EndpointAgentRunner:
             },
             risk_score=0.0,
         )
-        self._decorate_events([event])
-        self.queue.enqueue_many([event])
+        inventory_event = ActivityEvent(
+            computer_id=self.cfg.agent.computer_id,
+            activity_type="SYSTEM_INVENTORY",
+            timestamp=utc_now_iso(),
+            collector="system_inventory",
+            details={
+                "inventory": self._system_inventory,
+                "agent_user_id": self.cfg.agent.user_id,
+            },
+            risk_score=0.0,
+        )
+        events = [boot_event, inventory_event]
+        self._decorate_events(events)
+        self.queue.enqueue_many(events)
 
     def _log_connectivity_expectations(self) -> None:
         token_configured = bool((self.cfg.security.agent_transport_auth.token or "").strip())
@@ -395,6 +412,7 @@ class EndpointAgentRunner:
             event.source_platform = event.source_platform or str(self._caps.get("platform") or "")
 
     def _health_snapshot(self) -> dict[str, Any]:
+        self._refresh_system_inventory()
         return {
             "queue_size": self.queue.size(),
             "last_collected_at": self._last_collected_at,
@@ -406,7 +424,19 @@ class EndpointAgentRunner:
             "source_platform": str(self._caps.get("platform") or ""),
             "agent_version": self.cfg.agent.version,
             "device_name": self.cfg.agent.device_name,
+            "system_inventory": self._system_inventory,
         }
+
+    def _refresh_system_inventory(self, *, force: bool = False) -> None:
+        now = time.monotonic()
+        if not force and self._system_inventory and now - self._system_inventory_ts < 3600:
+            return
+        try:
+            self._system_inventory = collect_system_inventory(self._caps)
+            self._system_inventory_ts = now
+        except Exception as exc:
+            self._last_error = f"system_inventory: {exc}"
+            logger.debug("System inventory refresh failed: %s", exc)
 
     def _handle_self_update(self, payload: dict[str, Any]) -> tuple[str, str]:
         target_version = str(payload.get("targetVersion") or payload.get("target_version") or "").strip()

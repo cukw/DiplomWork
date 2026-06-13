@@ -31,6 +31,7 @@ class RuntimeConfig(BaseModel):
     collection_interval_sec: int = 5
     max_batch_size: int = 100
     max_queue_size: int = 10_000
+    require_admin: bool = False
 
 
 class ProcessCollectorConfig(BaseModel):
@@ -234,6 +235,7 @@ def ensure_config(path: str | Path | None = None) -> Path:
             "collection_interval_sec": 5,
             "max_batch_size": 100,
             "max_queue_size": 10_000,
+            "require_admin": False,
         },
         "security": {
             "agent_transport_auth": {

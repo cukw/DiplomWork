@@ -169,18 +169,53 @@ const extractReportedCapabilities = (agent) => {
   return [];
 };
 
-const normalizeAgent = (agent) => ({
-  id: agent.id,
-  computerId: agent.computerId,
-  version: agent.version || '—',
-  status: agent.status || 'unknown',
-  lastHeartbeat: agent.lastHeartbeat,
-  configVersion: agent.configVersion || '—',
-  offlineSince: agent.offlineSince,
-  capabilities: agent.capabilities,
-  reportedCapabilities: agent.reportedCapabilities,
-  metadata: agent.metadata,
-});
+const parseJsonValue = (value, fallback = null) => {
+  if (!value) return fallback;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+};
+
+const formatBytes = (value) => {
+  const bytes = Number(value || 0);
+  if (!Number.isFinite(bytes) || bytes <= 0) return '—';
+  const units = ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ'];
+  let size = bytes;
+  let index = 0;
+  while (size >= 1024 && index < units.length - 1) {
+    size /= 1024;
+    index += 1;
+  }
+  return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+};
+
+const normalizeAgent = (agent) => {
+  const capabilities = parseJsonValue(agent.capabilitiesJson, agent.capabilities || {});
+  const health = parseJsonValue(agent.healthJson, {});
+  return {
+    id: agent.id,
+    computerId: agent.computerId,
+    version: agent.version || '—',
+    status: agent.status || 'unknown',
+    lastHeartbeat: agent.lastHeartbeat,
+    configVersion: agent.configVersion || '—',
+    offlineSince: agent.offlineSince,
+    queueSize: agent.queueSize,
+    lastCollectedAt: agent.lastCollectedAt,
+    lastSentAt: agent.lastSentAt,
+    lastError: agent.lastError,
+    policyVersion: agent.policyVersion,
+    sourcePlatform: agent.sourcePlatform,
+    capabilities,
+    reportedCapabilities: agent.reportedCapabilities,
+    health,
+    systemInventory: health?.system_inventory || null,
+    metadata: agent.metadata,
+  };
+};
 
 const prettyJson = (value) => {
   if (!value) return '{}';
@@ -376,6 +411,7 @@ const Agents = () => {
 
   const effectiveCapabilities = useMemo(() => buildEffectiveCapabilities(policy), [policy]);
   const reportedCapabilities = useMemo(() => extractReportedCapabilities(selectedAgent), [selectedAgent]);
+  const systemInventory = selectedAgent?.systemInventory || null;
 
   const clearSuccessLater = () => {
     setTimeout(() => setSuccess(null), 2500);
@@ -831,6 +867,71 @@ const Agents = () => {
                   )}
                 </CardContent>
               </Card>
+
+              {systemInventory && (
+                <Card>
+                  <CardContent>
+                    <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+                      <Computer color="primary" fontSize="small" />
+                      <Typography variant="h6">Информация о компьютере</Typography>
+                    </Stack>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6} md={3}>
+                        <Paper variant="outlined" sx={{ p: 1.5 }}>
+                          <Typography variant="caption" color="text.secondary">Имя хоста</Typography>
+                          <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>{systemInventory.hostname || '—'}</Typography>
+                        </Paper>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={3}>
+                        <Paper variant="outlined" sx={{ p: 1.5 }}>
+                          <Typography variant="caption" color="text.secondary">ОС</Typography>
+                          <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>{systemInventory.platform || selectedAgent?.sourcePlatform || '—'}</Typography>
+                        </Paper>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={3}>
+                        <Paper variant="outlined" sx={{ p: 1.5 }}>
+                          <Typography variant="caption" color="text.secondary">Пользователь</Typography>
+                          <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>{systemInventory.current_user || '—'}</Typography>
+                        </Paper>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={3}>
+                        <Paper variant="outlined" sx={{ p: 1.5 }}>
+                          <Typography variant="caption" color="text.secondary">Права процесса</Typography>
+                          <Typography variant="body2">{systemInventory.is_admin ? 'Администратор' : 'Обычный пользователь'}</Typography>
+                        </Paper>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={3}>
+                        <Paper variant="outlined" sx={{ p: 1.5 }}>
+                          <Typography variant="caption" color="text.secondary">CPU</Typography>
+                          <Typography variant="body2">
+                            {systemInventory.cpu?.physical_cores || '—'} / {systemInventory.cpu?.logical_cores || '—'} ядер
+                          </Typography>
+                        </Paper>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={3}>
+                        <Paper variant="outlined" sx={{ p: 1.5 }}>
+                          <Typography variant="caption" color="text.secondary">RAM</Typography>
+                          <Typography variant="body2">{formatBytes(systemInventory.memory?.total_bytes)}</Typography>
+                        </Paper>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={3}>
+                        <Paper variant="outlined" sx={{ p: 1.5 }}>
+                          <Typography variant="caption" color="text.secondary">Диски</Typography>
+                          <Typography variant="body2">{Array.isArray(systemInventory.disks) ? systemInventory.disks.length : 0}</Typography>
+                        </Paper>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={3}>
+                        <Paper variant="outlined" sx={{ p: 1.5 }}>
+                          <Typography variant="caption" color="text.secondary">Сетевые интерфейсы</Typography>
+                          <Typography variant="body2">
+                            {Array.isArray(systemInventory.network_interfaces) ? systemInventory.network_interfaces.length : 0}
+                          </Typography>
+                        </Paper>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              )}
 
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>

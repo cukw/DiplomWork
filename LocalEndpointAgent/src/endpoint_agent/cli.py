@@ -6,6 +6,7 @@ import logging
 import signal
 import sys
 from getpass import getpass
+from pathlib import Path
 
 from endpoint_agent.config import load_config, load_or_create_config
 from endpoint_agent.enrollment import (
@@ -14,12 +15,12 @@ from endpoint_agent.enrollment import (
     enroll_computer,
     logout_computer_session,
 )
+from endpoint_agent.launcher import is_elevated, request_elevation, start_background
 from endpoint_agent.login_gui import prompt_login_and_enroll
 from endpoint_agent.prod_defaults import DEFAULT_AGENT_AUTH_HEADER, DEFAULT_AGENT_AUTH_TOKEN
-from endpoint_agent.runner import EndpointAgentRunner
 from endpoint_agent.session_runtime import has_active_session, seconds_until_session_expiry
 
-COMMANDS = {"run", "enroll", "logout"}
+COMMANDS = {"run", "start", "enroll", "logout"}
 
 
 def _configure_logging(level: str) -> None:
@@ -29,8 +30,7 @@ def _configure_logging(level: str) -> None:
     )
 
 
-async def _run_agent(config_path: str | None, log_level: str) -> None:
-    _configure_logging(log_level)
+async def _ensure_active_session(config_path: str | None) -> tuple[Path, object]:
     resolved_config_path, cfg = load_or_create_config(config_path)
 
     if not has_active_session(cfg):
@@ -53,6 +53,15 @@ async def _run_agent(config_path: str | None, log_level: str) -> None:
         cfg = load_config(resolved_config_path)
         if not has_active_session(cfg):
             raise SystemExit("Agent session was not created")
+
+    return resolved_config_path, cfg
+
+
+async def _run_agent(config_path: str | None, log_level: str) -> None:
+    _configure_logging(log_level)
+    resolved_config_path, cfg = await _ensure_active_session(config_path)
+
+    from endpoint_agent.runner import EndpointAgentRunner
 
     runner = EndpointAgentRunner(cfg)
     session_expired = False
@@ -103,7 +112,55 @@ async def _run_agent(config_path: str | None, log_level: str) -> None:
 
 
 def run_command(args: argparse.Namespace) -> int:
+    if args.background:
+        return start_command(args)
+
+    if _should_request_admin(args.config, bool(args.require_admin)):
+        _configure_logging(args.log_level)
+        resolved_config_path, _ = asyncio.run(_ensure_active_session(args.config))
+        elevated_args = [
+            "run",
+            "--config",
+            str(resolved_config_path),
+            "--log-level",
+            args.log_level,
+            "--require-admin",
+        ]
+        return _relaunch_with_admin(elevated_args)
+
     asyncio.run(_run_agent(args.config, args.log_level))
+    return 0
+
+
+def start_command(args: argparse.Namespace) -> int:
+    _configure_logging(args.log_level)
+    resolved_config_path, cfg = asyncio.run(_ensure_active_session(args.config))
+    require_admin = bool(getattr(args, "require_admin", False)) or cfg.runtime.require_admin
+    if require_admin and not is_elevated():
+        elevated_args = [
+            "run",
+            "--config",
+            str(resolved_config_path),
+            "--log-level",
+            args.log_level,
+            "--background",
+            "--require-admin",
+        ]
+        return _relaunch_with_admin(elevated_args)
+
+    child_args = [
+        "run",
+        "--config",
+        str(resolved_config_path),
+        "--log-level",
+        args.log_level,
+    ]
+    if require_admin:
+        child_args.append("--require-admin")
+
+    log_dir = cfg.state_dir_path.parent / "logs"
+    pid = start_background(child_args, log_dir=log_dir, cwd=Path.cwd())
+    print(f"Agent monitoring started in background (pid={pid}, logs={log_dir})")
     return 0
 
 
@@ -149,7 +206,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     run_parser = sub.add_parser("run", help="Run agent")
     run_parser.add_argument("--config", default=None, help="Path to YAML config")
     run_parser.add_argument("--log-level", default="INFO", help="Log level")
+    run_parser.add_argument("--background", action="store_true", help="Start monitoring in the background and exit")
+    run_parser.add_argument("--require-admin", action="store_true", help="Ask the OS for administrator rights before running")
     run_parser.set_defaults(func=run_command)
+
+    start_parser = sub.add_parser("start", help="Prepare session and start monitoring in background")
+    start_parser.add_argument("--config", default=None, help="Path to YAML config")
+    start_parser.add_argument("--log-level", default="INFO", help="Log level")
+    start_parser.add_argument("--require-admin", action="store_true", help="Ask the OS for administrator rights before starting")
+    start_parser.set_defaults(func=start_command)
 
     enroll_parser = sub.add_parser("enroll", help="Login and start a computer session")
     enroll_parser.add_argument("--config", default=None, help="Path to YAML config")
@@ -186,6 +251,39 @@ def _normalize_argv(raw_argv: list[str]) -> list[str]:
     if not argv or (argv[0].startswith("-") and argv[0] not in {"-h", "--help"}):
         argv.insert(0, "run")
     return argv
+
+
+def _should_request_admin(config_path: str | None, explicit: bool) -> bool:
+    if is_elevated():
+        return False
+    if explicit:
+        return True
+    try:
+        _, cfg = load_or_create_config(config_path)
+        return bool(cfg.runtime.require_admin)
+    except Exception:
+        return False
+
+
+def _relaunch_with_admin(args: list[str]) -> int:
+    print("Для расширенного сбора информации о компьютере требуется подтверждение прав администратора.")
+    if request_elevation(args, cwd=Path.cwd()):
+        return 0
+    print("Не удалось запросить права администратора. Запустите агент от имени администратора вручную.")
+    return 1
+
+
+def _run_args(args: argparse.Namespace, *, background: bool) -> list[str]:
+    result = ["run"]
+    if getattr(args, "config", None):
+        result.extend(["--config", str(args.config)])
+    if getattr(args, "log_level", None):
+        result.extend(["--log-level", str(args.log_level)])
+    if background:
+        result.append("--background")
+    if getattr(args, "require_admin", False):
+        result.append("--require-admin")
+    return result
 
 
 def main() -> int:

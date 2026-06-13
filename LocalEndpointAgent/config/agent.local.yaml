@@ -21,6 +21,7 @@ runtime:
   collection_interval_sec: 5
   max_batch_size: 100
   max_queue_size: 10000
+  require_admin: false
 
 collectors:
   processes:

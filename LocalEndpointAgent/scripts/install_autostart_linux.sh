@@ -14,7 +14,7 @@ After=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=$ROOT_DIR
-ExecStart=python -m endpoint_agent.main --config config/agent.local.yaml
+ExecStart=python -m endpoint_agent.main run --config config/agent.local.yaml
 Restart=always
 RestartSec=5
 

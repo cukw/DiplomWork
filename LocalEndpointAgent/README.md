@@ -39,6 +39,10 @@
    - `maturin develop --manifest-path rust/sysprobe/Cargo.toml`
 4. Запустить агент:
    - `python -m endpoint_agent.main --config config/agent.local.yaml`
+5. Запустить мониторинг в фоне:
+   - `python -m endpoint_agent.main start --config config/agent.local.yaml`
+6. Запросить права администратора перед запуском:
+   - `python -m endpoint_agent.main start --require-admin --config config/agent.local.yaml`
 
 ## Проверка корректного взаимодействия с backend
 Чтобы агент стабильно работал с backend в production, обязательно:
@@ -120,6 +124,7 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
   - Linux: `systemd --user` (или `~/.config/autostart` fallback)
   - macOS: `launchd` (`~/Library/LaunchAgents`)
   - Windows: `Scheduled Task` (или Startup folder fallback)
+- создаёт launcher, который без аргументов запускает мониторинг в фоновом режиме
 
 ### Пример запуска установщика
 Из корня репозитория:
@@ -138,6 +143,7 @@ python3 LocalEndpointAgent/scripts/install_agent.py \
 - `--agent-auth-header <header>` — имя metadata-заголовка для токена (по умолчанию `x-agent-token`)
 - `--skip-autostart` — не настраивать автозапуск
 - `--skip-rust` — не собирать Rust `sysprobe` (использовать Python fallback)
+- `--require-admin` — сохранять требование повышенных прав в конфиге агента
 - `--force` — перезаписать существующую установку
 - `--dry-run` — показать шаги без изменений
 
@@ -155,6 +161,7 @@ python3 LocalEndpointAgent/scripts/install_agent.py \
 Если конкретная capability недоступна, агент продолжит работу (процессы, браузеры, очередь, gRPC, policy/commands), а неподдерживаемый коллектор будет автоматически отключён без падения процесса.
 
 ## Permissions и платформенные зависимости
+- Запуск с `--require-admin` вызывает штатный prompt ОС и перезапускает агент с повышенными правами. Это не заменяет явные разрешения приватности ОС.
 - macOS:
   - `ActiveWindowCollector` требует Accessibility/Automation permission для Terminal/агентского бинарника (`System Settings -> Privacy & Security -> Accessibility`).
   - `BrowserHistoryCollector` и `FileActivityWatcherCollector` для профилей браузеров, Documents/Desktop/Downloads могут требовать Full Disk Access.

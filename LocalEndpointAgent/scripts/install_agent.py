@@ -262,6 +262,7 @@ def _render_config_yaml(
     control_plane_signing_secret: str | None,
     control_plane_signing_key_id: str,
     control_plane_allow_unsigned: bool,
+    require_admin: bool,
 ) -> str:
     user_id_line = "null" if user_id is None else str(user_id)
     safe_device = device_name.replace('"', "")
@@ -275,6 +276,7 @@ def _render_config_yaml(
     state_dir_str = str(state_dir).replace("\\", "/").replace('"', "")
     cp_allow_unsigned = "true" if control_plane_allow_unsigned else "false"
     gateway_insecure = "true" if gateway_tls_insecure else "false"
+    require_admin_value = "true" if require_admin else "false"
     return f"""agent:
   computer_id: {computer_id}
   user_id: {user_id_line}
@@ -297,6 +299,8 @@ runtime:
   flush_interval_sec: 5
   collection_interval_sec: 5
   max_batch_size: 100
+  max_queue_size: 10000
+  require_admin: {require_admin_value}
 
 collectors:
   processes:
@@ -360,6 +364,7 @@ def _write_runtime_files(
     control_plane_signing_secret: str | None,
     control_plane_signing_key_id: str,
     control_plane_allow_unsigned: bool,
+    require_admin: bool,
     dry_run: bool,
 ) -> tuple[Path, Path]:
     app_dir = install_root / "app"
@@ -384,6 +389,7 @@ def _write_runtime_files(
         control_plane_signing_secret=control_plane_signing_secret,
         control_plane_signing_key_id=control_plane_signing_key_id,
         control_plane_allow_unsigned=control_plane_allow_unsigned,
+        require_admin=require_admin,
     )
     _print(f"Writing config: {config_path}")
     if not dry_run:
@@ -394,7 +400,11 @@ def _write_runtime_files(
         launcher_text = (
             "@echo off\r\n"
             f"cd /d \"{app_dir}\"\r\n"
-            f"\"{venv_python_path}\" -m endpoint_agent.main %* --config \"{config_path}\"\r\n"
+            "if \"%~1\"==\"\" (\r\n"
+            f"  \"{venv_python_path}\" -m endpoint_agent.main start --config \"{config_path}\"\r\n"
+            ") else (\r\n"
+            f"  \"{venv_python_path}\" -m endpoint_agent.main %* --config \"{config_path}\"\r\n"
+            ")\r\n"
         )
     else:
         launcher = bin_dir / "run-agent.sh"
@@ -402,6 +412,9 @@ def _write_runtime_files(
             "#!/usr/bin/env bash\n"
             "set -euo pipefail\n"
             f"cd \"{app_dir}\"\n"
+            "if [ \"$#\" -eq 0 ]; then\n"
+            "  set -- start\n"
+            "fi\n"
             f"exec \"{venv_python_path}\" -m endpoint_agent.main \"$@\" --config \"{config_path}\"\n"
         )
     _print(f"Writing launcher: {launcher}")
@@ -522,10 +535,10 @@ def _install_autostart_windows(install_root: Path, launcher_path: Path, *, dry_r
     launcher_cmd = str(launcher_path)
 
     if schtasks:
-        tr = f'"{launcher_cmd}"'
+        tr = f'"{launcher_cmd}" run'
         try:
-            _run([schtasks, "/Create", "/F", "/TN", task_name, "/SC", "ONLOGON", "/TR", tr], dry_run=dry_run)
-            return True, f"Installed Scheduled Task '{task_name}'"
+            _run([schtasks, "/Create", "/F", "/TN", task_name, "/SC", "ONLOGON", "/RL", "HIGHEST", "/TR", tr], dry_run=dry_run)
+            return True, f"Installed elevated Scheduled Task '{task_name}'"
         except subprocess.CalledProcessError:
             pass
 
@@ -534,7 +547,7 @@ def _install_autostart_windows(install_root: Path, launcher_path: Path, *, dry_r
     startup_cmd = startup_dir / "LocalEndpointAgent.cmd"
     content = (
         "@echo off\r\n"
-        f"start \"\" \"{launcher_cmd}\"\r\n"
+        f"start \"\" \"{launcher_cmd}\" start --require-admin\r\n"
     )
     if not dry_run:
         startup_cmd.write_text(content, encoding="utf-8")
@@ -607,6 +620,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--control-plane-signing-secret", default="", help="Shared secret for verifying signed agent policy/commands (optional)")
     parser.add_argument("--control-plane-signing-key-id", default="default", help="Expected control-plane signing key ID")
     parser.add_argument("--require-signed-control-plane", action="store_true", help="Reject unsigned policy/commands from AgentManagementService")
+    parser.add_argument("--require-admin", action="store_true", help="Request administrator rights before starting the agent")
     parser.add_argument("--install-dir", default=None, help="Target installation directory")
     parser.add_argument("--python", default=sys.executable, help="Python interpreter to create venv with")
     parser.add_argument("--skip-autostart", action="store_true", help="Do not configure autostart")
@@ -691,6 +705,7 @@ def main() -> int:
             control_plane_signing_secret=args.control_plane_signing_secret or None,
             control_plane_signing_key_id=args.control_plane_signing_key_id,
             control_plane_allow_unsigned=not args.require_signed_control_plane,
+            require_admin=args.require_admin,
             dry_run=args.dry_run,
         )
 
@@ -728,6 +743,8 @@ def main() -> int:
         print()
         print("Manual start command:")
         print(f'  "{launcher_path}"')
+        if not args.require_admin:
+            print(f'  "{launcher_path}" start --require-admin')
         return 0
     except subprocess.CalledProcessError as exc:
         print(f"Installer failed (command exit code {exc.returncode})", file=sys.stderr)

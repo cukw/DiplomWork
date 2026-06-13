@@ -5,7 +5,7 @@ param(
   [string]$TaskName = "LocalEndpointAgent"
 )
 
-$Action = New-ScheduledTaskAction -Execute $PythonExe -Argument "-m endpoint_agent.main --config `"$ConfigPath`"" -WorkingDirectory $AgentRoot
+$Action = New-ScheduledTaskAction -Execute $PythonExe -Argument "-m endpoint_agent.main run --config `"$ConfigPath`"" -WorkingDirectory $AgentRoot
 $Trigger = New-ScheduledTaskTrigger -AtLogOn
 $Principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
 $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
