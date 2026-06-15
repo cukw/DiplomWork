@@ -8,6 +8,8 @@ namespace UserService.Services;
 
 public class UserServiceImpl : UserService.UserServiceBase
 {
+    private static readonly TimeSpan MoscowUtcOffset = TimeSpan.FromHours(3);
+
     private readonly UserDbContext _db;
     private readonly ILogger<UserServiceImpl> _logger;
 
@@ -825,32 +827,57 @@ public class UserServiceImpl : UserService.UserServiceBase
         if (nowUtc.Kind != DateTimeKind.Utc)
             nowUtc = DateTime.SpecifyKind(nowUtc, DateTimeKind.Utc);
 
-        var moscowTz = GetMoscowTimeZone();
-        var moscowNow = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, moscowTz);
-        var moscowExpiry = new DateTime(
-            moscowNow.Year,
-            moscowNow.Month,
-            moscowNow.Day,
+        var moscowTz = TryGetMoscowTimeZone();
+        if (moscowTz is not null)
+        {
+            var moscowNow = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, moscowTz);
+            var moscowExpiry = new DateTime(
+                moscowNow.Year,
+                moscowNow.Month,
+                moscowNow.Day,
+                23,
+                0,
+                0,
+                DateTimeKind.Unspecified);
+
+            if (moscowNow >= moscowExpiry)
+                moscowExpiry = moscowExpiry.AddDays(1);
+
+            return TimeZoneInfo.ConvertTimeToUtc(moscowExpiry, moscowTz);
+        }
+
+        var moscowNowFallback = new DateTimeOffset(nowUtc, TimeSpan.Zero).ToOffset(MoscowUtcOffset);
+        var moscowExpiryFallback = new DateTimeOffset(
+            moscowNowFallback.Year,
+            moscowNowFallback.Month,
+            moscowNowFallback.Day,
             23,
             0,
             0,
-            DateTimeKind.Unspecified);
+            MoscowUtcOffset);
 
-        if (moscowNow >= moscowExpiry)
-            moscowExpiry = moscowExpiry.AddDays(1);
+        if (moscowNowFallback >= moscowExpiryFallback)
+            moscowExpiryFallback = moscowExpiryFallback.AddDays(1);
 
-        return TimeZoneInfo.ConvertTimeToUtc(moscowExpiry, moscowTz);
+        return moscowExpiryFallback.UtcDateTime;
     }
 
-    private static TimeZoneInfo GetMoscowTimeZone()
+    private static TimeZoneInfo? TryGetMoscowTimeZone()
     {
-        try
+        foreach (var timeZoneId in new[] { "Europe/Moscow", "Russian Standard Time" })
         {
-            return TimeZoneInfo.FindSystemTimeZoneById("Europe/Moscow");
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            }
+            catch (TimeZoneNotFoundException)
+            {
+            }
+            catch (InvalidTimeZoneException)
+            {
+            }
         }
-        catch (TimeZoneNotFoundException)
-        {
-            return TimeZoneInfo.FindSystemTimeZoneById("Russian Standard Time");
-        }
+
+        return null;
     }
 }
