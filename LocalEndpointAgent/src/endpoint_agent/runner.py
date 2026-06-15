@@ -73,6 +73,7 @@ class EndpointAgentRunner:
     async def run(self) -> None:
         logger.info("Endpoint agent starting for computer_id=%s user_id=%s", self.cfg.agent.computer_id, self.cfg.agent.user_id)
         logger.info("Runtime capabilities: %s", self._caps)
+        await self._ensure_registered_for_activity("startup")
         await self._emit_boot_presence()
         tasks = [
             asyncio.create_task(self._collection_loop(), name="collection"),
@@ -230,6 +231,9 @@ class EndpointAgentRunner:
             await asyncio.sleep(max(1, int(self._policy_with_runtime_defaults().get("flush_interval_sec", self.cfg.runtime.flush_interval_sec))))
 
     async def _flush_once(self) -> tuple[int, int]:
+        if self.queue.size() > 0 and not await self._ensure_registered_for_activity("activity flush"):
+            return 0, 0
+
         batch_size = int(self.cfg.runtime.max_batch_size)
         batch = self.queue.dequeue_batch(batch_size)
         if not batch:
@@ -253,9 +257,40 @@ class EndpointAgentRunner:
 
         if sent_ids:
             self.queue.mark_sent(sent_ids)
+            logger.info(
+                "Sent %s activity event(s) to backend (agent_id=%s, remaining_queue=%s)",
+                len(sent_ids),
+                self.agent_client.agent_id,
+                self.queue.size(),
+            )
         if failed_ids:
             self.queue.mark_failed(failed_ids, self._last_error or "grpc send failed")
         return len(sent_ids), len(failed_ids)
+
+    async def _ensure_registered_for_activity(self, reason: str) -> bool:
+        if self.agent_client.agent_id:
+            return True
+        try:
+            agent_id = await self.agent_client.ensure_registered()
+        except ProtoUnavailableError as exc:
+            self._online = False
+            self._last_error = str(exc)
+            logger.error(str(exc))
+            return False
+        except Exception as exc:
+            self._online = False
+            self._last_error = f"agent registration failed: {exc}"
+            logger.warning("Agent registration failed before %s: %s", reason, exc)
+            return False
+
+        if agent_id:
+            logger.info("Agent registered before %s (agent_id=%s)", reason, agent_id)
+            return True
+
+        self._online = False
+        self._last_error = f"agent registration returned no agent_id before {reason}"
+        logger.warning("Agent registration returned no agent_id before %s; activity flush is deferred", reason)
+        return False
 
     async def _flush_until_empty(self, max_batches: int = 100) -> tuple[int, int]:
         total_sent = 0

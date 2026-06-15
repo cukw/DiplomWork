@@ -68,17 +68,18 @@ def prompt_login_and_enroll(config_path: str | Path, cfg: AgentConfig) -> bool:
 
         def worker() -> None:
             try:
-                _enroll(config_path, cfg, username, password)
+                enrollment = _enroll(config_path, cfg, username, password)
             except Exception as exc:
-                root.after(0, lambda: on_error(exc))
+                root.after(0, on_error, exc)
                 return
-            root.after(0, on_success)
+            root.after(0, on_success, enrollment)
 
         Thread(target=worker, daemon=True).start()
 
-    def on_success() -> None:
+    def on_success(enrollment: dict[str, object]) -> None:
         result["ok"] = True
         status_var.set("Готово.")
+        messagebox.showinfo("Локальный агент", _success_message(enrollment))
         root.destroy()
 
     def on_error(exc: Exception) -> None:
@@ -102,12 +103,13 @@ def _console_login_and_enroll(config_path: str | Path, cfg: AgentConfig) -> bool
     password = getpass("Password: ")
     if not username or not password:
         return False
-    _enroll(config_path, cfg, username, password)
+    enrollment = _enroll(config_path, cfg, username, password)
+    print(_success_message(enrollment))
     return True
 
 
-def _enroll(config_path: str | Path, cfg: AgentConfig, username: str, password: str) -> None:
-    enroll_computer(
+def _enroll(config_path: str | Path, cfg: AgentConfig, username: str, password: str) -> dict[str, object]:
+    return enroll_computer(
         gateway_url=cfg.services.gateway_url,
         username=username,
         password=password,
@@ -117,4 +119,20 @@ def _enroll(config_path: str | Path, cfg: AgentConfig, username: str, password: 
         agent_management_url=cfg.services.agent_management_url,
         agent_auth_token=cfg.security.agent_transport_auth.token or DEFAULT_AGENT_AUTH_TOKEN,
         agent_auth_header=cfg.security.agent_transport_auth.header_name or DEFAULT_AGENT_AUTH_HEADER,
+    )
+
+
+def _success_message(enrollment: dict[str, object]) -> str:
+    computer = enrollment.get("computer") or {}
+    computer_id = "неизвестен"
+    if isinstance(computer, dict):
+        computer_id = str(computer.get("id") or computer_id)
+
+    session_id = str(enrollment.get("sessionId") or "неизвестна")
+    session_expires_at = str(enrollment.get("sessionExpiresAt") or "не указано")
+    return (
+        "Агент запущен.\n"
+        f"Компьютер ID: {computer_id}\n"
+        f"Сессия ID: {session_id}\n"
+        f"Сессия до: {session_expires_at}"
     )

@@ -248,7 +248,9 @@ def _normalize_argv(raw_argv: list[str]) -> list[str]:
         return [argv[2], "--config", argv[1], *argv[3:]]
     if len(argv) >= 2 and argv[0].startswith("--config=") and argv[1] in COMMANDS:
         return [argv[1], argv[0], *argv[2:]]
-    if not argv or (argv[0].startswith("-") and argv[0] not in {"-h", "--help"}):
+    if not argv:
+        argv.insert(0, "start" if getattr(sys, "frozen", False) else "run")
+    elif argv[0].startswith("-") and argv[0] not in {"-h", "--help"}:
         argv.insert(0, "run")
     return argv
 
