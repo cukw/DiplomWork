@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Grpc.Core;
+using System.Globalization;
 using System.Text.Json;
 using AgentClient = Gateway.Protos.Agent.AgentManagementService.AgentManagementServiceClient;
 using Gateway.Protos.Agent;
@@ -992,7 +993,9 @@ public class AgentController : ControllerBase
             Id = current.Id,
             AgentId = agentId,
             ComputerId = dto.ComputerId ?? current.ComputerId,
-            PolicyVersion = dto.PolicyVersion ?? current.PolicyVersion,
+            PolicyVersion = string.IsNullOrWhiteSpace(dto.PolicyVersion)
+                ? NewPolicyVersion(current.PolicyVersion)
+                : dto.PolicyVersion.Trim(),
             CollectionIntervalSec = dto.CollectionIntervalSec ?? current.CollectionIntervalSec,
             HeartbeatIntervalSec = dto.HeartbeatIntervalSec ?? current.HeartbeatIntervalSec,
             FlushIntervalSec = dto.FlushIntervalSec ?? current.FlushIntervalSec,
@@ -1068,6 +1071,16 @@ public class AgentController : ControllerBase
         }
 
         return result;
+    }
+
+    private static string NewPolicyVersion(string? previousVersion = null)
+    {
+        var candidate = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture);
+        if (!string.Equals(candidate, previousVersion, StringComparison.Ordinal))
+            return candidate;
+
+        var fallback = $"{candidate}-{Guid.NewGuid():N}";
+        return fallback.Length <= 50 ? fallback : fallback[..50];
     }
 
     private static RolloutStage[] BuildRolloutStages(

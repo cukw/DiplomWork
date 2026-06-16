@@ -27,6 +27,11 @@ def _normalize_grpc_endpoint(raw_url: str) -> tuple[str, bool]:
     if not value:
         raise ValueError("gRPC endpoint is empty")
 
+    if "://" not in value:
+        # Plain gRPC targets such as localhost:5001 and host.local:5001 are
+        # valid, but urlparse treats the host part as a URL scheme.
+        return value, False
+
     parsed = urlparse(value)
     scheme = (parsed.scheme or "").lower()
 
@@ -46,7 +51,7 @@ def _normalize_grpc_endpoint(raw_url: str) -> tuple[str, bool]:
         secure = scheme in {"https", "grpcs"}
         return target, secure
 
-    # Already host:port (or ipv6 in brackets) without URL scheme.
+    # Unknown URI schemes may still be valid gRPC resolver targets.
     return value, False
 
 
@@ -264,6 +269,8 @@ class AgentManagementDirectClient:
                 timeout=5,
                 metadata=self._auth_metadata(),
             )
+            if not resp.success and _looks_not_found(resp.message):
+                self._forget_registration(resp.message)
             return bool(resp.success)
         except Exception as exc:
             logger.warning("Heartbeat failed: %s", exc)
@@ -281,7 +288,11 @@ class AgentManagementDirectClient:
                 timeout=5,
                 metadata=self._auth_metadata(),
             )
-            if not resp.success or not resp.policy or int(getattr(resp.policy, "agent_id", 0) or 0) <= 0:
+            if not resp.success:
+                if _looks_not_found(resp.message):
+                    self._forget_registration(resp.message)
+                return None
+            if not resp.policy or int(getattr(resp.policy, "agent_id", 0) or 0) <= 0:
                 return None
 
             p = resp.policy
@@ -331,6 +342,8 @@ class AgentManagementDirectClient:
                 metadata=self._auth_metadata(),
             )
             if not resp.success:
+                if _looks_not_found(resp.message):
+                    self._forget_registration(resp.message)
                 return []
             commands: list[dict[str, Any]] = []
             for cmd in resp.commands:
@@ -388,6 +401,15 @@ class AgentManagementDirectClient:
         if not self._agent_auth_token:
             return None
         return [(self._agent_auth_header, self._agent_auth_token)]
+
+    def _forget_registration(self, message: str = "") -> None:
+        if self.agent_id:
+            logger.warning(
+                "Control plane no longer recognizes agent_id=%s (%s); local registration will be refreshed",
+                self.agent_id,
+                message or "not found",
+            )
+        self.agent_id = None
 
     def _verify_policy_signature(self, policy_msg: Any) -> bool:
         signature = str(getattr(policy_msg, "signature", "") or "")
@@ -476,6 +498,11 @@ def _append_int(parts: list[str], key: str, value: Any) -> None:
 
 def _append_bool(parts: list[str], key: str, value: Any) -> None:
     _append_kv(parts, key, "1" if bool(value) else "0")
+
+
+def _looks_not_found(message: str | None) -> bool:
+    normalized = str(message or "").strip().lower()
+    return "not found" in normalized or "not registered" in normalized
 
 
 def _canonical_policy_payload(p: Any) -> bytes:

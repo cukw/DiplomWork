@@ -55,8 +55,7 @@ public sealed class PolicyAccessListSyncService
                 if (policy.Browsers.Count == 0)
                     policy.Browsers.AddRange(["chrome", "edge", "firefox"]);
 
-                if (string.IsNullOrWhiteSpace(policy.PolicyVersion))
-                    policy.PolicyVersion = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture);
+                policy.PolicyVersion = NewPolicyVersion(policy.PolicyVersion);
 
                 var upsertResponse = await _agentClient.UpsertAgentPolicyAsync(
                     new UpsertAgentPolicyRequest { Policy = policy },
@@ -161,7 +160,7 @@ public sealed class PolicyAccessListSyncService
         {
             AgentId = agent.Id,
             ComputerId = agent.ComputerId,
-            PolicyVersion = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture),
+            PolicyVersion = NewPolicyVersion(),
             CollectionIntervalSec = 5,
             HeartbeatIntervalSec = 15,
             FlushIntervalSec = 5,
@@ -182,6 +181,16 @@ public sealed class PolicyAccessListSyncService
 
         policy.Browsers.AddRange(["chrome", "edge", "firefox"]);
         return policy;
+    }
+
+    private static string NewPolicyVersion(string? previousVersion = null)
+    {
+        var candidate = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture);
+        if (!string.Equals(candidate, previousVersion, StringComparison.Ordinal))
+            return candidate;
+
+        var fallback = $"{candidate}-{Guid.NewGuid():N}";
+        return fallback.Length <= 50 ? fallback : fallback[..50];
     }
 
     private static string[] NormalizeApplications(IEnumerable<ApplicationListEntryModel>? entries)

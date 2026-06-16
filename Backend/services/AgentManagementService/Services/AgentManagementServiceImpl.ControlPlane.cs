@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Globalization;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using ProtoAgentCommand = global::AgentManagementService.AgentCommand;
@@ -65,11 +66,17 @@ public partial class AgentManagementServiceImpl
                 ComputerId = agent.ComputerId
             };
 
+            var previousPolicyVersion = entity.PolicyVersion;
             ApplyPolicyFromProto(entity, proto, agent.ComputerId);
+            if (string.IsNullOrWhiteSpace(proto.PolicyVersion) ||
+                string.Equals(entity.PolicyVersion, previousPolicyVersion, StringComparison.Ordinal))
+            {
+                entity.PolicyVersion = NewPolicyVersion(previousPolicyVersion);
+            }
             entity.UpdatedAt = DateTime.UtcNow;
             if (string.IsNullOrWhiteSpace(entity.PolicyVersion))
             {
-                entity.PolicyVersion = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+                entity.PolicyVersion = NewPolicyVersion();
             }
 
             if (isNew)
@@ -480,7 +487,7 @@ public partial class AgentManagementServiceImpl
         {
             AgentId = agent.Id,
             ComputerId = agent.ComputerId,
-            PolicyVersion = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(),
+            PolicyVersion = NewPolicyVersion(),
             UpdatedAt = DateTime.UtcNow
         };
         _db.AgentPolicies.Add(policy);
@@ -710,5 +717,15 @@ public partial class AgentManagementServiceImpl
         if (value <= 0)
             return fallback;
         return Math.Clamp(value, min, max);
+    }
+
+    private static string NewPolicyVersion(string? previousVersion = null)
+    {
+        var candidate = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture);
+        if (!string.Equals(candidate, previousVersion, StringComparison.Ordinal))
+            return candidate;
+
+        var fallback = $"{candidate}-{Guid.NewGuid():N}";
+        return fallback.Length <= 50 ? fallback : fallback[..50];
     }
 }

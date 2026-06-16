@@ -44,6 +44,11 @@ class AgentManagementServiceStub(object):
                 request_serializer=agent__pb2.UpdateAgentStatusRequest.SerializeToString,
                 response_deserializer=agent__pb2.UpdateAgentStatusResponse.FromString,
                 _registered_method=True)
+        self.SetAgentDesiredVersion = channel.unary_unary(
+                '/agent.AgentManagementService/SetAgentDesiredVersion',
+                request_serializer=agent__pb2.SetAgentDesiredVersionRequest.SerializeToString,
+                response_deserializer=agent__pb2.SetAgentDesiredVersionResponse.FromString,
+                _registered_method=True)
         self.GetAgent = channel.unary_unary(
                 '/agent.AgentManagementService/GetAgent',
                 request_serializer=agent__pb2.GetAgentRequest.SerializeToString,
@@ -109,6 +114,11 @@ class AgentManagementServiceStub(object):
                 request_serializer=agent__pb2.AckAgentCommandRequest.SerializeToString,
                 response_deserializer=agent__pb2.AckAgentCommandResponse.FromString,
                 _registered_method=True)
+        self.RetryAgentCommand = channel.unary_unary(
+                '/agent.AgentManagementService/RetryAgentCommand',
+                request_serializer=agent__pb2.RetryAgentCommandRequest.SerializeToString,
+                response_deserializer=agent__pb2.RetryAgentCommandResponse.FromString,
+                _registered_method=True)
         self.CreateSyncBatch = channel.unary_unary(
                 '/agent.AgentManagementService/CreateSyncBatch',
                 request_serializer=agent__pb2.CreateSyncBatchRequest.SerializeToString,
@@ -146,6 +156,12 @@ class AgentManagementServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def UpdateAgentStatus(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SetAgentDesiredVersion(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -229,6 +245,12 @@ class AgentManagementServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RetryAgentCommand(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def CreateSyncBatch(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -271,6 +293,11 @@ def add_AgentManagementServiceServicer_to_server(servicer, server):
                     servicer.UpdateAgentStatus,
                     request_deserializer=agent__pb2.UpdateAgentStatusRequest.FromString,
                     response_serializer=agent__pb2.UpdateAgentStatusResponse.SerializeToString,
+            ),
+            'SetAgentDesiredVersion': grpc.unary_unary_rpc_method_handler(
+                    servicer.SetAgentDesiredVersion,
+                    request_deserializer=agent__pb2.SetAgentDesiredVersionRequest.FromString,
+                    response_serializer=agent__pb2.SetAgentDesiredVersionResponse.SerializeToString,
             ),
             'GetAgent': grpc.unary_unary_rpc_method_handler(
                     servicer.GetAgent,
@@ -336,6 +363,11 @@ def add_AgentManagementServiceServicer_to_server(servicer, server):
                     servicer.AckAgentCommand,
                     request_deserializer=agent__pb2.AckAgentCommandRequest.FromString,
                     response_serializer=agent__pb2.AckAgentCommandResponse.SerializeToString,
+            ),
+            'RetryAgentCommand': grpc.unary_unary_rpc_method_handler(
+                    servicer.RetryAgentCommand,
+                    request_deserializer=agent__pb2.RetryAgentCommandRequest.FromString,
+                    response_serializer=agent__pb2.RetryAgentCommandResponse.SerializeToString,
             ),
             'CreateSyncBatch': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateSyncBatch,
@@ -417,6 +449,33 @@ class AgentManagementService(object):
             '/agent.AgentManagementService/UpdateAgentStatus',
             agent__pb2.UpdateAgentStatusRequest.SerializeToString,
             agent__pb2.UpdateAgentStatusResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SetAgentDesiredVersion(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agent.AgentManagementService/SetAgentDesiredVersion',
+            agent__pb2.SetAgentDesiredVersionRequest.SerializeToString,
+            agent__pb2.SetAgentDesiredVersionResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -768,6 +827,33 @@ class AgentManagementService(object):
             '/agent.AgentManagementService/AckAgentCommand',
             agent__pb2.AckAgentCommandRequest.SerializeToString,
             agent__pb2.AckAgentCommandResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RetryAgentCommand(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agent.AgentManagementService/RetryAgentCommand',
+            agent__pb2.RetryAgentCommandRequest.SerializeToString,
+            agent__pb2.RetryAgentCommandResponse.FromString,
             options,
             channel_credentials,
             insecure,

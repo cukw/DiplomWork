@@ -134,13 +134,19 @@ python3 LocalEndpointAgent/scripts/install_agent.py \
   --gateway-url https://2.26.89.86 \
   --activity-service-url 2.26.89.86:5001 \
   --agent-management-url 2.26.89.86:5015 \
-  --agent-auth-token "$AGENT_AUTH_TOKEN"
+  --agent-auth-token "$AGENT_AUTH_TOKEN" \
+  --control-plane-signing-secret "$AGENT_SIGNING_SECRET" \
+  --control-plane-signing-key-id "${AGENT_SIGNING_KEY_ID:-default}" \
+  --require-signed-control-plane
 ```
 
 Полезные опции:
 - `--install-dir <path>` — кастомная директория установки
 - `--agent-auth-token <token>` — токен gRPC-транспорта для прямого доступа к `ActivityService`/`AgentManagementService`
 - `--agent-auth-header <header>` — имя metadata-заголовка для токена (по умолчанию `x-agent-token`)
+- `--control-plane-signing-secret <secret>` — тот же `AGENT_SIGNING_SECRET`, который задан в backend; нужен для проверки подписанных policy/commands
+- `--control-plane-signing-key-id <id>` — ожидаемый key id подписи control-plane
+- `--require-signed-control-plane` — отклонять неподписанные policy/commands
 - `--skip-autostart` — не настраивать автозапуск
 - `--skip-rust` — не собирать Rust `sysprobe` (использовать Python fallback)
 - `--require-admin` — сохранять требование повышенных прав в конфиге агента

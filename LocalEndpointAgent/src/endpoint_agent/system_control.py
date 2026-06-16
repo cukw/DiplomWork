@@ -13,6 +13,7 @@ class SystemController:
         self._lock_active = False
         self._last_lock_attempt_at = 0.0
         self._reason = ""
+        self._source = ""
         self._caps = rust_bridge.capabilities()
         self._warned_unsupported_lock = False
 
@@ -24,16 +25,22 @@ class SystemController:
     def reason(self) -> str:
         return self._reason
 
-    def apply_block_state(self, should_block: bool, reason: str = "") -> None:
+    @property
+    def source(self) -> str:
+        return self._source
+
+    def apply_block_state(self, should_block: bool, reason: str = "", source: str = "") -> None:
         if not should_block:
             if self._lock_active:
                 logger.info("Block state cleared by policy/command")
             self._lock_active = False
             self._reason = ""
+            self._source = ""
             return
 
         self._lock_active = True
         self._reason = reason or "policy block"
+        self._source = source or "policy"
 
         if not bool(self._caps.get("lock_workstation", False)):
             if not self._warned_unsupported_lock:

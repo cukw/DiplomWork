@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from . import activity_pb2 as activity__pb2
+from . import activity_pb2 as Activity__pb2
 
 GRPC_GENERATED_VERSION = '1.78.0'
 GRPC_VERSION = grpc.__version__
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + ' but the generated code in activity_pb2_grpc.py depends on'
+        + ' but the generated code in Activity_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -36,38 +36,38 @@ class ActivityGrpcServiceStub(object):
         """
         self.GetActivities = channel.unary_unary(
                 '/activity.ActivityGrpcService/GetActivities',
-                request_serializer=activity__pb2.GetActivitiesRequest.SerializeToString,
-                response_deserializer=activity__pb2.GetActivitiesReply.FromString,
+                request_serializer=Activity__pb2.GetActivitiesRequest.SerializeToString,
+                response_deserializer=Activity__pb2.GetActivitiesReply.FromString,
                 _registered_method=True)
         self.CreateActivity = channel.unary_unary(
                 '/activity.ActivityGrpcService/CreateActivity',
-                request_serializer=activity__pb2.CreateActivityRequest.SerializeToString,
-                response_deserializer=activity__pb2.ActivityReply.FromString,
+                request_serializer=Activity__pb2.CreateActivityRequest.SerializeToString,
+                response_deserializer=Activity__pb2.ActivityReply.FromString,
                 _registered_method=True)
         self.GetActivityById = channel.unary_unary(
                 '/activity.ActivityGrpcService/GetActivityById',
-                request_serializer=activity__pb2.GetActivityByIdRequest.SerializeToString,
-                response_deserializer=activity__pb2.ActivityReply.FromString,
+                request_serializer=Activity__pb2.GetActivityByIdRequest.SerializeToString,
+                response_deserializer=Activity__pb2.ActivityReply.FromString,
                 _registered_method=True)
         self.GetAnomalies = channel.unary_unary(
                 '/activity.ActivityGrpcService/GetAnomalies',
-                request_serializer=activity__pb2.GetAnomaliesRequest.SerializeToString,
-                response_deserializer=activity__pb2.GetAnomaliesReply.FromString,
+                request_serializer=Activity__pb2.GetAnomaliesRequest.SerializeToString,
+                response_deserializer=Activity__pb2.GetAnomaliesReply.FromString,
                 _registered_method=True)
         self.DeleteActivity = channel.unary_unary(
                 '/activity.ActivityGrpcService/DeleteActivity',
-                request_serializer=activity__pb2.DeleteActivityRequest.SerializeToString,
-                response_deserializer=activity__pb2.DeleteActivityReply.FromString,
+                request_serializer=Activity__pb2.DeleteActivityRequest.SerializeToString,
+                response_deserializer=Activity__pb2.DeleteActivityReply.FromString,
                 _registered_method=True)
         self.UpdateActivity = channel.unary_unary(
                 '/activity.ActivityGrpcService/UpdateActivity',
-                request_serializer=activity__pb2.UpdateActivityRequest.SerializeToString,
-                response_deserializer=activity__pb2.ActivityReply.FromString,
+                request_serializer=Activity__pb2.UpdateActivityRequest.SerializeToString,
+                response_deserializer=Activity__pb2.ActivityReply.FromString,
                 _registered_method=True)
         self.GetActivityStatistics = channel.unary_unary(
                 '/activity.ActivityGrpcService/GetActivityStatistics',
-                request_serializer=activity__pb2.GetActivityStatisticsRequest.SerializeToString,
-                response_deserializer=activity__pb2.GetActivityStatisticsReply.FromString,
+                request_serializer=Activity__pb2.GetActivityStatisticsRequest.SerializeToString,
+                response_deserializer=Activity__pb2.GetActivityStatisticsReply.FromString,
                 _registered_method=True)
 
 
@@ -121,38 +121,38 @@ def add_ActivityGrpcServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'GetActivities': grpc.unary_unary_rpc_method_handler(
                     servicer.GetActivities,
-                    request_deserializer=activity__pb2.GetActivitiesRequest.FromString,
-                    response_serializer=activity__pb2.GetActivitiesReply.SerializeToString,
+                    request_deserializer=Activity__pb2.GetActivitiesRequest.FromString,
+                    response_serializer=Activity__pb2.GetActivitiesReply.SerializeToString,
             ),
             'CreateActivity': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateActivity,
-                    request_deserializer=activity__pb2.CreateActivityRequest.FromString,
-                    response_serializer=activity__pb2.ActivityReply.SerializeToString,
+                    request_deserializer=Activity__pb2.CreateActivityRequest.FromString,
+                    response_serializer=Activity__pb2.ActivityReply.SerializeToString,
             ),
             'GetActivityById': grpc.unary_unary_rpc_method_handler(
                     servicer.GetActivityById,
-                    request_deserializer=activity__pb2.GetActivityByIdRequest.FromString,
-                    response_serializer=activity__pb2.ActivityReply.SerializeToString,
+                    request_deserializer=Activity__pb2.GetActivityByIdRequest.FromString,
+                    response_serializer=Activity__pb2.ActivityReply.SerializeToString,
             ),
             'GetAnomalies': grpc.unary_unary_rpc_method_handler(
                     servicer.GetAnomalies,
-                    request_deserializer=activity__pb2.GetAnomaliesRequest.FromString,
-                    response_serializer=activity__pb2.GetAnomaliesReply.SerializeToString,
+                    request_deserializer=Activity__pb2.GetAnomaliesRequest.FromString,
+                    response_serializer=Activity__pb2.GetAnomaliesReply.SerializeToString,
             ),
             'DeleteActivity': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteActivity,
-                    request_deserializer=activity__pb2.DeleteActivityRequest.FromString,
-                    response_serializer=activity__pb2.DeleteActivityReply.SerializeToString,
+                    request_deserializer=Activity__pb2.DeleteActivityRequest.FromString,
+                    response_serializer=Activity__pb2.DeleteActivityReply.SerializeToString,
             ),
             'UpdateActivity': grpc.unary_unary_rpc_method_handler(
                     servicer.UpdateActivity,
-                    request_deserializer=activity__pb2.UpdateActivityRequest.FromString,
-                    response_serializer=activity__pb2.ActivityReply.SerializeToString,
+                    request_deserializer=Activity__pb2.UpdateActivityRequest.FromString,
+                    response_serializer=Activity__pb2.ActivityReply.SerializeToString,
             ),
             'GetActivityStatistics': grpc.unary_unary_rpc_method_handler(
                     servicer.GetActivityStatistics,
-                    request_deserializer=activity__pb2.GetActivityStatisticsRequest.FromString,
-                    response_serializer=activity__pb2.GetActivityStatisticsReply.SerializeToString,
+                    request_deserializer=Activity__pb2.GetActivityStatisticsRequest.FromString,
+                    response_serializer=Activity__pb2.GetActivityStatisticsReply.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -180,8 +180,8 @@ class ActivityGrpcService(object):
             request,
             target,
             '/activity.ActivityGrpcService/GetActivities',
-            activity__pb2.GetActivitiesRequest.SerializeToString,
-            activity__pb2.GetActivitiesReply.FromString,
+            Activity__pb2.GetActivitiesRequest.SerializeToString,
+            Activity__pb2.GetActivitiesReply.FromString,
             options,
             channel_credentials,
             insecure,
@@ -207,8 +207,8 @@ class ActivityGrpcService(object):
             request,
             target,
             '/activity.ActivityGrpcService/CreateActivity',
-            activity__pb2.CreateActivityRequest.SerializeToString,
-            activity__pb2.ActivityReply.FromString,
+            Activity__pb2.CreateActivityRequest.SerializeToString,
+            Activity__pb2.ActivityReply.FromString,
             options,
             channel_credentials,
             insecure,
@@ -234,8 +234,8 @@ class ActivityGrpcService(object):
             request,
             target,
             '/activity.ActivityGrpcService/GetActivityById',
-            activity__pb2.GetActivityByIdRequest.SerializeToString,
-            activity__pb2.ActivityReply.FromString,
+            Activity__pb2.GetActivityByIdRequest.SerializeToString,
+            Activity__pb2.ActivityReply.FromString,
             options,
             channel_credentials,
             insecure,
@@ -261,8 +261,8 @@ class ActivityGrpcService(object):
             request,
             target,
             '/activity.ActivityGrpcService/GetAnomalies',
-            activity__pb2.GetAnomaliesRequest.SerializeToString,
-            activity__pb2.GetAnomaliesReply.FromString,
+            Activity__pb2.GetAnomaliesRequest.SerializeToString,
+            Activity__pb2.GetAnomaliesReply.FromString,
             options,
             channel_credentials,
             insecure,
@@ -288,8 +288,8 @@ class ActivityGrpcService(object):
             request,
             target,
             '/activity.ActivityGrpcService/DeleteActivity',
-            activity__pb2.DeleteActivityRequest.SerializeToString,
-            activity__pb2.DeleteActivityReply.FromString,
+            Activity__pb2.DeleteActivityRequest.SerializeToString,
+            Activity__pb2.DeleteActivityReply.FromString,
             options,
             channel_credentials,
             insecure,
@@ -315,8 +315,8 @@ class ActivityGrpcService(object):
             request,
             target,
             '/activity.ActivityGrpcService/UpdateActivity',
-            activity__pb2.UpdateActivityRequest.SerializeToString,
-            activity__pb2.ActivityReply.FromString,
+            Activity__pb2.UpdateActivityRequest.SerializeToString,
+            Activity__pb2.ActivityReply.FromString,
             options,
             channel_credentials,
             insecure,
@@ -342,8 +342,8 @@ class ActivityGrpcService(object):
             request,
             target,
             '/activity.ActivityGrpcService/GetActivityStatistics',
-            activity__pb2.GetActivityStatisticsRequest.SerializeToString,
-            activity__pb2.GetActivityStatisticsReply.FromString,
+            Activity__pb2.GetActivityStatisticsRequest.SerializeToString,
+            Activity__pb2.GetActivityStatisticsReply.FromString,
             options,
             channel_credentials,
             insecure,

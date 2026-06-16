@@ -33,7 +33,8 @@ flowchart LR
     REP --> PREP[(Postgres Report)]
     AGM --> PAG[(Postgres Agent)]
 
-    AGENT[ActivityAgent C#] -->|gRPC CreateActivity| ACT
+    AGENT[LocalEndpointAgent Python] -->|gRPC CreateActivity| ACT
+    AGENT -->|gRPC heartbeat, policy, commands| AGM
 ```
 
 ## 2. Состав сервисов и ответственность
@@ -85,17 +86,27 @@ flowchart LR
 
 ### Агент сбора активности
 
-9. **ActivityAgent (C#)** (`/Backend/services/ActivityAgent`)
-- Отправка событий в `ActivityService` по gRPC.
-- На текущий момент часть логики носит demo-характер (особенно network/file сбор).
+9. **LocalEndpointAgent (Python)** (`/LocalEndpointAgent`)
+- Сбор процессов, браузерной истории, активного окна, idle, сети, файлов, USB и inventory.
+- Локальная SQLite-очередь для работы при потере связи.
+- Прямой gRPC обмен с `ActivityService` и `AgentManagementService`.
+- Получение policy/commands из control-plane и отправка heartbeat health snapshot.
+
+10. **ActivityAgent (C#)** (`/Backend/services/ActivityAgent`)
+- Устаревший/demo агент для отправки событий в `ActivityService`.
 
 ## 3. Текущий статус LocalEndpointAgent
 
-Папка `/LocalEndpointAgent` в текущей ветке содержит только `__pycache__`, без исходников Python/Rust.
+Папка `/LocalEndpointAgent` содержит рабочую Python-реализацию локального агента:
+- регистрация ПК и пользовательской сессии через gateway,
+- отправка активности в `ActivityService`,
+- heartbeat, policy и commands через `AgentManagementService`,
+- локальная очередь и cache policy,
+- support для подписанных control-plane payloads (`AGENT_SIGNING_SECRET`).
 
-Это значит:
-- production-реализация локального Python/Rust агента в этой ветке отсутствует,
-- активный работающий агент в текущем состоянии репозитория — `ActivityAgent` (C#).
+В production агенту нужны оба секрета:
+- `AGENT_AUTH_TOKEN` — gRPC transport auth для прямого доступа к backend-сервисам;
+- `AGENT_SIGNING_SECRET` — проверка подписи policy/commands, если backend подписывает control-plane ответы.
 
 ## 4. Возможности веб-панели
 

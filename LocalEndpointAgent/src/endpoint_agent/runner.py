@@ -66,6 +66,7 @@ class EndpointAgentRunner:
 
     def _bootstrap_policy(self) -> dict[str, Any]:
         policy = self.policy_cache.load()
+        policy.setdefault("version", "local-default")
         policy.setdefault("high_risk_threshold", self.cfg.risk.local_high_risk_threshold)
         policy.setdefault("auto_lock_enabled", self.cfg.risk.enable_auto_lock)
         return policy
@@ -207,7 +208,8 @@ class EndpointAgentRunner:
                     self.risk.apply_policy(events, policy_collectors)
                     decision = self.risk.evaluate(events, policy_collectors, self.cfg.risk.local_high_risk_threshold, self.cfg.risk.enable_auto_lock)
                     if decision.should_block:
-                        self.system.apply_block_state(True, decision.reason or "policy")
+                        source = "admin_policy" if bool(policy_collectors.get("admin_blocked", False)) else "risk"
+                        self.system.apply_block_state(True, decision.reason or "policy", source=source)
                     self.queue.enqueue_many(events)
                     logger.debug("Collected %s events; queue=%s", len(events), self.queue.size())
             except Exception as exc:
@@ -322,8 +324,7 @@ class EndpointAgentRunner:
             try:
                 remote_policy = await self.agent_client.fetch_policy()
                 if remote_policy:
-                    self.policy = remote_policy
-                    self.policy_cache.save(remote_policy)
+                    self._apply_remote_policy(remote_policy)
                     logger.info("Policy updated from control plane (version=%s)", remote_policy.get("version"))
             except ProtoUnavailableError as exc:
                 logger.error(str(exc))
@@ -348,12 +349,14 @@ class EndpointAgentRunner:
         command_type = str(cmd.get("type") or "").upper()
         payload = cmd.get("payload") or {}
 
-        if command_type == "BLOCK_WORKSTATION":
+        if command_type == "PING":
+            await self.agent_client.ack_command(command_id, "success", "pong")
+        elif command_type == "BLOCK_WORKSTATION":
             reason = str(payload.get("reason") or "admin command")
             self.policy["admin_blocked"] = True
             self.policy["blocked_reason"] = reason
             self.policy_cache.save(self.policy)
-            self.system.apply_block_state(True, reason)
+            self.system.apply_block_state(True, reason, source="admin_command")
             await self.agent_client.ack_command(command_id, "success", "Workstation blocked")
         elif command_type == "UNBLOCK_WORKSTATION":
             self.policy["admin_blocked"] = False
@@ -374,6 +377,12 @@ class EndpointAgentRunner:
             status = "success" if refreshed else "failed"
             message = "Policy refreshed" if refreshed else "Policy refresh returned no usable policy"
             await self.agent_client.ack_command(command_id, status, message)
+        elif command_type == "SET_COLLECTION_STATE":
+            status, message = self._handle_set_collection_state(payload)
+            await self.agent_client.ack_command(command_id, status, message)
+        elif command_type == "SET_LOG_LEVEL":
+            status, message = self._handle_set_log_level(payload)
+            await self.agent_client.ack_command(command_id, status, message)
         elif command_type == "RESTART_AGENT":
             await self.agent_client.ack_command(command_id, "success", "Agent restart requested")
             self.stop()
@@ -386,21 +395,34 @@ class EndpointAgentRunner:
     async def _refresh_policy_once(self) -> bool:
         remote_policy = await self.agent_client.fetch_policy()
         if remote_policy:
-            self.policy = remote_policy
-            self.policy_cache.save(remote_policy)
+            self._apply_remote_policy(remote_policy)
             return True
         return False
 
     async def _lock_enforcement_loop(self) -> None:
         while not self._stop.is_set():
             try:
-                runtime_policy = self._policy_with_runtime_defaults()
-                admin_blocked = bool(runtime_policy.get("admin_blocked", False))
-                if admin_blocked:
-                    self.system.apply_block_state(True, str(runtime_policy.get("blocked_reason") or "admin block"))
+                self._apply_admin_policy_lock_state()
             except Exception as exc:
                 logger.warning("Lock enforcement error: %s", exc)
             await asyncio.sleep(2)
+
+    def _apply_remote_policy(self, remote_policy: dict[str, Any]) -> None:
+        self.policy = remote_policy
+        self.policy_cache.save(remote_policy)
+        self._apply_admin_policy_lock_state()
+
+    def _apply_admin_policy_lock_state(self) -> None:
+        runtime_policy = self._policy_with_runtime_defaults()
+        admin_blocked = bool(runtime_policy.get("admin_blocked", False))
+        if admin_blocked:
+            self.system.apply_block_state(
+                True,
+                str(runtime_policy.get("blocked_reason") or "admin block"),
+                source="admin_policy",
+            )
+        elif self.system.lock_active and self.system.source in {"admin_policy", "admin_command"}:
+            self.system.apply_block_state(False)
 
     def _policy_with_runtime_defaults(self) -> dict[str, Any]:
         merged = dict(DEFAULT_POLICY)
@@ -431,6 +453,62 @@ class EndpointAgentRunner:
         })
         merged.update(self.policy)
         return merged
+
+    def _handle_set_collection_state(self, payload: dict[str, Any]) -> tuple[str, str]:
+        enabled = _payload_bool(payload.get("enabled"))
+        if enabled is None:
+            return "failed", "SET_COLLECTION_STATE requires boolean payload.enabled"
+
+        collector = str(payload.get("collector") or payload.get("name") or payload.get("target") or "all").strip().lower()
+        collector = collector.replace("-", "_").replace(" ", "_")
+        mapping = {
+            "process": ["enable_process_collection"],
+            "processes": ["enable_process_collection"],
+            "browser": ["enable_browser_collection"],
+            "browser_history": ["enable_browser_collection"],
+            "active_window": ["enable_active_window_collection"],
+            "window": ["enable_active_window_collection"],
+            "idle": ["enable_idle_collection"],
+            "idle_time": ["enable_idle_collection"],
+            "network": ["enable_network_collection"],
+            "file": ["enable_file_collection"],
+            "file_activity": ["enable_file_collection"],
+            "usb": ["enable_usb_collection"],
+            "usb_devices": ["enable_usb_collection"],
+            "inventory": ["enable_inventory_collection"],
+            "session": ["enable_session_collection"],
+            "all": [
+                "enable_process_collection",
+                "enable_browser_collection",
+                "enable_active_window_collection",
+                "enable_idle_collection",
+                "enable_network_collection",
+                "enable_file_collection",
+                "enable_usb_collection",
+                "enable_inventory_collection",
+                "enable_session_collection",
+            ],
+        }
+
+        fields = mapping.get(collector)
+        if not fields:
+            return "failed", f"Unknown collector target: {collector}"
+
+        for field in fields:
+            self.policy[field] = enabled
+        self.policy["version"] = f"local-command-{int(time.time() * 1000)}"
+        self.policy_cache.save(self.policy)
+        return "success", f"Collection state updated: {collector} enabled={enabled}"
+
+    def _handle_set_log_level(self, payload: dict[str, Any]) -> tuple[str, str]:
+        level = str(payload.get("level") or payload.get("logLevel") or "").strip().upper()
+        allowed = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        if level not in allowed:
+            return "failed", "SET_LOG_LEVEL requires one of DEBUG, INFO, WARNING, ERROR, CRITICAL"
+
+        logging.getLogger().setLevel(getattr(logging, level))
+        logger.setLevel(getattr(logging, level))
+        return "success", f"Log level set to {level}"
 
     def _decorate_events(self, events: list[ActivityEvent]) -> None:
         batch_id = f"batch-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:8]}"
@@ -517,3 +595,17 @@ def _is_loopback_endpoint(raw_url: str) -> bool:
         host = parsed.path.split(":", 1)[0].strip().lower()
 
     return host in {"localhost", "127.0.0.1", "::1"}
+
+
+def _payload_bool(value: Any) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)) and value in (0, 1):
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "on", "enabled"}:
+            return True
+        if normalized in {"false", "0", "no", "off", "disabled"}:
+            return False
+    return None
