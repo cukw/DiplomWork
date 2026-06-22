@@ -276,6 +276,9 @@ def _session_end_payload_for_conflict(message: str, local_agent: dict[str, Any])
     if conflict_computer_id <= 0 and (local_session_id > 0 or local_computer_id > 0):
         return {"sessionId": local_session_id, "computerId": local_computer_id}
 
+    if "active session conflict" in (message or "").lower():
+        return {"sessionId": 0, "computerId": 0}
+
     return None
 
 

@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.EntityFrameworkCore;
 using UserService.Models;
 
@@ -39,7 +40,12 @@ public class UserDbContext : DbContext
             entity.Property(e => e.UserId).HasColumnName("user_id").IsRequired(false);
             entity.Property(e => e.Hostname).HasColumnName("hostname").IsRequired().HasMaxLength(255);
             entity.Property(e => e.OsVersion).HasColumnName("os_version").HasMaxLength(100);
-            entity.Property(e => e.IpAddress).HasColumnName("ip_address").HasMaxLength(15);
+            entity.Property(e => e.IpAddress)
+                .HasColumnName("ip_address")
+                .HasColumnType("inet")
+                .HasConversion(
+                    value => ToNullableIpAddress(value),
+                    value => value == null ? null : value.ToString());
             entity.Property(e => e.MacAddress).HasColumnName("mac_address").HasMaxLength(17);
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).HasDefaultValue("active");
             entity.Property(e => e.LastSeen).HasColumnName("last_seen");
@@ -86,5 +92,11 @@ public class UserDbContext : DbContext
                 .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
         });
+    }
+
+    private static IPAddress? ToNullableIpAddress(string? value)
+    {
+        var normalized = (value ?? string.Empty).Trim();
+        return IPAddress.TryParse(normalized, out var parsed) ? parsed : null;
     }
 }
