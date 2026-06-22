@@ -87,6 +87,12 @@ DEFAULT_AGENT_AUTH_TOKEN = '$escapedAuthToken'
       --onefile `
       --name endpoint-agent-windows.exe `
       --paths src `
+      --collect-all grpc `
+      --collect-all google.protobuf `
+      --collect-all pydantic `
+      --collect-all pydantic_core `
+      --collect-all psutil `
+      --collect-all yaml `
       --collect-submodules endpoint_agent.generated `
       --collect-submodules grpc `
       --collect-submodules google.protobuf `
@@ -125,7 +131,7 @@ DEFAULT_AGENT_AUTH_TOKEN = '$escapedAuthToken'
     }
 
     & $exePath --help | Out-Null
-    & $exePath selfcheck | Out-Null
+    & $exePath selfcheck
 
     Write-Host "Built: $exePath"
 }

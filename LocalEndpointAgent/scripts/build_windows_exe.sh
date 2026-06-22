@@ -70,6 +70,12 @@ python -m pip install -e . --no-deps
 bash scripts/generate_protos.sh
 pyinstaller --noconfirm --clean --onefile --name endpoint-agent-windows.exe \
   --paths src \
+  --collect-all grpc \
+  --collect-all google.protobuf \
+  --collect-all pydantic \
+  --collect-all pydantic_core \
+  --collect-all psutil \
+  --collect-all yaml \
   --collect-submodules endpoint_agent.generated \
   --collect-submodules grpc \
   --collect-submodules google.protobuf \
@@ -99,7 +105,7 @@ pyinstaller --noconfirm --clean --onefile --name endpoint-agent-windows.exe \
   --hidden-import tkinter \
   scripts/pyinstaller_entry.py
 wine dist/endpoint-agent-windows.exe --help >/dev/null
-wine dist/endpoint-agent-windows.exe selfcheck >/dev/null
+wine dist/endpoint-agent-windows.exe selfcheck
 cp dist/endpoint-agent-windows.exe dist/windows/endpoint-agent-windows.exe
 "
 

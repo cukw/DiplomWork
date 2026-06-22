@@ -73,6 +73,12 @@ python -m pip install -e . --no-deps
 bash scripts/generate_protos.sh
 python -m PyInstaller --noconfirm --clean --onefile --name endpoint-agent-linux \
   --paths src \
+  --collect-all grpc \
+  --collect-all google.protobuf \
+  --collect-all pydantic \
+  --collect-all pydantic_core \
+  --collect-all psutil \
+  --collect-all yaml \
   --collect-submodules endpoint_agent.generated \
   --collect-submodules grpc \
   --collect-submodules google.protobuf \
@@ -99,7 +105,7 @@ python -m PyInstaller --noconfirm --clean --onefile --name endpoint-agent-linux 
   --specpath build/linux/spec
 chmod +x dist/linux/endpoint-agent-linux
 dist/linux/endpoint-agent-linux --help >/dev/null
-dist/linux/endpoint-agent-linux selfcheck >/dev/null
+dist/linux/endpoint-agent-linux selfcheck
 PKGROOT=/tmp/endpoint-agent-pkg
 rm -rf \"\$PKGROOT\"
 mkdir -p \"\$PKGROOT/DEBIAN\" \"\$PKGROOT/opt/local-endpoint-agent\" \"\$PKGROOT/usr/local/bin\"

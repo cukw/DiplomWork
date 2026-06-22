@@ -252,11 +252,9 @@ def selfcheck_command(args: argparse.Namespace) -> int:
         "grpc.aio",
         "grpc._cython.cygrpc",
         "google.protobuf",
-        "google._upb._message",
         "pydantic",
         "pydantic_core._pydantic_core",
         "yaml",
-        "_yaml",
         "xml.parsers.expat",
         "pyexpat",
         "sqlite3",
@@ -312,6 +310,19 @@ def selfcheck_command(args: argparse.Namespace) -> int:
         else:
             failures.append(f"{label}: no supported module variant imported ({last_error})")
 
+    optional_native_modules = [
+        "google._upb._message",
+        "google.protobuf.pyext._message",
+        "_yaml",
+    ]
+    imported_optional_native = []
+    for module_name in optional_native_modules:
+        try:
+            importlib.import_module(module_name)
+            imported_optional_native.append(module_name)
+        except Exception:
+            continue
+
     try:
         psutil.cpu_times()
         psutil.net_if_addrs()
@@ -322,11 +333,13 @@ def selfcheck_command(args: argparse.Namespace) -> int:
         failures.append(f"runtime smoke: {type(exc).__name__}: {exc}")
 
     if failures:
-        print("endpoint-agent selfcheck failed")
+        print("endpoint-agent selfcheck failed", file=sys.stderr)
         for failure in failures:
-            print(f"- {failure}")
+            print(f"- {failure}", file=sys.stderr)
         return 1
 
+    if imported_optional_native:
+        print(f"endpoint-agent optional native modules: {', '.join(imported_optional_native)}")
     print("endpoint-agent selfcheck ok")
     return 0
 

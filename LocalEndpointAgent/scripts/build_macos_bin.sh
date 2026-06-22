@@ -45,6 +45,12 @@ python3 -m PyInstaller \
   --onefile \
   --name endpoint-agent-macos \
   --paths "$ROOT_DIR/src" \
+  --collect-all grpc \
+  --collect-all google.protobuf \
+  --collect-all pydantic \
+  --collect-all pydantic_core \
+  --collect-all psutil \
+  --collect-all yaml \
   --collect-submodules endpoint_agent.generated \
   --collect-submodules grpc \
   --collect-submodules google.protobuf \
@@ -71,5 +77,5 @@ python3 -m PyInstaller \
 
 chmod +x "$ROOT_DIR/dist/macos/endpoint-agent-macos"
 "$ROOT_DIR/dist/macos/endpoint-agent-macos" --help >/dev/null
-"$ROOT_DIR/dist/macos/endpoint-agent-macos" selfcheck >/dev/null
+"$ROOT_DIR/dist/macos/endpoint-agent-macos" selfcheck
 echo "Built: $ROOT_DIR/dist/macos/endpoint-agent-macos"
