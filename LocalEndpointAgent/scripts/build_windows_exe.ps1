@@ -89,8 +89,21 @@ DEFAULT_AGENT_AUTH_TOKEN = '$escapedAuthToken'
       --paths src `
       --collect-submodules endpoint_agent.generated `
       --collect-submodules grpc `
+      --collect-submodules google.protobuf `
+      --collect-submodules pydantic `
+      --collect-submodules psutil `
+      --collect-submodules yaml `
       --collect-binaries grpc `
+      --collect-binaries pydantic_core `
       --collect-binaries psutil `
+      --hidden-import grpc._cython.cygrpc `
+      --hidden-import google._upb._message `
+      --hidden-import pydantic_core._pydantic_core `
+      --hidden-import _yaml `
+      --hidden-import _sqlite3 `
+      --hidden-import _ssl `
+      --hidden-import winreg `
+      --hidden-import psutil._psutil_windows `
       --hidden-import select `
       --hidden-import selectors `
       --hidden-import socket `

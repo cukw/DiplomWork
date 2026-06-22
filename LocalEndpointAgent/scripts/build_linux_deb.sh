@@ -71,7 +71,32 @@ python -m pip install --upgrade pip
 python -m pip install pyinstaller grpcio grpcio-tools protobuf psutil pyyaml pydantic
 python -m pip install -e . --no-deps
 bash scripts/generate_protos.sh
-python -m PyInstaller --noconfirm --clean --onefile --name endpoint-agent-linux --paths src --collect-submodules endpoint_agent.generated --collect-submodules grpc --collect-binaries grpc --collect-binaries psutil --hidden-import pyexpat --hidden-import xml.parsers.expat --hidden-import tkinter scripts/pyinstaller_entry.py --distpath dist/linux --workpath build/linux/work --specpath build/linux/spec
+python -m PyInstaller --noconfirm --clean --onefile --name endpoint-agent-linux \
+  --paths src \
+  --collect-submodules endpoint_agent.generated \
+  --collect-submodules grpc \
+  --collect-submodules google.protobuf \
+  --collect-submodules pydantic \
+  --collect-submodules psutil \
+  --collect-submodules yaml \
+  --collect-binaries grpc \
+  --collect-binaries pydantic_core \
+  --collect-binaries psutil \
+  --hidden-import grpc._cython.cygrpc \
+  --hidden-import google._upb._message \
+  --hidden-import pydantic_core._pydantic_core \
+  --hidden-import _yaml \
+  --hidden-import _sqlite3 \
+  --hidden-import _ssl \
+  --hidden-import psutil._psutil_linux \
+  --hidden-import psutil._psutil_posix \
+  --hidden-import pyexpat \
+  --hidden-import xml.parsers.expat \
+  --hidden-import tkinter \
+  scripts/pyinstaller_entry.py \
+  --distpath dist/linux \
+  --workpath build/linux/work \
+  --specpath build/linux/spec
 chmod +x dist/linux/endpoint-agent-linux
 dist/linux/endpoint-agent-linux --help >/dev/null
 dist/linux/endpoint-agent-linux selfcheck >/dev/null

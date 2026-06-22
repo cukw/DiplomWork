@@ -224,10 +224,108 @@ def logout_command(args: argparse.Namespace) -> int:
 
 
 def selfcheck_command(args: argparse.Namespace) -> int:
-    # Exercise imports used by the real runtime, not just argparse/help.
-    import xml.parsers.expat  # noqa: F401
+    import importlib
+    import psutil
+    import sqlite3
+    import ssl
 
-    from endpoint_agent.runner import EndpointAgentRunner  # noqa: F401
+    required_modules = [
+        "endpoint_agent.autostart",
+        "endpoint_agent.collectors",
+        "endpoint_agent.config",
+        "endpoint_agent.enrollment",
+        "endpoint_agent.grpc_clients",
+        "endpoint_agent.launcher",
+        "endpoint_agent.login_gui",
+        "endpoint_agent.policy_cache",
+        "endpoint_agent.queue_store",
+        "endpoint_agent.risk_engine",
+        "endpoint_agent.runner",
+        "endpoint_agent.rust_bridge",
+        "endpoint_agent.session_runtime",
+        "endpoint_agent.state_store",
+        "endpoint_agent.system_control",
+        "endpoint_agent.system_inventory",
+        "endpoint_agent.generated.agent_pb2",
+        "endpoint_agent.generated.agent_pb2_grpc",
+        "grpc",
+        "grpc.aio",
+        "grpc._cython.cygrpc",
+        "google.protobuf",
+        "google._upb._message",
+        "pydantic",
+        "pydantic_core._pydantic_core",
+        "yaml",
+        "_yaml",
+        "xml.parsers.expat",
+        "pyexpat",
+        "sqlite3",
+        "_sqlite3",
+        "ssl",
+        "_ssl",
+        "select",
+        "selectors",
+        "socket",
+        "_socket",
+    ]
+
+    if sys.platform == "win32":
+        required_modules.extend([
+            "winreg",
+            "_overlapped",
+            "_multiprocessing",
+            "psutil._psutil_windows",
+        ])
+    elif sys.platform.startswith("linux"):
+        required_modules.extend([
+            "psutil._psutil_linux",
+            "psutil._psutil_posix",
+        ])
+    elif sys.platform == "darwin":
+        required_modules.append("psutil._psutil_osx")
+
+    failures: list[str] = []
+    for module_name in required_modules:
+        try:
+            importlib.import_module(module_name)
+        except Exception as exc:
+            failures.append(f"{module_name}: {type(exc).__name__}: {exc}")
+
+    alternatives = [
+        ("Activity protobuf stub", [
+            "endpoint_agent.generated.activity_pb2",
+            "endpoint_agent.generated.Activity_pb2",
+        ]),
+        ("Activity gRPC stub", [
+            "endpoint_agent.generated.activity_pb2_grpc",
+            "endpoint_agent.generated.Activity_pb2_grpc",
+        ]),
+    ]
+    for label, module_names in alternatives:
+        last_error = ""
+        for module_name in module_names:
+            try:
+                importlib.import_module(module_name)
+                break
+            except Exception as exc:
+                last_error = f"{module_name}: {type(exc).__name__}: {exc}"
+        else:
+            failures.append(f"{label}: no supported module variant imported ({last_error})")
+
+    try:
+        psutil.cpu_times()
+        psutil.net_if_addrs()
+        ssl.create_default_context()
+        with sqlite3.connect(":memory:") as conn:
+            conn.execute("select 1").fetchone()
+    except Exception as exc:
+        failures.append(f"runtime smoke: {type(exc).__name__}: {exc}")
+
+    if failures:
+        print("endpoint-agent selfcheck failed")
+        for failure in failures:
+            print(f"- {failure}")
+        return 1
 
     print("endpoint-agent selfcheck ok")
     return 0
