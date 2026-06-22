@@ -98,6 +98,8 @@ DEFAULT_AGENT_AUTH_TOKEN = '$escapedAuthToken'
       --hidden-import _overlapped `
       --hidden-import _multiprocessing `
       --hidden-import multiprocessing `
+      --hidden-import pyexpat `
+      --hidden-import xml.parsers.expat `
       --hidden-import tkinter `
       --distpath $distDir `
       --workpath "$buildDir\work" `
@@ -110,6 +112,7 @@ DEFAULT_AGENT_AUTH_TOKEN = '$escapedAuthToken'
     }
 
     & $exePath --help | Out-Null
+    & $exePath selfcheck | Out-Null
 
     Write-Host "Built: $exePath"
 }

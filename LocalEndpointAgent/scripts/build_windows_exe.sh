@@ -81,9 +81,12 @@ pyinstaller --noconfirm --clean --onefile --name endpoint-agent-windows.exe \
   --hidden-import _overlapped \
   --hidden-import _multiprocessing \
   --hidden-import multiprocessing \
+  --hidden-import pyexpat \
+  --hidden-import xml.parsers.expat \
   --hidden-import tkinter \
   scripts/pyinstaller_entry.py
 wine dist/endpoint-agent-windows.exe --help >/dev/null
+wine dist/endpoint-agent-windows.exe selfcheck >/dev/null
 cp dist/endpoint-agent-windows.exe dist/windows/endpoint-agent-windows.exe
 "
 

@@ -46,6 +46,11 @@ python3 -m PyInstaller \
   --name endpoint-agent-macos \
   --paths "$ROOT_DIR/src" \
   --collect-submodules endpoint_agent.generated \
+  --collect-submodules grpc \
+  --collect-binaries grpc \
+  --collect-binaries psutil \
+  --hidden-import pyexpat \
+  --hidden-import xml.parsers.expat \
   --hidden-import tkinter \
   --distpath "$ROOT_DIR/dist/macos" \
   --workpath "$ROOT_DIR/build/macos/work" \
@@ -53,4 +58,6 @@ python3 -m PyInstaller \
   "$ROOT_DIR/scripts/pyinstaller_entry.py"
 
 chmod +x "$ROOT_DIR/dist/macos/endpoint-agent-macos"
+"$ROOT_DIR/dist/macos/endpoint-agent-macos" --help >/dev/null
+"$ROOT_DIR/dist/macos/endpoint-agent-macos" selfcheck >/dev/null
 echo "Built: $ROOT_DIR/dist/macos/endpoint-agent-macos"

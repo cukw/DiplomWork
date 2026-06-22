@@ -71,8 +71,10 @@ python -m pip install --upgrade pip
 python -m pip install pyinstaller grpcio grpcio-tools protobuf psutil pyyaml pydantic
 python -m pip install -e . --no-deps
 bash scripts/generate_protos.sh
-python -m PyInstaller --noconfirm --clean --onefile --name endpoint-agent-linux --paths src --collect-submodules endpoint_agent.generated --hidden-import tkinter scripts/pyinstaller_entry.py --distpath dist/linux --workpath build/linux/work --specpath build/linux/spec
+python -m PyInstaller --noconfirm --clean --onefile --name endpoint-agent-linux --paths src --collect-submodules endpoint_agent.generated --collect-submodules grpc --collect-binaries grpc --collect-binaries psutil --hidden-import pyexpat --hidden-import xml.parsers.expat --hidden-import tkinter scripts/pyinstaller_entry.py --distpath dist/linux --workpath build/linux/work --specpath build/linux/spec
 chmod +x dist/linux/endpoint-agent-linux
+dist/linux/endpoint-agent-linux --help >/dev/null
+dist/linux/endpoint-agent-linux selfcheck >/dev/null
 PKGROOT=/tmp/endpoint-agent-pkg
 rm -rf \"\$PKGROOT\"
 mkdir -p \"\$PKGROOT/DEBIAN\" \"\$PKGROOT/opt/local-endpoint-agent\" \"\$PKGROOT/usr/local/bin\"

@@ -21,7 +21,7 @@ from endpoint_agent.login_gui import prompt_login_and_enroll
 from endpoint_agent.prod_defaults import DEFAULT_AGENT_AUTH_HEADER, DEFAULT_AGENT_AUTH_TOKEN
 from endpoint_agent.session_runtime import has_active_session, seconds_until_session_expiry
 
-COMMANDS = {"run", "start", "enroll", "logout"}
+COMMANDS = {"run", "start", "enroll", "logout", "selfcheck"}
 
 
 def _configure_logging(level: str) -> None:
@@ -223,6 +223,16 @@ def logout_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def selfcheck_command(args: argparse.Namespace) -> int:
+    # Exercise imports used by the real runtime, not just argparse/help.
+    import xml.parsers.expat  # noqa: F401
+
+    from endpoint_agent.runner import EndpointAgentRunner  # noqa: F401
+
+    print("endpoint-agent selfcheck ok")
+    return 0
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="endpoint-agent", description="Local endpoint agent")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -261,6 +271,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     logout_parser.add_argument("--password", default="", help="Existing application password; prompts when omitted")
     logout_parser.add_argument("--insecure", action="store_true", help="Skip TLS certificate validation")
     logout_parser.set_defaults(func=logout_command)
+
+    selfcheck_parser = sub.add_parser("selfcheck", help="Validate packaged runtime imports")
+    selfcheck_parser.set_defaults(func=selfcheck_command)
 
     # Backward compatibility: allow `endpoint-agent --config ...` without subcommand.
     return parser.parse_args(_normalize_argv(argv))
