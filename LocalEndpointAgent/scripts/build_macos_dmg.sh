@@ -8,7 +8,7 @@ BUILD_DIR="$ROOT_DIR/build/macos"
 DIST_DIR="$ROOT_DIR/dist/macos"
 mkdir -p "$BUILD_DIR" "$DIST_DIR"
 STAGE_DIR="$(mktemp -d "$BUILD_DIR/dmg_stage.XXXXXX")"
-TMP_DMG="$DIST_DIR/$DMG_NAME.tmp.$$"
+TMP_DMG="$DIST_DIR/$DMG_NAME.tmp.$$.dmg"
 FINAL_DMG="$DIST_DIR/$DMG_NAME"
 
 cleanup() {
