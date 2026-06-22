@@ -9,9 +9,7 @@ DB_USER="${DB_USER:-postgres}"
 ${COMPOSE_CMD} exec -T "${POSTGRES_SERVICE}" psql -v ON_ERROR_STOP=1 -U "${DB_USER}" -d "${DB_NAME}" <<'SQL'
 INSERT INTO roles (name, description) VALUES
 ('admin', 'Администратор системы'),
-('user', 'Обычный пользователь'),
-('moderator', 'Модератор'),
-('auditor', 'Аудитор безопасности')
+('user', 'Пользователь локального агента')
 ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO auth_users (username, password_hash, email, role_id, is_active)

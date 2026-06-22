@@ -8,6 +8,7 @@ import sys
 from getpass import getpass
 from pathlib import Path
 
+from endpoint_agent.autostart import ensure_user_autostart
 from endpoint_agent.config import load_config, load_or_create_config
 from endpoint_agent.enrollment import (
     clear_local_session,
@@ -57,9 +58,30 @@ async def _ensure_active_session(config_path: str | None) -> tuple[Path, object]
     return resolved_config_path, cfg
 
 
-async def _run_agent(config_path: str | None, log_level: str) -> None:
+def _ensure_configured_autostart(config_path: Path, cfg: object, *, require_admin: bool = False) -> None:
+    runtime = getattr(cfg, "runtime", None)
+    if not bool(getattr(runtime, "auto_start", True)):
+        logging.getLogger("endpoint_agent").info("Agent autostart is disabled in config")
+        return
+
+    try:
+        ok, message = ensure_user_autostart(
+            config_path,
+            require_admin=require_admin or bool(getattr(runtime, "require_admin", False)),
+        )
+        logger = logging.getLogger("endpoint_agent")
+        if ok:
+            logger.info(message)
+        else:
+            logger.warning(message)
+    except Exception as exc:
+        logging.getLogger("endpoint_agent").warning("Failed to configure agent autostart: %s", exc)
+
+
+async def _run_agent(config_path: str | None, log_level: str, *, require_admin: bool = False) -> None:
     _configure_logging(log_level)
     resolved_config_path, cfg = await _ensure_active_session(config_path)
+    _ensure_configured_autostart(resolved_config_path, cfg, require_admin=require_admin)
 
     from endpoint_agent.runner import EndpointAgentRunner
 
@@ -117,7 +139,8 @@ def run_command(args: argparse.Namespace) -> int:
 
     if _should_request_admin(args.config, bool(args.require_admin)):
         _configure_logging(args.log_level)
-        resolved_config_path, _ = asyncio.run(_ensure_active_session(args.config))
+        resolved_config_path, cfg = asyncio.run(_ensure_active_session(args.config))
+        _ensure_configured_autostart(resolved_config_path, cfg, require_admin=True)
         elevated_args = [
             "run",
             "--config",
@@ -128,7 +151,7 @@ def run_command(args: argparse.Namespace) -> int:
         ]
         return _relaunch_with_admin(elevated_args)
 
-    asyncio.run(_run_agent(args.config, args.log_level))
+    asyncio.run(_run_agent(args.config, args.log_level, require_admin=bool(args.require_admin)))
     return 0
 
 
@@ -136,6 +159,7 @@ def start_command(args: argparse.Namespace) -> int:
     _configure_logging(args.log_level)
     resolved_config_path, cfg = asyncio.run(_ensure_active_session(args.config))
     require_admin = bool(getattr(args, "require_admin", False)) or cfg.runtime.require_admin
+    _ensure_configured_autostart(resolved_config_path, cfg, require_admin=require_admin)
     if require_admin and not is_elevated():
         elevated_args = [
             "run",

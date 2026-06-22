@@ -7,6 +7,12 @@ namespace Gateway.Security;
 public sealed class PermissionEvaluator
 {
     private static readonly StringComparer PermissionComparer = StringComparer.OrdinalIgnoreCase;
+    private static readonly HashSet<string> LocalAgentPermissions = new(PermissionComparer)
+    {
+        "user.enrollcomputer",
+        "user.endcomputersession"
+    };
+
     private readonly IOptionsMonitor<AuthorizationMatrixOptions> _optionsMonitor;
     private readonly RolePermissionStore _rolePermissionStore;
     private readonly ILogger<PermissionEvaluator> _logger;
@@ -30,6 +36,24 @@ public sealed class PermissionEvaluator
         if (string.IsNullOrWhiteSpace(required))
             return true;
 
+        var roles = principal.Claims
+            .Where(c => c.Type == ClaimTypes.Role || string.Equals(c.Type, "role", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(c => SplitClaimValue(c.Value))
+            .Select(r => r.Trim())
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var isAdmin = roles.Any(role => string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase));
+        if (!isAdmin && !LocalAgentPermissions.Contains(required))
+        {
+            _logger.LogWarning(
+                "RBAC denied non-admin access to panel permission. Permission={Permission}, Roles={Roles}",
+                required,
+                roles.Length == 0 ? "-" : string.Join(",", roles));
+            return false;
+        }
+
         var options = _optionsMonitor.CurrentValue ?? new AuthorizationMatrixOptions();
         if (!options.Enabled)
             return true;
@@ -41,7 +65,12 @@ public sealed class PermissionEvaluator
         }
 
         if (rolePermissions.Count == 0)
-            return true;
+        {
+            _logger.LogWarning(
+                "RBAC matrix is empty while AuthorizationMatrix is enabled. Denying permission {Permission}.",
+                required);
+            return false;
+        }
 
         var explicitPermissions = principal.Claims
             .Where(c => string.Equals(c.Type, "permission", StringComparison.OrdinalIgnoreCase)
@@ -54,14 +83,6 @@ public sealed class PermissionEvaluator
 
         if (explicitPermissions.Any(granted => IsPermissionMatch(granted, required)))
             return true;
-
-        var roles = principal.Claims
-            .Where(c => c.Type == ClaimTypes.Role || string.Equals(c.Type, "role", StringComparison.OrdinalIgnoreCase))
-            .SelectMany(c => SplitClaimValue(c.Value))
-            .Select(r => r.Trim())
-            .Where(r => !string.IsNullOrWhiteSpace(r))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
 
         foreach (var role in roles)
         {

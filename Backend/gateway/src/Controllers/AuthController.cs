@@ -51,12 +51,19 @@ public class AuthController : ControllerBase
     {
         try
         {
+            var requestedRole = dto.Role?.Trim();
+            if (!string.IsNullOrWhiteSpace(requestedRole) &&
+                !string.Equals(requestedRole, "user", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new { message = "Public registration can create only user accounts" });
+            }
+
             var resp = await _auth.RegisterAsync(new RegisterRequest
             {
                 Username = dto.Username,
                 Email    = dto.Email,
                 Password = dto.Password,
-                Role     = dto.Role ?? "user"
+                Role     = "user"
             });
             if (!resp.Success)
                 return BadRequest(new { message = resp.Message });

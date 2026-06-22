@@ -263,6 +263,7 @@ def _render_config_yaml(
     control_plane_signing_key_id: str,
     control_plane_allow_unsigned: bool,
     require_admin: bool,
+    auto_start: bool,
 ) -> str:
     user_id_line = "null" if user_id is None else str(user_id)
     safe_device = device_name.replace('"', "")
@@ -277,6 +278,7 @@ def _render_config_yaml(
     cp_allow_unsigned = "true" if control_plane_allow_unsigned else "false"
     gateway_insecure = "true" if gateway_tls_insecure else "false"
     require_admin_value = "true" if require_admin else "false"
+    auto_start_value = "true" if auto_start else "false"
     return f"""agent:
   computer_id: {computer_id}
   user_id: {user_id_line}
@@ -301,6 +303,7 @@ runtime:
   max_batch_size: 100
   max_queue_size: 10000
   require_admin: {require_admin_value}
+  auto_start: {auto_start_value}
 
 collectors:
   processes:
@@ -365,6 +368,7 @@ def _write_runtime_files(
     control_plane_signing_key_id: str,
     control_plane_allow_unsigned: bool,
     require_admin: bool,
+    auto_start: bool,
     dry_run: bool,
 ) -> tuple[Path, Path]:
     app_dir = install_root / "app"
@@ -390,6 +394,7 @@ def _write_runtime_files(
         control_plane_signing_key_id=control_plane_signing_key_id,
         control_plane_allow_unsigned=control_plane_allow_unsigned,
         require_admin=require_admin,
+        auto_start=auto_start,
     )
     _print(f"Writing config: {config_path}")
     if not dry_run:
@@ -706,6 +711,7 @@ def main() -> int:
             control_plane_signing_key_id=args.control_plane_signing_key_id,
             control_plane_allow_unsigned=not args.require_signed_control_plane,
             require_admin=args.require_admin,
+            auto_start=not args.skip_autostart,
             dry_run=args.dry_run,
         )
 

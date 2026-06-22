@@ -290,8 +290,9 @@ class EndpointAgentRunner:
             return True
 
         self._online = False
-        self._last_error = f"agent registration returned no agent_id before {reason}"
-        logger.warning("Agent registration returned no agent_id before %s; activity flush is deferred", reason)
+        registration_error = getattr(self.agent_client, "last_registration_error", "") or "agent registration returned no agent_id"
+        self._last_error = f"{registration_error} before {reason}"
+        logger.warning("%s before %s; activity flush is deferred", registration_error, reason)
         return False
 
     async def _flush_until_empty(self, max_batches: int = 100) -> tuple[int, int]:

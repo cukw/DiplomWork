@@ -88,6 +88,16 @@ DEFAULT_AGENT_AUTH_TOKEN = '$escapedAuthToken'
       --name endpoint-agent-windows.exe `
       --paths src `
       --collect-submodules endpoint_agent.generated `
+      --collect-submodules grpc `
+      --collect-binaries grpc `
+      --collect-binaries psutil `
+      --hidden-import select `
+      --hidden-import selectors `
+      --hidden-import socket `
+      --hidden-import _socket `
+      --hidden-import _overlapped `
+      --hidden-import _multiprocessing `
+      --hidden-import multiprocessing `
       --hidden-import tkinter `
       --distpath $distDir `
       --workpath "$buildDir\work" `
@@ -98,6 +108,8 @@ DEFAULT_AGENT_AUTH_TOKEN = '$escapedAuthToken'
     if (!(Test-Path $exePath)) {
         throw "Windows build failed: output file not found: $exePath"
     }
+
+    & $exePath --help | Out-Null
 
     Write-Host "Built: $exePath"
 }

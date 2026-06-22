@@ -172,7 +172,7 @@ public class UserController : ControllerBase
             });
 
             if (!resp.Success)
-                return Conflict(new { message = resp.Message });
+                return EnrollmentFailure(resp.Message);
 
             return Ok(MapEnrollment(resp));
         }
@@ -367,6 +367,37 @@ public class UserController : ControllerBase
         user = MapUser(resp.UserProfile),
         computer = MapComputer(resp.Computer)
     };
+
+    private IActionResult EnrollmentFailure(string? message)
+    {
+        var safeMessage = string.IsNullOrWhiteSpace(message)
+            ? "Computer enrollment failed"
+            : message.Trim();
+
+        if (IsEnrollmentValidationError(safeMessage))
+            return BadRequest(new { message = safeMessage });
+
+        if (IsEnrollmentConflict(safeMessage))
+            return Conflict(new { message = safeMessage });
+
+        _logger.LogWarning("Computer enrollment failed without a user/computer session conflict: {Message}", safeMessage);
+        return StatusCode(500, new { message = safeMessage });
+    }
+
+    private static bool IsEnrollmentConflict(string message)
+    {
+        var normalized = message.ToLowerInvariant();
+        return normalized.Contains("active session") ||
+               normalized.Contains("already busy") ||
+               normalized.Contains("already has active session");
+    }
+
+    private static bool IsEnrollmentValidationError(string message)
+    {
+        var normalized = message.ToLowerInvariant();
+        return normalized.Contains("authuserid must") ||
+               normalized.Contains("hostname is required");
+    }
 
     private static object? MapAuthUser(AuthProto.User? u) => u is null ? null : new
     {

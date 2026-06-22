@@ -4,6 +4,7 @@ using AgentManagementService.Models;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Npgsql;
 using UserLookup = AgentManagementService.UserLookup;
 using ProtoAgent = global::AgentManagementService.Agent;
 using ProtoSyncBatch = global::AgentManagementService.SyncBatch;
@@ -88,10 +89,14 @@ public partial class AgentManagementServiceImpl : AgentManagementService.AgentMa
 
             if (existingAgent != null)
             {
+                TouchRegisteredAgent(existingAgent, request);
+                await _db.SaveChangesAsync(context.CancellationToken);
+
                 return new RegisterAgentResponse
                 {
-                    Success = false,
-                    Message = "Agent already exists for this computer"
+                    Success = true,
+                    Message = "Agent registration refreshed",
+                    Agent = MapAgentToProto(existingAgent)
                 };
             }
 
@@ -105,13 +110,40 @@ public partial class AgentManagementServiceImpl : AgentManagementService.AgentMa
             };
 
             _db.Agents.Add(agent);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(context.CancellationToken);
 
             return new RegisterAgentResponse
             {
                 Success = true,
                 Message = "Agent registered successfully",
                 Agent = MapAgentToProto(agent)
+            };
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            _logger.LogWarning(ex, "Concurrent agent registration detected for computer ID: {ComputerId}", request.ComputerId);
+            _db.ChangeTracker.Clear();
+
+            var existingAgent = await _db.Agents
+                .FirstOrDefaultAsync(a => a.ComputerId == request.ComputerId, context.CancellationToken);
+
+            if (existingAgent is not null)
+            {
+                TouchRegisteredAgent(existingAgent, request);
+                await _db.SaveChangesAsync(context.CancellationToken);
+
+                return new RegisterAgentResponse
+                {
+                    Success = true,
+                    Message = "Agent registration refreshed",
+                    Agent = MapAgentToProto(existingAgent)
+                };
+            }
+
+            return new RegisterAgentResponse
+            {
+                Success = false,
+                Message = "Agent registration conflicted but existing agent was not found"
             };
         }
         catch (Exception ex)
@@ -123,6 +155,32 @@ public partial class AgentManagementServiceImpl : AgentManagementService.AgentMa
                 Message = "An error occurred while registering agent"
             };
         }
+    }
+
+    private static void TouchRegisteredAgent(Models.Agent agent, RegisterAgentRequest request)
+    {
+        agent.Version = string.IsNullOrWhiteSpace(request.Version) ? agent.Version : request.Version.Trim();
+        agent.ConfigVersion = string.IsNullOrWhiteSpace(request.ConfigVersion) ? agent.ConfigVersion : request.ConfigVersion.Trim();
+        agent.Status = "online";
+        agent.LastHeartbeat = DateTime.UtcNow;
+        agent.OfflineSince = null;
+        agent.LastError = string.Empty;
+    }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException ex) =>
+        HasPostgresSqlState(ex, "23505");
+
+    private static bool HasPostgresSqlState(Exception? ex, string sqlState)
+    {
+        while (ex is not null)
+        {
+            if (ex is PostgresException postgresException && postgresException.SqlState == sqlState)
+                return true;
+
+            ex = ex.InnerException;
+        }
+
+        return false;
     }
 
     public override async Task<UpdateAgentStatusResponse> UpdateAgentStatus(UpdateAgentStatusRequest request, ServerCallContext context)

@@ -3,6 +3,7 @@ using UserService.Data;
 using UserService.Models;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace UserService.Services;
 
@@ -589,7 +590,7 @@ public class UserServiceImpl : UserService.UserServiceBase
                 SessionExpiresAt = session.ExpiresAt.ToString("o")
             };
         }
-        catch (DbUpdateException ex)
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
         {
             _logger.LogWarning(ex, "Computer enrollment conflict for auth user ID: {AuthUserId}", request.AuthUserId);
             var resolvedConflict = await TryResolveEnrollmentConflictAsync(request, context.CancellationToken);
@@ -600,6 +601,15 @@ public class UserServiceImpl : UserService.UserServiceBase
             {
                 Success = false,
                 Message = "Active session conflict: user or computer is already busy"
+            };
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error while enrolling computer for auth user ID: {AuthUserId}", request.AuthUserId);
+            return new EnrollComputerForAuthUserResponse
+            {
+                Success = false,
+                Message = "Database error while enrolling computer"
             };
         }
         catch (Exception ex)
@@ -1125,6 +1135,22 @@ public class UserServiceImpl : UserService.UserServiceBase
             Success = false,
             Message = message
         };
+    }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException ex) =>
+        HasPostgresSqlState(ex, "23505");
+
+    private static bool HasPostgresSqlState(Exception? ex, string sqlState)
+    {
+        while (ex is not null)
+        {
+            if (ex is PostgresException postgresException && postgresException.SqlState == sqlState)
+                return true;
+
+            ex = ex.InnerException;
+        }
+
+        return false;
     }
 
     private static DateTime GetCurrentMoscowSessionExpiresAtUtc(DateTime nowUtc)

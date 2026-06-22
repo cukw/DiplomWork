@@ -108,6 +108,11 @@ docker compose --env-file .env.production -f docker-compose.yml -f docker-compos
 - Установка не авторизует пользователя и не требует от пользователя командной строки.
 - При первом запуске агент сам открывает окно логина; пользователь вводит свои `username/password`.
 - После успешного логина агент сохраняет только `computer_id`, `user_id`, `session_id`, `session_expires_at` и refresh token. Пароль не сохраняется.
+- После первой успешной локальной сессии агент сам регистрирует автозапуск для текущего пользователя:
+  - Linux: `systemd --user`, fallback — XDG autostart;
+  - macOS: `~/Library/LaunchAgents`;
+  - Windows: Scheduled Task, fallback — Startup folder.
+- Чтобы отключить самонастройку автозапуска, укажите в конфиге `runtime.auto_start: false`.
 
 ## Кроссплатформенный установщик (Linux / macOS / Windows)
 Добавлен единый установщик:

@@ -68,7 +68,22 @@ python -m pip install --upgrade pip
 python -m pip install grpcio grpcio-tools protobuf psutil pyyaml pydantic pyinstaller
 python -m pip install -e . --no-deps
 bash scripts/generate_protos.sh
-pyinstaller --noconfirm --clean --onefile --name endpoint-agent-windows.exe --paths src --hidden-import tkinter scripts/pyinstaller_entry.py
+pyinstaller --noconfirm --clean --onefile --name endpoint-agent-windows.exe \
+  --paths src \
+  --collect-submodules endpoint_agent.generated \
+  --collect-submodules grpc \
+  --collect-binaries grpc \
+  --collect-binaries psutil \
+  --hidden-import select \
+  --hidden-import selectors \
+  --hidden-import socket \
+  --hidden-import _socket \
+  --hidden-import _overlapped \
+  --hidden-import _multiprocessing \
+  --hidden-import multiprocessing \
+  --hidden-import tkinter \
+  scripts/pyinstaller_entry.py
+wine dist/endpoint-agent-windows.exe --help >/dev/null
 cp dist/endpoint-agent-windows.exe dist/windows/endpoint-agent-windows.exe
 "
 

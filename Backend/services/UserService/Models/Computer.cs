@@ -15,7 +15,7 @@ public class Computer
     [MaxLength(100)]
     public string? OsVersion { get; set; }
     
-    [MaxLength(15)]
+    [MaxLength(45)]
     public string? IpAddress { get; set; }
     
     [MaxLength(17)]

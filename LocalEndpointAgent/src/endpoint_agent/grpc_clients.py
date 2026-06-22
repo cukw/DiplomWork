@@ -177,6 +177,7 @@ class AgentManagementDirectClient:
         self._channel: grpc.aio.Channel | None = None
         self._stub = None
         self._pb = None
+        self.last_registration_error = ""
 
     async def connect(self) -> None:
         if self._channel:
@@ -210,6 +211,7 @@ class AgentManagementDirectClient:
         if self.agent_id:
             return self.agent_id
 
+        self.last_registration_error = ""
         try:
             resp = await self._stub.RegisterAgent(
                 self._pb.RegisterAgentRequest(
@@ -224,7 +226,10 @@ class AgentManagementDirectClient:
                 self.agent_id = int(resp.agent.id)
                 return self.agent_id
 
-            # Existing agent for computer; fallback to lookup.
+            self.last_registration_error = str(resp.message or "RegisterAgent returned success=false")
+            logger.warning("RegisterAgent failed for computer_id=%s: %s", self.computer_id, self.last_registration_error)
+
+            # Older servers returned success=false when an agent already existed.
             lookup = await self._stub.GetAgentsByComputer(
                 self._pb.GetAgentsByComputerRequest(computer_id=self.computer_id),
                 timeout=5,
@@ -232,9 +237,18 @@ class AgentManagementDirectClient:
             )
             if lookup.success and lookup.agents:
                 self.agent_id = int(lookup.agents[0].id)
+                self.last_registration_error = ""
                 return self.agent_id
+
+            lookup_message = str(lookup.message or "GetAgentsByComputer returned no agents")
+            self.last_registration_error = f"{self.last_registration_error}; lookup failed: {lookup_message}"
+            logger.warning("Agent lookup after failed registration returned no agent: %s", lookup_message)
+        except grpc.aio.AioRpcError as exc:
+            self.last_registration_error = _format_aio_rpc_error("RegisterAgent", exc)
+            logger.warning("Failed to register agent for computer_id=%s: %s", self.computer_id, self.last_registration_error)
         except Exception as exc:
-            logger.warning("Failed to register agent: %s", exc)
+            self.last_registration_error = f"RegisterAgent failed: {exc}"
+            logger.warning("Failed to register agent for computer_id=%s: %s", self.computer_id, exc)
         return None
 
     async def heartbeat(self, status: str = "online", health: dict[str, Any] | None = None) -> bool:
@@ -242,6 +256,8 @@ class AgentManagementDirectClient:
         assert self._pb is not None and self._stub is not None
         agent_id = await self.ensure_registered()
         if not agent_id:
+            if self.last_registration_error:
+                logger.warning("Heartbeat skipped because agent is not registered: %s", self.last_registration_error)
             return False
         req = self._pb.UpdateAgentStatusRequest(
             agent_id=agent_id,
@@ -503,6 +519,13 @@ def _append_bool(parts: list[str], key: str, value: Any) -> None:
 def _looks_not_found(message: str | None) -> bool:
     normalized = str(message or "").strip().lower()
     return "not found" in normalized or "not registered" in normalized
+
+
+def _format_aio_rpc_error(operation: str, exc: grpc.aio.AioRpcError) -> str:
+    code = exc.code()
+    code_name = getattr(code, "name", str(code))
+    detail = exc.details() or str(exc)
+    return f"{operation} RPC failed ({code_name}): {detail}"
 
 
 def _canonical_policy_payload(p: Any) -> bytes:

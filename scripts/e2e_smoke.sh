@@ -2,6 +2,8 @@
 set -euo pipefail
 
 API_BASE="${API_BASE:-http://localhost:8080/api}"
+ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin123}"
 
 RESPONSE_STATUS=""
 RESPONSE_BODY=""
@@ -137,7 +139,7 @@ PY
   rm -f "$json_file"
 }
 
-echo "[1/7] Register and login"
+echo "[1/7] Register user, verify panel denial, then login as admin"
 SUFFIX="$(date +%s)"
 USERNAME="e2e_${SUFFIX}"
 EMAIL="${USERNAME}@example.com"
@@ -156,10 +158,29 @@ JSON
 )
 request_public "POST" "${API_BASE}/auth/login" "${LOGIN_PAYLOAD}"
 assert_status "200" "$RESPONSE_STATUS" "login"
+USER_TOKEN="$(json_get "$RESPONSE_BODY" "token")"
+
+if [[ -z "$USER_TOKEN" ]]; then
+  echo "[FAIL] login: empty token"
+  exit 1
+fi
+
+request_auth "GET" "${API_BASE}/app-settings" "$USER_TOKEN"
+assert_status "403" "$RESPONSE_STATUS" "non-admin panel access"
+
+request_auth "POST" "${API_BASE}/auth/logout" "$USER_TOKEN"
+assert_status "200" "$RESPONSE_STATUS" "user logout"
+
+ADMIN_LOGIN_PAYLOAD=$(cat <<JSON
+{"username":"${ADMIN_USERNAME}","password":"${ADMIN_PASSWORD}"}
+JSON
+)
+request_public "POST" "${API_BASE}/auth/login" "${ADMIN_LOGIN_PAYLOAD}"
+assert_status "200" "$RESPONSE_STATUS" "admin login"
 TOKEN="$(json_get "$RESPONSE_BODY" "token")"
 
 if [[ -z "$TOKEN" ]]; then
-  echo "[FAIL] login: empty token"
+  echo "[FAIL] admin login: empty token"
   exit 1
 fi
 

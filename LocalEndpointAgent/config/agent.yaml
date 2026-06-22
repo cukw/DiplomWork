@@ -22,6 +22,7 @@ runtime:
   max_batch_size: 100
   max_queue_size: 10000
   require_admin: false
+  auto_start: true
 
 collectors:
   processes:
