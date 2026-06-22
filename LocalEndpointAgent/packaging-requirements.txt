@@ -1,0 +1,11 @@
+setuptools
+wheel
+pyinstaller
+pyinstaller-hooks-contrib
+grpcio
+grpcio-tools
+protobuf
+psutil
+PyYAML
+pydantic
+pydantic-core

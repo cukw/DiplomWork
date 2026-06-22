@@ -275,10 +275,7 @@ def selfcheck_command(args: argparse.Namespace) -> int:
             "psutil._psutil_windows",
         ])
     elif sys.platform.startswith("linux"):
-        required_modules.extend([
-            "psutil._psutil_linux",
-            "psutil._psutil_posix",
-        ])
+        required_modules.append("psutil._psutil_linux")
     elif sys.platform == "darwin":
         required_modules.append("psutil._psutil_osx")
 
@@ -314,6 +311,7 @@ def selfcheck_command(args: argparse.Namespace) -> int:
         "google._upb._message",
         "google.protobuf.pyext._message",
         "_yaml",
+        "psutil._psutil_posix",
     ]
     imported_optional_native = []
     for module_name in optional_native_modules:

@@ -68,7 +68,7 @@ trap 'rm -f src/endpoint_agent/embedded_config.py' EXIT
 apt-get update
 apt-get install -y --no-install-recommends dpkg-dev ca-certificates
 python -m pip install --upgrade pip
-python -m pip install pyinstaller grpcio grpcio-tools protobuf psutil pyyaml pydantic
+python -m pip install -r packaging-requirements.txt
 python -m pip install -e . --no-deps
 bash scripts/generate_protos.sh
 python -m PyInstaller --noconfirm --clean --onefile --name endpoint-agent-linux \
@@ -95,7 +95,6 @@ python -m PyInstaller --noconfirm --clean --onefile --name endpoint-agent-linux 
   --hidden-import _sqlite3 \
   --hidden-import _ssl \
   --hidden-import psutil._psutil_linux \
-  --hidden-import psutil._psutil_posix \
   --hidden-import pyexpat \
   --hidden-import xml.parsers.expat \
   --hidden-import tkinter \
@@ -122,7 +121,7 @@ Section: admin
 Priority: optional
 Architecture: amd64
 Maintainer: Activity Monitoring Team <noreply@example.com>
-Depends: libc6
+Depends: libc6, ca-certificates, libexpat1, libsqlite3-0, libssl3, zlib1g
 Description: Local Endpoint Agent
  Cross-platform endpoint agent for Activity Monitoring System.
 CTL

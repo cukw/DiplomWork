@@ -55,7 +55,7 @@ DEFAULT_AGENT_AUTH_TOKEN = '$escapedAuthToken'
 "@ | Set-Content -Encoding UTF8 $embeddedConfigPath
 
     & $PythonCommand -m pip install --upgrade pip
-    & $PythonCommand -m pip install grpcio protobuf psutil pyyaml pyinstaller grpcio-tools
+    & $PythonCommand -m pip install -r "$ProjectRoot\packaging-requirements.txt"
     & $PythonCommand -m pip install -e .
 
     $activityProtoDir = Join-Path $repoRoot "Backend\services\ActivityService\Protos"

@@ -65,7 +65,7 @@ Path('src/endpoint_agent/embedded_config.py').write_text(
 PY
 trap 'rm -f src/endpoint_agent/embedded_config.py' EXIT
 python -m pip install --upgrade pip
-python -m pip install grpcio grpcio-tools protobuf psutil pyyaml pydantic pyinstaller
+python -m pip install -r packaging-requirements.txt
 python -m pip install -e . --no-deps
 bash scripts/generate_protos.sh
 pyinstaller --noconfirm --clean --onefile --name endpoint-agent-windows.exe \

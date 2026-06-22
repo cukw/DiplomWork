@@ -33,7 +33,7 @@ PY
 trap 'rm -f "$ROOT_DIR/src/endpoint_agent/embedded_config.py"' EXIT
 
 python3 -m pip install --upgrade pip
-python3 -m pip install --user pyinstaller grpcio-tools
+python3 -m pip install --user -r "$ROOT_DIR/packaging-requirements.txt"
 python3 -m pip install --user -e "$ROOT_DIR"
 bash "$ROOT_DIR/scripts/generate_protos.sh"
 
