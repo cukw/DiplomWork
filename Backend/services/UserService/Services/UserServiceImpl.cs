@@ -592,6 +592,10 @@ public class UserServiceImpl : UserService.UserServiceBase
         catch (DbUpdateException ex)
         {
             _logger.LogWarning(ex, "Computer enrollment conflict for auth user ID: {AuthUserId}", request.AuthUserId);
+            var resolvedConflict = await TryResolveEnrollmentConflictAsync(request, context.CancellationToken);
+            if (resolvedConflict is not null)
+                return resolvedConflict;
+
             return new EnrollComputerForAuthUserResponse
             {
                 Success = false,
@@ -820,6 +824,163 @@ public class UserServiceImpl : UserService.UserServiceBase
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<EnrollComputerForAuthUserResponse?> TryResolveEnrollmentConflictAsync(
+        EnrollComputerForAuthUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var currentTransaction = _db.Database.CurrentTransaction;
+            if (currentTransaction is not null)
+                await currentTransaction.RollbackAsync(cancellationToken);
+        }
+        catch (Exception rollbackEx)
+        {
+            _logger.LogDebug(rollbackEx, "Failed to rollback failed enrollment transaction");
+        }
+
+        try
+        {
+            _db.ChangeTracker.Clear();
+
+            var hostname = NormalizeRequired(request.Hostname);
+            var normalizedMac = NormalizeOptional(request.MacAddress);
+            var now = DateTime.UtcNow;
+            var expiresAt = GetCurrentMoscowSessionExpiresAtUtc(now);
+
+            var user = await _db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.AuthUserId == request.AuthUserId, cancellationToken);
+            if (user is null)
+                return null;
+
+            Computer? computer = null;
+            if (!string.IsNullOrWhiteSpace(normalizedMac))
+            {
+                computer = await _db.Computers
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(c => c.MacAddress == normalizedMac, cancellationToken);
+            }
+
+            computer ??= await _db.Computers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Hostname == hostname, cancellationToken);
+
+            var activeUserSession = await _db.ComputerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.UserId == user.Id && s.EndedAt == null, cancellationToken);
+
+            ComputerSession? activeComputerSession = null;
+            if (computer is not null)
+            {
+                activeComputerSession = await _db.ComputerSessions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.ComputerId == computer.Id && s.EndedAt == null, cancellationToken);
+            }
+
+            if (computer is not null &&
+                activeUserSession is not null &&
+                activeUserSession.ComputerId == computer.Id &&
+                (activeComputerSession is null || activeComputerSession.UserId == user.Id))
+            {
+                return await TryRefreshExistingEnrollmentAsync(
+                    user.Id,
+                    computer.Id,
+                    activeUserSession.Id,
+                    hostname,
+                    request,
+                    now,
+                    expiresAt,
+                    cancellationToken);
+            }
+
+            if (computer is not null &&
+                activeComputerSession is not null &&
+                activeComputerSession.UserId == user.Id)
+            {
+                return await TryRefreshExistingEnrollmentAsync(
+                    user.Id,
+                    computer.Id,
+                    activeComputerSession.Id,
+                    hostname,
+                    request,
+                    now,
+                    expiresAt,
+                    cancellationToken);
+            }
+
+            if (activeUserSession is not null)
+                return EnrollmentConflictResponse($"User already has active session on computer {activeUserSession.ComputerId}");
+
+            if (computer is not null && activeComputerSession is not null)
+                return EnrollmentConflictResponse($"Computer {computer.Id} already has active session for another user");
+        }
+        catch (Exception lookupEx)
+        {
+            _logger.LogDebug(lookupEx, "Failed to resolve enrollment conflict for auth user ID: {AuthUserId}", request.AuthUserId);
+        }
+
+        return null;
+    }
+
+    private async Task<EnrollComputerForAuthUserResponse?> TryRefreshExistingEnrollmentAsync(
+        int userId,
+        int computerId,
+        long sessionId,
+        string hostname,
+        EnrollComputerForAuthUserRequest request,
+        DateTime now,
+        DateTime expiresAt,
+        CancellationToken cancellationToken)
+    {
+        var user = await _db.Users
+            .Include(u => u.Computers)
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        var computer = await _db.Computers
+            .FirstOrDefaultAsync(c => c.Id == computerId, cancellationToken);
+        var session = await _db.ComputerSessions
+            .FirstOrDefaultAsync(s => s.Id == sessionId && s.EndedAt == null, cancellationToken);
+
+        if (user is null || computer is null || session is null)
+            return null;
+
+        UpdateComputerRuntimeFields(computer, hostname, request.OsVersion, request.IpAddress, NormalizeOptional(request.MacAddress), now);
+        computer.UserId = user.Id;
+        computer.Status = "active";
+        computer.LastSeen = now;
+
+        session.LastSeen = now;
+        session.Status = "active";
+        if (session.ExpiresAt == default || session.ExpiresAt > expiresAt)
+            session.ExpiresAt = expiresAt;
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        user.Computers = new List<Computer> { computer };
+
+        return new EnrollComputerForAuthUserResponse
+        {
+            Success = true,
+            Message = "Computer session refreshed",
+            UserProfile = MapUserToProto(user),
+            Computer = MapComputerToProto(computer),
+            CreatedUser = false,
+            CreatedComputer = false,
+            SessionId = session.Id,
+            CreatedSession = false,
+            SessionExpiresAt = session.ExpiresAt.ToString("o")
+        };
+    }
+
+    private static EnrollComputerForAuthUserResponse EnrollmentConflictResponse(string message)
+    {
+        return new EnrollComputerForAuthUserResponse
+        {
+            Success = false,
+            Message = message
+        };
     }
 
     private static DateTime GetCurrentMoscowSessionExpiresAtUtc(DateTime nowUtc)

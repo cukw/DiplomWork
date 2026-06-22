@@ -230,6 +230,34 @@ public class UserController : ControllerBase
         }
     }
 
+    [HttpPut("auth-users/{authUserId:long}/password")]
+    public async Task<IActionResult> UpdateAuthUserPassword(long authUserId, [FromBody] UpdateAuthUserPasswordDto? dto)
+    {
+        if (authUserId <= 0)
+            return BadRequest(new { message = "Invalid auth user ID" });
+
+        if (string.IsNullOrWhiteSpace(dto?.NewPassword))
+            return BadRequest(new { message = "New password is required" });
+
+        try
+        {
+            var resp = await _auth.UpdateAuthUserPasswordAsync(new AuthProto.UpdateAuthUserPasswordRequest
+            {
+                UserId = authUserId,
+                NewPassword = dto.NewPassword
+            });
+
+            if (!resp.Success)
+                return BadRequest(new { message = resp.Message });
+
+            return Ok(new { message = resp.Message });
+        }
+        catch (RpcException ex)
+        {
+            return StatusCode(500, new { message = ex.Status.Detail });
+        }
+    }
+
     [HttpDelete("users/{id:long}")]
     public async Task<IActionResult> Delete(long id, [FromQuery] bool deleteAuthAccount = false)
     {
@@ -410,6 +438,8 @@ public class UserController : ControllerBase
         string? MacAddress);
 
     public record UpdateUserDto(string? FullName, string? Department);
+
+    public record UpdateAuthUserPasswordDto(string? NewPassword);
 
     public record EnrollComputerDto(
         string? FullName,

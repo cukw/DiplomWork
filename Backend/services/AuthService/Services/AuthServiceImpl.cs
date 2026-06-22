@@ -473,6 +473,70 @@ public class AuthServiceImpl : AuthService.AuthServiceBase
         }
     }
 
+    public override async Task<UpdateAuthUserPasswordResponse> UpdateAuthUserPassword(UpdateAuthUserPasswordRequest request, ServerCallContext context)
+    {
+        _logger.LogInformation("Update auth user password request for user ID: {UserId}", request.UserId);
+
+        try
+        {
+            if (request.UserId <= 0 || request.UserId > int.MaxValue)
+            {
+                return new UpdateAuthUserPasswordResponse
+                {
+                    Success = false,
+                    Message = "Invalid auth user ID"
+                };
+            }
+
+            var newPassword = request.NewPassword ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(newPassword))
+            {
+                return new UpdateAuthUserPasswordResponse
+                {
+                    Success = false,
+                    Message = "New password is required"
+                };
+            }
+
+            var authUserId = (int)request.UserId;
+            var user = await _db.AuthUsers
+                .FirstOrDefaultAsync(u => u.Id == authUserId, context.CancellationToken);
+
+            if (user == null)
+            {
+                return new UpdateAuthUserPasswordResponse
+                {
+                    Success = false,
+                    Message = "Auth user not found"
+                };
+            }
+
+            user.PasswordHash = _passwordService.HashPassword(newPassword);
+
+            var sessions = await _db.Sessions
+                .Where(s => s.UserId == authUserId)
+                .ToListAsync(context.CancellationToken);
+            _db.Sessions.RemoveRange(sessions);
+
+            await _db.SaveChangesAsync(context.CancellationToken);
+
+            return new UpdateAuthUserPasswordResponse
+            {
+                Success = true,
+                Message = "Auth user password updated successfully"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating auth user password for ID: {UserId}", request.UserId);
+            return new UpdateAuthUserPasswordResponse
+            {
+                Success = false,
+                Message = "An error occurred while updating auth user password"
+            };
+        }
+    }
+
     private static User MapUserToProto(AuthUser user)
     {
         return new User

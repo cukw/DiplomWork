@@ -17,6 +17,7 @@ def prompt_login_and_enroll(config_path: str | Path, cfg: AgentConfig) -> bool:
         return _console_login_and_enroll(config_path, cfg)
 
     result = {"ok": False}
+    login_in_progress = {"value": False}
 
     root = tk.Tk()
     root.title("Local Endpoint Agent")
@@ -57,12 +58,16 @@ def prompt_login_and_enroll(config_path: str | Path, cfg: AgentConfig) -> bool:
         password_entry.configure(state="disabled" if is_busy else "normal")
 
     def on_login() -> None:
+        if login_in_progress["value"]:
+            return
+
         username = username_var.get().strip()
         password = password_var.get()
         if not username or not password:
             messagebox.showerror("Ошибка", "Введите логин и пароль.")
             return
 
+        login_in_progress["value"] = True
         set_busy(True)
         status_var.set("Вход и регистрация компьютера...")
 
@@ -83,6 +88,7 @@ def prompt_login_and_enroll(config_path: str | Path, cfg: AgentConfig) -> bool:
         root.destroy()
 
     def on_error(exc: Exception) -> None:
+        login_in_progress["value"] = False
         set_busy(False)
         status_var.set("")
         messagebox.showerror("Ошибка авторизации агента", str(exc))

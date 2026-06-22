@@ -236,6 +236,11 @@ export const userAPI = {
     return response.data;
   },
 
+  updateAuthUserPassword: async (authUserId, passwordData) => {
+    const response = await api.put(`/user/auth-users/${authUserId}/password`, passwordData);
+    return response.data;
+  },
+
   deleteUser: async (id, options = {}) => {
     const response = await api.delete(`/user/users/${id}`, { params: options });
     return response.data;

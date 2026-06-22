@@ -12,6 +12,7 @@ service AuthService {
   rpc Logout (LogoutRequest) returns (LogoutResponse);
   rpc GetUserProfile (GetUserProfileRequest) returns (GetUserProfileResponse);
   rpc DeleteAuthUser (DeleteAuthUserRequest) returns (DeleteAuthUserResponse);
+  rpc UpdateAuthUserPassword (UpdateAuthUserPasswordRequest) returns (UpdateAuthUserPasswordResponse);
 }
 
 message LoginRequest {
@@ -87,6 +88,16 @@ message DeleteAuthUserRequest {
 }
 
 message DeleteAuthUserResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message UpdateAuthUserPasswordRequest {
+  int64 user_id = 1;
+  string new_password = 2;
+}
+
+message UpdateAuthUserPasswordResponse {
   bool success = 1;
   string message = 2;
 }

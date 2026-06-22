@@ -42,6 +42,18 @@ import { userAPI } from '../services/api';
 
 const PAGE_SIZE = 10;
 const FETCH_PAGE_SIZE = 500;
+const DEPARTMENT_OPTIONS = [
+  'Администрация',
+  'Бухгалтерия',
+  'ИТ-отдел',
+  'Кадры',
+  'Маркетинг',
+  'Отдел продаж',
+  'Производство',
+  'Служба безопасности',
+  'Техническая поддержка',
+  'Юридический отдел',
+];
 
 const emptyForm = {
   authUserId: '',
@@ -136,6 +148,13 @@ const Users = () => {
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pagedUsers = filteredUsers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const departmentOptions = useMemo(() => {
+    const existingDepartments = users
+      .map((user) => String(user.department || '').trim())
+      .filter(Boolean);
+    return Array.from(new Set([...DEPARTMENT_OPTIONS, ...existingDepartments]))
+      .sort((left, right) => left.localeCompare(right, 'ru-RU'));
+  }, [users]);
 
   const resetForm = () => setFormData(emptyForm);
 
@@ -203,11 +222,27 @@ const Users = () => {
       }
 
       if (selectedUser?.id) {
+        const newPassword = String(formData.password || '');
+        if (newPassword.trim()) {
+          const authUserId = Number(selectedUser.authUserId || 0);
+          if (!Number.isFinite(authUserId) || authUserId <= 0) {
+            setError('Нельзя сменить пароль: у профиля нет корректного ID авторизации');
+            return;
+          }
+        }
+
         await userAPI.updateUser(selectedUser.id, {
           fullName,
           department,
         });
-        setSuccess('Пользователь успешно обновлен');
+
+        if (newPassword.trim()) {
+          await userAPI.updateAuthUserPassword(Number(selectedUser.authUserId), {
+            newPassword,
+          });
+        }
+
+        setSuccess(newPassword.trim() ? 'Пользователь и пароль успешно обновлены' : 'Пользователь успешно обновлен');
       } else {
         const rawAuthUserId = String(formData.authUserId || '').trim();
         const useExistingAuth = rawAuthUserId.length > 0;
@@ -496,6 +531,18 @@ const Users = () => {
                 </Grid>
               </>
             )}
+            {selectedUser && (
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Новый пароль"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                  helperText="Заполните только если нужно сменить пароль"
+                />
+              </Grid>
+            )}
             <Grid item xs={12} md={8}>
               <TextField
                 fullWidth
@@ -507,10 +554,20 @@ const Users = () => {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
+                select
                 label="Отдел"
                 value={formData.department}
                 onChange={(e) => setFormData((prev) => ({ ...prev, department: e.target.value }))}
-              />
+              >
+                <MenuItem value="" disabled>
+                  Выберите отдел
+                </MenuItem>
+                {departmentOptions.map((department) => (
+                  <MenuItem key={department} value={department}>
+                    {department}
+                  </MenuItem>
+                ))}
+              </TextField>
             </Grid>
             <Grid item xs={12} md={6}>
               <TextField
