@@ -420,6 +420,56 @@ public class AuthServiceImpl : AuthService.AuthServiceBase
         }
     }
 
+    public override async Task<FindAuthUserResponse> FindAuthUser(FindAuthUserRequest request, ServerCallContext context)
+    {
+        var username = (request.Username ?? string.Empty).Trim();
+        var email = string.IsNullOrWhiteSpace(request.Email) ? string.Empty : request.Email.Trim();
+        _logger.LogInformation("Find auth user request for username: {Username}, email: {Email}", username, email);
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(username) && string.IsNullOrWhiteSpace(email))
+            {
+                return new FindAuthUserResponse
+                {
+                    Success = false,
+                    Message = "Username or email is required"
+                };
+            }
+
+            var candidates = await _db.AuthUsers
+                .Include(u => u.Role)
+                .Where(u => u.Username == username || (!string.IsNullOrWhiteSpace(email) && u.Email == email))
+                .ToListAsync(context.CancellationToken);
+
+            var user = candidates.FirstOrDefault(u => u.Username == username) ?? candidates.FirstOrDefault();
+            if (user == null)
+            {
+                return new FindAuthUserResponse
+                {
+                    Success = false,
+                    Message = "Auth user not found"
+                };
+            }
+
+            return new FindAuthUserResponse
+            {
+                Success = true,
+                Message = "Auth user found",
+                User = MapUserToProto(user)
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error finding auth user: {Username}", username);
+            return new FindAuthUserResponse
+            {
+                Success = false,
+                Message = "An error occurred while finding auth user"
+            };
+        }
+    }
+
     public override async Task<DeleteAuthUserResponse> DeleteAuthUser(DeleteAuthUserRequest request, ServerCallContext context)
     {
         _logger.LogInformation("Delete auth user request for user ID: {UserId}", request.UserId);

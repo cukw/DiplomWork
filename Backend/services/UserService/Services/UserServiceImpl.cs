@@ -916,6 +916,19 @@ public class UserServiceImpl : UserService.UserServiceBase
 
             if (computer is not null && activeComputerSession is not null)
                 return EnrollmentConflictResponse($"Computer {computer.Id} already has active session for another user");
+
+            if (activeUserSession is null && (computer is not null || !string.IsNullOrWhiteSpace(hostname)))
+            {
+                return await TryStartRecoveredEnrollmentAsync(
+                    user.Id,
+                    (int)request.AuthUserId,
+                    computer?.Id ?? 0,
+                    hostname,
+                    request,
+                    now,
+                    expiresAt,
+                    cancellationToken);
+            }
         }
         catch (Exception lookupEx)
         {
@@ -972,6 +985,137 @@ public class UserServiceImpl : UserService.UserServiceBase
             CreatedSession = false,
             SessionExpiresAt = session.ExpiresAt.ToString("o")
         };
+    }
+
+    private async Task<EnrollComputerForAuthUserResponse?> TryStartRecoveredEnrollmentAsync(
+        int userId,
+        int authUserId,
+        int computerId,
+        string hostname,
+        EnrollComputerForAuthUserRequest request,
+        DateTime now,
+        DateTime expiresAt,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _db.ChangeTracker.Clear();
+            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+
+            var user = await _db.Users
+                .Include(u => u.Computers)
+                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+            if (user is null)
+                return null;
+
+            var activeUserSession = await _db.ComputerSessions
+                .FirstOrDefaultAsync(s => s.UserId == user.Id && s.EndedAt == null, cancellationToken);
+            if (activeUserSession is not null)
+                return EnrollmentConflictResponse($"User already has active session on computer {activeUserSession.ComputerId}");
+
+            Computer? computer = null;
+            var createdComputer = false;
+            if (computerId > 0)
+            {
+                computer = await _db.Computers
+                    .FirstOrDefaultAsync(c => c.Id == computerId, cancellationToken);
+            }
+
+            if (computer is null)
+            {
+                if (string.IsNullOrWhiteSpace(hostname))
+                    return null;
+
+                computer = new Computer
+                {
+                    Hostname = hostname,
+                    OsVersion = NormalizeOptional(request.OsVersion),
+                    IpAddress = NormalizeOptional(request.IpAddress),
+                    MacAddress = NormalizeOptional(request.MacAddress),
+                    Status = "active",
+                    LastSeen = now
+                };
+                _db.Computers.Add(computer);
+                createdComputer = true;
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+
+            var activeComputerSession = await _db.ComputerSessions
+                .FirstOrDefaultAsync(s => s.ComputerId == computer.Id && s.EndedAt == null, cancellationToken);
+            if (activeComputerSession is not null && activeComputerSession.UserId != user.Id)
+                return EnrollmentConflictResponse($"Computer {computer.Id} already has active session for another user");
+
+            if (activeComputerSession is not null)
+            {
+                UpdateComputerRuntimeFields(computer, hostname, request.OsVersion, request.IpAddress, NormalizeOptional(request.MacAddress), now);
+                computer.UserId = user.Id;
+                computer.Status = "active";
+                computer.LastSeen = now;
+
+                activeComputerSession.LastSeen = now;
+                activeComputerSession.Status = "active";
+                if (activeComputerSession.ExpiresAt == default || activeComputerSession.ExpiresAt > expiresAt)
+                    activeComputerSession.ExpiresAt = expiresAt;
+
+                await _db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
+                user.Computers = new List<Computer> { computer };
+
+                return new EnrollComputerForAuthUserResponse
+                {
+                    Success = true,
+                    Message = "Computer session refreshed",
+                    UserProfile = MapUserToProto(user),
+                    Computer = MapComputerToProto(computer),
+                    CreatedUser = false,
+                    CreatedComputer = createdComputer,
+                    SessionId = activeComputerSession.Id,
+                    CreatedSession = false,
+                    SessionExpiresAt = activeComputerSession.ExpiresAt.ToString("o")
+                };
+            }
+
+            UpdateComputerRuntimeFields(computer, hostname, request.OsVersion, request.IpAddress, NormalizeOptional(request.MacAddress), now);
+            computer.UserId = user.Id;
+            computer.Status = "active";
+            computer.LastSeen = now;
+
+            var session = new ComputerSession
+            {
+                UserId = user.Id,
+                AuthUserId = authUserId,
+                ComputerId = computer.Id,
+                StartedAt = now,
+                ExpiresAt = expiresAt,
+                LastSeen = now,
+                Status = "active"
+            };
+            _db.ComputerSessions.Add(session);
+
+            await _db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            user.Computers = new List<Computer> { computer };
+
+            return new EnrollComputerForAuthUserResponse
+            {
+                Success = true,
+                Message = "Computer session started",
+                UserProfile = MapUserToProto(user),
+                Computer = MapComputerToProto(computer),
+                CreatedUser = false,
+                CreatedComputer = createdComputer,
+                SessionId = session.Id,
+                CreatedSession = true,
+                SessionExpiresAt = session.ExpiresAt.ToString("o")
+            };
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogDebug(ex, "Recovered enrollment start failed for auth user ID: {AuthUserId}", request.AuthUserId);
+            return null;
+        }
     }
 
     private static EnrollComputerForAuthUserResponse EnrollmentConflictResponse(string message)

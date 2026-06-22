@@ -72,27 +72,18 @@ public class UserController : ControllerBase
             var authUserId = dto.AuthUserId;
             AuthProto.User? authUser = null;
             var createdAuthAccount = false;
+            var reusedAuthAccount = false;
 
             if (authUserId <= 0)
             {
-                var validationError = ValidateAuthAccountFields(dto);
-                if (validationError is not null)
-                    return BadRequest(new { message = validationError });
+                var authResolution = await ResolveAuthUserForCreateAsync(dto);
+                if (!authResolution.Success)
+                    return BadRequest(new { message = authResolution.Message });
 
-                var authResp = await _auth.RegisterAsync(new AuthProto.RegisterRequest
-                {
-                    Username = dto.Username?.Trim() ?? "",
-                    Email    = dto.Email?.Trim() ?? "",
-                    Password = dto.Password ?? "",
-                    Role     = string.IsNullOrWhiteSpace(dto.Role) ? "user" : dto.Role.Trim()
-                });
-
-                if (!authResp.Success)
-                    return BadRequest(new { message = authResp.Message });
-
-                authUser = authResp.User;
-                authUserId = authResp.User.Id;
-                createdAuthAccount = true;
+                authUser = authResolution.AuthUser;
+                authUserId = authResolution.AuthUserId;
+                createdAuthAccount = authResolution.CreatedAuthAccount;
+                reusedAuthAccount = authResolution.ReusedAuthAccount;
             }
 
             CreateUserResponse resp;
@@ -139,7 +130,20 @@ public class UserController : ControllerBase
                 });
             }
 
-            return Ok(MapCreatedUser(resp.UserProfile, authUser, resp.Message));
+            var message = resp.Message;
+            if (reusedAuthAccount)
+            {
+                var passwordUpdate = await _auth.UpdateAuthUserPasswordAsync(new AuthProto.UpdateAuthUserPasswordRequest
+                {
+                    UserId = authUserId,
+                    NewPassword = dto.Password ?? ""
+                });
+                message = passwordUpdate.Success
+                    ? $"{resp.Message}. Existing auth account reused and password updated"
+                    : $"{resp.Message}. Existing auth account reused, but password was not updated: {passwordUpdate.Message}";
+            }
+
+            return Ok(MapCreatedUser(resp.UserProfile, authUser, message));
         }
         catch (RpcException ex)
         {
@@ -384,6 +388,51 @@ public class UserController : ControllerBase
             return "Password is required when AuthUserId is not provided";
 
         return null;
+    }
+
+    private async Task<(
+        bool Success,
+        string Message,
+        long AuthUserId,
+        AuthProto.User? AuthUser,
+        bool CreatedAuthAccount,
+        bool ReusedAuthAccount)> ResolveAuthUserForCreateAsync(CreateUserDto dto)
+    {
+        var validationError = ValidateAuthAccountFields(dto);
+        if (validationError is not null)
+            return (false, validationError, 0, null, false, false);
+
+        var username = dto.Username?.Trim() ?? "";
+        var email = dto.Email?.Trim() ?? "";
+        var authResp = await _auth.RegisterAsync(new AuthProto.RegisterRequest
+        {
+            Username = username,
+            Email = email,
+            Password = dto.Password ?? "",
+            Role = string.IsNullOrWhiteSpace(dto.Role) ? "user" : dto.Role.Trim()
+        });
+
+        if (authResp.Success)
+            return (true, authResp.Message, authResp.User.Id, authResp.User, true, false);
+
+        if (!IsExistingAuthAccountConflict(authResp.Message))
+            return (false, authResp.Message, 0, null, false, false);
+
+        var existingAuth = await _auth.FindAuthUserAsync(new AuthProto.FindAuthUserRequest
+        {
+            Username = username,
+            Email = email
+        });
+
+        if (!existingAuth.Success || existingAuth.User is null || existingAuth.User.Id <= 0)
+            return (false, $"{authResp.Message}. {existingAuth.Message}", 0, null, false, false);
+
+        return (true, "Existing auth account reused", existingAuth.User.Id, existingAuth.User, false, true);
+    }
+
+    private static bool IsExistingAuthAccountConflict(string? message)
+    {
+        return (message ?? "").Contains("already exists", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<(bool Success, string Message)> TryDeleteAuthAccountAsync(
