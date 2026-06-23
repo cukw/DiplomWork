@@ -224,6 +224,12 @@ class AgentManagementDirectClient:
             )
             if resp.success and resp.agent and resp.agent.id:
                 self.agent_id = int(resp.agent.id)
+                logger.info(
+                    "Agent registration active: computer_id=%s agent_id=%s (%s)",
+                    self.computer_id,
+                    self.agent_id,
+                    resp.message or "registered",
+                )
                 return self.agent_id
 
             self.last_registration_error = str(resp.message or "RegisterAgent returned success=false")
@@ -238,6 +244,11 @@ class AgentManagementDirectClient:
             if lookup.success and lookup.agents:
                 self.agent_id = int(lookup.agents[0].id)
                 self.last_registration_error = ""
+                logger.info(
+                    "Agent registration resolved by computer lookup: computer_id=%s agent_id=%s",
+                    self.computer_id,
+                    self.agent_id,
+                )
                 return self.agent_id
 
             lookup_message = str(lookup.message or "GetAgentsByComputer returned no agents")
@@ -305,6 +316,7 @@ class AgentManagementDirectClient:
                 metadata=self._auth_metadata(),
             )
             if not resp.success:
+                logger.warning("GetAgentPolicy failed for agent_id=%s: %s", agent_id, resp.message)
                 if _looks_not_found(resp.message):
                     self._forget_registration(resp.message)
                 return None

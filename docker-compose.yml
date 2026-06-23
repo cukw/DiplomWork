@@ -432,6 +432,8 @@ services:
       Services__Metrics: "http://metricservice:5010"
       Services__Report: "http://reportservice:5013"
       Services__Agent: "http://agentmanagementservice:5015"
+      AgentAuth__HeaderName: "${AGENT_AUTH_HEADER:-x-agent-token}"
+      AgentAuth__Token: "${AGENT_AUTH_TOKEN:-}"
       ConnectionStrings__GatewayRuntime: "Host=postgres-user;Database=users;Username=postgres;Password=${DB_PASSWORD:?DB_PASSWORD is required};TrustServerCertificate=true"
     ports:
       - "8080:8080"

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Primitives;
 using Microsoft.EntityFrameworkCore;
+using Grpc.Core;
 using System.Text;
 using System.Threading.RateLimiting;
 using System.Security.Cryptography.X509Certificates;
@@ -57,7 +58,13 @@ builder.Services.AddGrpcClient<ReportClient>(o =>
 
 builder.Services.AddGrpcClient<AgentClient>(o =>
     o.Address = new Uri(builder.Configuration["Services:Agent"] ?? "http://agentmanagementservice:5015"))
-    .ConfigurePrimaryHttpMessageHandler(() => CreateGrpcHttpHandler(builder.Configuration));
+    .ConfigurePrimaryHttpMessageHandler(() => CreateGrpcHttpHandler(builder.Configuration))
+    .ConfigureChannel(o => o.UnsafeUseInsecureChannelCallCredentials = true)
+    .AddCallCredentials((_, metadata, serviceProvider) =>
+    {
+        AddAgentAuthMetadata(serviceProvider.GetRequiredService<IConfiguration>(), metadata);
+        return Task.CompletedTask;
+    });
 
 // ─── REST + Auth ──────────────────────────────────────────────────────────────
 builder.Services.AddControllers(options =>
@@ -447,6 +454,19 @@ static HttpMessageHandler CreateGrpcHttpHandler(IConfiguration configuration)
     };
 
     return handler;
+}
+
+static void AddAgentAuthMetadata(IConfiguration configuration, Metadata metadata)
+{
+    var token = (configuration["AgentAuth:Token"] ?? string.Empty).Trim();
+    if (string.IsNullOrWhiteSpace(token))
+        return;
+
+    var headerName = string.IsNullOrWhiteSpace(configuration["AgentAuth:HeaderName"])
+        ? "x-agent-token"
+        : configuration["AgentAuth:HeaderName"]!.Trim().ToLowerInvariant();
+
+    metadata.Add(headerName, token);
 }
 
 static X509Certificate2 LoadClientCertificate(string certificatePath, string? certificatePassword)

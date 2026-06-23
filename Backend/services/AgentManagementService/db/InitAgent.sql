@@ -62,9 +62,17 @@ CREATE TABLE agent_policies (
     admin_blocked                   BOOLEAN NOT NULL DEFAULT FALSE,
     blocked_reason                  VARCHAR(500) NULL,
     browsers_json                   TEXT NOT NULL DEFAULT '["chrome","edge","firefox"]',
+    enable_whitelist                BOOLEAN NOT NULL DEFAULT TRUE,
+    enable_blacklist                BOOLEAN NOT NULL DEFAULT TRUE,
+    whitelist_json                  TEXT NOT NULL DEFAULT '[]',
+    blacklist_json                  TEXT NOT NULL DEFAULT '[]',
     updated_at                      TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE IF EXISTS agent_policies ADD COLUMN IF NOT EXISTS enable_whitelist BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE IF EXISTS agent_policies ADD COLUMN IF NOT EXISTS enable_blacklist BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE IF EXISTS agent_policies ADD COLUMN IF NOT EXISTS whitelist_json TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE IF EXISTS agent_policies ADD COLUMN IF NOT EXISTS blacklist_json TEXT NOT NULL DEFAULT '[]';
 CREATE INDEX idx_agent_policies_computer_id ON agent_policies(computer_id);
 
 CREATE TABLE agent_commands (

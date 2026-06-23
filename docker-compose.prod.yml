@@ -81,6 +81,8 @@ services:
       Jwt__RequireHttpsMetadata: "true"
       Cors__AllowedOrigins__0: "${CORS_ORIGIN_0:?CORS_ORIGIN_0 is required}"
       Cors__AllowedOrigins__1: "${CORS_ORIGIN_1:?CORS_ORIGIN_1 is required}"
+      AgentAuth__HeaderName: "${AGENT_AUTH_HEADER:-x-agent-token}"
+      AgentAuth__Token: "${AGENT_AUTH_TOKEN:?AGENT_AUTH_TOKEN is required}"
 
   frontend:
     ports:
